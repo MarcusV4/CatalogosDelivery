@@ -1,3 +1,10 @@
+## Equipe
+
+- Pedro Vinicius
+- Marcus Vinicius
+- Lucas Cassiano
+- João Faria
+
 Os serviços possuem três responsabilidades principais:
 
 * **Restaurantes:** gerenciamento dos dados, status e horários de funcionamento dos restaurantes.
