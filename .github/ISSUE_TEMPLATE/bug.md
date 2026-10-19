@@ -1,10 +1,10 @@
-
 ---
-name: "Bug"
-about: "Reportar um erro ou comportamento inesperado no sistema"
-title: "[BUG] "
-labels: ["bug"]
-assignees: []
+name: Bug
+about: Reportar um erro ou comportamento inesperado no sistema
+title: "[BUG]"
+labels: bug
+assignees: ''
+
 ---
 
 ## Descrição do bug
