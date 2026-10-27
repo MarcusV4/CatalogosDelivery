@@ -15,15 +15,17 @@ public class Dono {
 
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE)
     private Long id;
 
     private String nomeDono;
+
+    private String emailDono;
 
     private String telefoneDono;
 
     private String cpfDono;
 
-    @OneToMany(cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "restauranteDono",cascade = CascadeType.ALL)
     private List<Restaurante> restaurante;
 }

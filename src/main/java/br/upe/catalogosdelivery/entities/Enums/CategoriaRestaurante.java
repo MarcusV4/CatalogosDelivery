@@ -1,0 +1,23 @@
+package br.upe.catalogosdelivery.entities.Enums;
+
+public enum CategoriaRestaurante {
+    HAMBURGUERIA,
+    PIZZARIA,
+    COMIDA_BRASILEIRA,
+    COMIDA_REGIONAL,
+    COMIDA_JAPONESA,
+    COMIDA_CHINESA,
+    COMIDA_ITALIANA,
+    COMIDA_MEXICANA,
+    COMIDA_ÁRABE,
+    LANCHONETE,
+    MARMITARIA,
+    CHURRASCARIA,
+    COMIDA_SAUDÁVEL,
+    COMIDA_VEGETARIANA_E_VEGANA,
+    PADARIA,
+    DOCERIA,
+    SORVETERIA,
+    AÇAÍ,
+    OUTROS,
+}
