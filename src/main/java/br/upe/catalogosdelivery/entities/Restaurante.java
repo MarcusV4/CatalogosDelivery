@@ -1,6 +1,7 @@
 package br.upe.catalogosdelivery.entities;
 
 
+import br.upe.catalogosdelivery.entities.Enums.CategoriaRestaurante;
 import br.upe.catalogosdelivery.entities.Enums.StatusRestaurante;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -23,13 +24,37 @@ public class Restaurante {
 
     private String restauranteDesc;
 
-    private String restauranteEndereco;
+    private String logradouro;
+
+    private String numero;
+
+    private String complemento;
+
+    private String bairro;
+
+    private String cidade;
+
+    private String estado;
+
+    private String cep;
 
     private String restauranteTelefone;
 
-    @ManyToOne(cascade = CascadeType.ALL)
+    private float taxaEntrega;
+
+    private Integer tempoEstimadoMin;
+
+    private Integer tempoEstimadoMax;
+
+    private String urlImagem;
+
+    @ManyToOne
+    @JoinColumn(name = "idDono", nullable = false)
     private Dono restauranteDono;
 
     @Enumerated(EnumType.STRING)
     private StatusRestaurante statusRestaurante;
+
+    @Enumerated(EnumType.STRING)
+    private CategoriaRestaurante categoriaRestaurante;
 }
