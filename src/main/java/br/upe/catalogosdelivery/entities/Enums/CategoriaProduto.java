@@ -7,6 +7,7 @@ public enum CategoriaProduto {
     ENTRADA,
     SOBREMESA,
     BEBIDA,
-    SALADA,
-    SALGADO
+    VEGETARIANO,
+    SALGADO,
+    ORIENTAL
 }
