@@ -1,6 +1,8 @@
 package br.upe.catalogosdelivery.entities;
 
 
+import br.upe.catalogosdelivery.entities.Enums.BandeiraCartao;
+import br.upe.catalogosdelivery.entities.Enums.TipoFormaPagamento;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -18,13 +20,12 @@ public class FormaPagamento {
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
     private Long idFormaPagamento;
 
-    private String apelido;
+    @Enumerated(EnumType.STRING)
+    private TipoFormaPagamento tipoFormaPagamento;
 
-    private String bandeira;
+    @Enumerated(EnumType.STRING)
+    private BandeiraCartao bandeira;
 
     private String ultimos4Dig;
-
-    @ManyToOne
-    private Dono donoId;
 
 }
