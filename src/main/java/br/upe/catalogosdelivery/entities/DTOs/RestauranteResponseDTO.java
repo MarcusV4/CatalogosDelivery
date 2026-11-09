@@ -10,7 +10,7 @@ public record RestauranteResponseDTO(
         String cidade,
         String estado,
         String urlImagem,
-        Long idDono,
+//        Long idDono,
         String nomeDono,
         StatusRestaurante statusRestaurante,
         CategoriaRestaurante categoriaRestaurante
