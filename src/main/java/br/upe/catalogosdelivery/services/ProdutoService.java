@@ -1,7 +1,9 @@
 package br.upe.catalogosdelivery.services;
 
 import br.upe.catalogosdelivery.entities.Cardapio;
+import br.upe.catalogosdelivery.entities.DTOs.ProdutoResponseDTO;
 import br.upe.catalogosdelivery.entities.Produto;
+import br.upe.catalogosdelivery.mappers.ProdutoMapper;
 import br.upe.catalogosdelivery.repositories.CardapioRepo;
 import br.upe.catalogosdelivery.repositories.ProdutoRepo;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,20 +20,25 @@ public class ProdutoService {
     @Autowired
     CardapioRepo cardapioRepo;
 
-    public Produto cadastrarProduto(Produto produto, Long restauranteId){
+    private final ProdutoMapper produtoMapper = new ProdutoMapper();
+
+    public ProdutoResponseDTO cadastrarProduto(Produto produto, Long restauranteId){
         Cardapio cardapio = cardapioRepo
                 .findByRestaurante_restauranteId(restauranteId)
                 .orElseThrow(() -> new RuntimeException("Cardápio não encontrado!"));
 
         produto.setCardapio(cardapio);
 
-        return produtoRepo.save(produto);
+        Produto produtoSalvo = produtoRepo.save(produto);
+
+
+        return produtoMapper.toDTO(produtoSalvo);
     }
 
-    public List<Produto> listarProdutosPorRestaurante(Long restauranteId) {
+    public List<ProdutoResponseDTO> listarProdutosPorRestaurante(Long restauranteId) {
 
         return produtoRepo
-                .findByCardapio_Restaurante_restauranteId(restauranteId);
+                .findAll().stream().map(produtoMapper::toDTO).toList();
     }
 
 }
