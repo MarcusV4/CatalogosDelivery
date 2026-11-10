@@ -7,6 +7,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
+
 @Entity
 @Getter
 @Setter
@@ -21,7 +23,7 @@ public class Produto {
 
     private String descricao;
 
-    private float preco;
+    private BigDecimal preco;
 
     private boolean disponivel;
 
