@@ -40,7 +40,7 @@ public class RestauranteMapper {
                 restaurante.getCidade(),
                 restaurante.getEstado(),
                 restaurante.getUrlImagem(),
-                restaurante.getRestauranteDono().getId(),
+//                restaurante.getRestauranteDono().getId(),
                 restaurante.getRestauranteDono().getNomeDono(),
                 restaurante.getStatusRestaurante(),
                 restaurante.getCategoriaRestaurante()
