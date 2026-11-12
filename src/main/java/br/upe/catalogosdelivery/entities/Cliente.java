@@ -26,6 +26,8 @@ public class Cliente {
 
     private String telefone;
 
+    private String cpf;
+
     @OneToMany(mappedBy = "cliente")
     private List<Pedido> pedidos = new ArrayList<>();
 }
