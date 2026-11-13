@@ -1,14 +1,13 @@
 package br.upe.catalogosdelivery.entities;
 
 import br.upe.catalogosdelivery.entities.Enums.CategoriaProduto;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.math.BigDecimal;
 
 @Entity
 @Getter
@@ -24,13 +23,17 @@ public class Produto {
 
     private String descricao;
 
-    private float preco;
+    private BigDecimal preco;
 
     private boolean disponivel;
 
     private String urlImagem;
 
     private CategoriaProduto categoria;
+
+    @ManyToOne
+    @JoinColumn(name = "cardapio_id")
+    private Cardapio cardapio;
 
 
 }

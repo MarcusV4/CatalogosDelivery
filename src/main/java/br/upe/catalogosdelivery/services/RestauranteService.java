@@ -1,10 +1,12 @@
 package br.upe.catalogosdelivery.services;
 
+import br.upe.catalogosdelivery.entities.Cardapio;
 import br.upe.catalogosdelivery.entities.DTOs.RestauranteDTO;
 import br.upe.catalogosdelivery.entities.DTOs.RestauranteResponseDTO;
 import br.upe.catalogosdelivery.entities.Dono;
 import br.upe.catalogosdelivery.entities.Restaurante;
 import br.upe.catalogosdelivery.mappers.RestauranteMapper;
+import br.upe.catalogosdelivery.repositories.CardapioRepo;
 import br.upe.catalogosdelivery.repositories.DonoRepo;
 import br.upe.catalogosdelivery.repositories.RestauranteRepo;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +24,9 @@ public class RestauranteService {
     @Autowired
     DonoRepo donoRepo;
 
+    @Autowired
+    CardapioRepo cardapioRepo;
+
     private final RestauranteMapper restauranteMapper = new RestauranteMapper();
 
 
@@ -35,7 +40,15 @@ public class RestauranteService {
 
         restaurante.setRestauranteDono(dono);
 
-        return restauranteRepo.save(restaurante);
+        Restaurante restauranteSalvo = restauranteRepo.save(restaurante);
+
+        Cardapio cardapio = new Cardapio();
+        cardapio.setRestaurante(restauranteSalvo);
+
+        cardapioRepo.save(cardapio);
+
+
+        return restauranteSalvo;
     }
 
 
