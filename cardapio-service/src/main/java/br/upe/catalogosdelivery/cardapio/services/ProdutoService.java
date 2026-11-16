@@ -12,6 +12,7 @@ import br.upe.catalogosdelivery.cardapio.repositories.CardapioRepo;
 import br.upe.catalogosdelivery.cardapio.repositories.ProdutoRepo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -35,14 +36,7 @@ public class ProdutoService {
         // Valida no serviço de Restaurantes (404 se não existir, 503 se estiver fora do ar)
         restauranteClient.buscarRestaurante(restauranteId);
 
-        // O cardápio é criado no primeiro produto do restaurante
-        Cardapio cardapio = cardapioRepo
-                .findByRestauranteId(restauranteId)
-                .orElseGet(() -> {
-                    Cardapio novo = new Cardapio();
-                    novo.setRestauranteId(restauranteId);
-                    return cardapioRepo.save(novo);
-                });
+        Cardapio cardapio = obterOuCriarCardapio(restauranteId);
 
         produto.setCardapio(cardapio);
 
@@ -55,11 +49,34 @@ public class ProdutoService {
     public List<ProdutoResponseDTO> listarProdutosPorRestaurante(Long restauranteId) {
 
         return produtoRepo
-                .findByCardapio_RestauranteId(restauranteId).stream().map(produtoMapper::toDTO).toList();
+                .findByCardapio_RestauranteIdAndCardapio_ExcluidoEmIsNull(restauranteId)
+                .stream().map(produtoMapper::toDTO).toList();
     }
 
     public List<ProdutoResponseDTO> listarProdutos() {
-        return produtoRepo.findAll().stream().map(produtoMapper::toDTO).toList();
+        return produtoRepo.findByCardapio_ExcluidoEmIsNull().stream().map(produtoMapper::toDTO).toList();
+    }
+
+    /** O cardápio é criado no primeiro produto do restaurante. */
+    private Cardapio obterOuCriarCardapio(Long restauranteId) {
+        return cardapioRepo.findByRestauranteId(restauranteId)
+                .orElseGet(() -> criarCardapio(restauranteId));
+    }
+
+    /**
+     * Duas requisições simultâneas podem não encontrar o cardápio e tentar criá-lo.
+     * A constraint unique em restaurante_id barra a segunda, que então usa o cardápio
+     * criado pela primeira. Funciona porque este método não roda dentro de uma transação
+     * maior (o saveAndFlush tem a sua própria), então a falha não invalida a nova consulta.
+     */
+    private Cardapio criarCardapio(Long restauranteId) {
+        Cardapio novo = new Cardapio();
+        novo.setRestauranteId(restauranteId);
+        try {
+            return cardapioRepo.saveAndFlush(novo);
+        } catch (DataIntegrityViolationException e) {
+            return cardapioRepo.findByRestauranteId(restauranteId).orElseThrow(() -> e);
+        }
     }
 
     public List<ValidacaoItemResponseDTO> validarItens(ValidacaoItensRequestDTO request) {
@@ -81,7 +98,10 @@ public class ProdutoService {
                     "Cada item deve informar itemId e quantidade maior que zero.");
         }
 
-        Produto produto = produtoRepo.findById(item.itemId()).orElse(null);
+        // Item de restaurante excluído conta como inexistente para o Checkout
+        Produto produto = produtoRepo.findById(item.itemId())
+                .filter(p -> p.getCardapio().getExcluidoEm() == null)
+                .orElse(null);
         if (produto == null) {
             return new ValidacaoItemResponseDTO(item.itemId(), false, false, null, null, null);
         }

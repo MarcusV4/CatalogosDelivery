@@ -6,6 +6,7 @@ import br.upe.catalogosdelivery.common.excecoes.ServicoIndisponivelException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
@@ -51,23 +52,30 @@ public class ClienteHttp {
     }
 
     public <T> T get(String caminho, Class<T> tipo, String mensagemNaoEncontrado, Object... variaveis) {
-        return executar(caminho, mensagemNaoEncontrado, variaveis,
-                () -> restClient.get().uri(caminho, variaveis).retrieve().body(tipo));
+        return executar("GET", caminho, mensagemNaoEncontrado, variaveis,
+                () -> restClient.get().uri(caminho, variaveis).retrieve().toEntity(tipo));
     }
 
     public <T> T get(String caminho, ParameterizedTypeReference<T> tipo, String mensagemNaoEncontrado, Object... variaveis) {
-        return executar(caminho, mensagemNaoEncontrado, variaveis,
-                () -> restClient.get().uri(caminho, variaveis).retrieve().body(tipo));
+        return executar("GET", caminho, mensagemNaoEncontrado, variaveis,
+                () -> restClient.get().uri(caminho, variaveis).retrieve().toEntity(tipo));
     }
 
-    private <T> T executar(String caminho, String mensagemNaoEncontrado, Object[] variaveis, Supplier<T> chamada) {
+    public void delete(String caminho, String mensagemNaoEncontrado, Object... variaveis) {
+        executar("DELETE", caminho, mensagemNaoEncontrado, variaveis,
+                () -> restClient.delete().uri(caminho, variaveis).retrieve().toBodilessEntity());
+    }
+
+    private <T> T executar(String metodo, String caminho, String mensagemNaoEncontrado, Object[] variaveis,
+                           Supplier<ResponseEntity<T>> chamada) {
         String url = baseUrl + expandir(caminho, variaveis);
-        log.info("[{}] -> GET {} (consultando o serviço de {})", origem, url, destino);
+        log.info("[{}] -> {} {} (chamando o serviço de {})", origem, metodo, url, destino);
         long inicio = System.currentTimeMillis();
         try {
-            T resposta = chamada.get();
-            log.info("[{}] <- 200 de {} em {} ms", origem, destino, System.currentTimeMillis() - inicio);
-            return resposta;
+            ResponseEntity<T> resposta = chamada.get();
+            log.info("[{}] <- {} de {} em {} ms", origem, resposta.getStatusCode().value(), destino,
+                    System.currentTimeMillis() - inicio);
+            return resposta.getBody();
         } catch (HttpClientErrorException.NotFound e) {
             log.info("[{}] <- 404 de {}: {}", origem, destino, mensagemNaoEncontrado);
             throw new RecursoNaoEncontradoException(mensagemNaoEncontrado);

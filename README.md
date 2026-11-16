@@ -19,7 +19,7 @@ Cada responsabilidade é um **microsserviço independente** (Spring Boot), com p
 
 | Serviço | Módulo | Porta | Banco | Consome via HTTP |
 |---|---|---|---|---|
-| Restaurantes | `restaurantes-service` | `8004` | `db-restaurantes` (Postgres, host `5433`) | — |
+| Restaurantes | `restaurantes-service` | `8004` | `db-restaurantes` (Postgres, host `5433`) | Cardápio (só na exclusão) |
 | Cardápio | `cardapio-service` | `8005` | `db-cardapio` (Postgres, host `5434`) | Restaurantes |
 | Busca | `busca-service` | `8006` | — (sem banco) | Restaurantes e Cardápio |
 
@@ -30,6 +30,7 @@ O módulo `catalogo-common` é uma biblioteca compartilhada (não é um serviço
 ## Como os serviços conversam
 
 - **Cardápio → Restaurantes:** ao cadastrar um produto, o Cardápio valida o restaurante em `GET /api/restaurantes/{id}`. O cardápio do restaurante é criado automaticamente no primeiro produto.
+- **Restaurantes → Cardápio:** ao excluir um restaurante, o Restaurantes primeiro pede ao Cardápio para excluir o cardápio (`DELETE /api/cardapios/restaurante/{id}`). Se o Cardápio estiver fora do ar, a exclusão é recusada com 503 e **nada é apagado**, mantendo os dois serviços consistentes. No Cardápio a exclusão é lógica (`excluido_em`): os itens do restaurante excluído deixam de aparecer nas listagens e na busca, e a validação para o Checkout passa a responder `existe: false` para eles.
 - **Busca → Restaurantes e Cardápio:** a busca lê `GET /api/restaurantes` e `GET /api/produtos` e aplica os filtros.
 - Toda chamada aparece no log do terminal, por exemplo:
   ```
@@ -47,7 +48,7 @@ Se um serviço cair, quem depende dele **continua no ar** e responde com o forma
 | Outro serviço fora do ar, em timeout (3 s) ou com erro 5xx | `503 {"erro": true, "mensagem": "O serviço de Restaurantes está indisponível no momento. ..."}` |
 | Resposta inesperada do outro serviço | `502` |
 
-A busca de itens continua funcionando sem o serviço de Restaurantes: os itens voltam apenas sem `restauranteNome`/`restauranteStatus`.
+A busca de itens continua funcionando sem o serviço de Restaurantes: os itens voltam apenas sem `restauranteNome`/`restauranteStatus`. Com o serviço no ar, itens de restaurantes que não existem mais são descartados.
 
 ## Executando
 
@@ -80,6 +81,7 @@ Suba só os bancos com `docker compose up -d db-restaurantes db-cardapio` e rode
 |---|---|---|
 | Restaurantes | `POST/GET /api/restaurantes`, `GET/DELETE /api/restaurantes/{id}` | CRUD de restaurantes |
 | Cardápio | `GET /api/produtos` | Todos os itens (usado pela Busca) |
+| Cardápio | `DELETE /api/cardapios/restaurante/{restauranteId}` | Exclui o cardápio de um restaurante (usado pelo Restaurantes) |
 | Cardápio | `GET/POST /api/produtos/{restauranteId}` | Itens do cardápio de um restaurante |
 | Cardápio | `POST /api/produtos/validacao` | Valida existência, disponibilidade, preço e restaurante dos itens para Checkout |
 | Busca | `GET /api/busca/restaurantes?nome=&categoria=&status=` | Busca de restaurantes |

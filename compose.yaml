@@ -59,6 +59,7 @@ services:
       RESTAURANTES_DB_URL: ${RESTAURANTES_DB_URL:-jdbc:postgresql://db-restaurantes:5432/restaurantes}
       RESTAURANTES_DB_USERNAME: ${RESTAURANTES_DB_USERNAME:-catalogo}
       RESTAURANTES_DB_PASSWORD: ${RESTAURANTES_DB_PASSWORD:-catalogo}
+      CARDAPIO_URL: http://cardapio:8005
     ports:
       - "${RESTAURANTES_PORT:-8004}:8004"
     depends_on:

@@ -80,6 +80,17 @@ class BuscaServiceTest {
     }
 
     @Test
+    void escondeItensDeRestauranteExcluido() {
+        when(cardapioClient.listarProdutos()).thenReturn(List.of(calabresa, acai));
+        when(restauranteClient.listarRestaurantes()).thenReturn(List.of(pizzaria)); // restaurante 2 foi excluído
+
+        List<ItemBuscaDTO> resultado = buscaService.buscarItens(null, null, null, null);
+
+        assertEquals(1, resultado.size());
+        assertEquals("Pizza Calabresa", resultado.get(0).nome());
+    }
+
+    @Test
     void buscaDeItensContinuaSemRestaurantes() {
         when(cardapioClient.listarProdutos()).thenReturn(List.of(acai));
         when(restauranteClient.listarRestaurantes())

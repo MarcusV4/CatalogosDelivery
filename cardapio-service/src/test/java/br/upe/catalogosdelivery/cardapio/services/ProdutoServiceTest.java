@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -51,6 +52,18 @@ class ProdutoServiceTest {
 
         assertEquals(List.of(new ValidacaoItemResponseDTO(
                 999L, false, false, null, null, null)), resultado);
+    }
+
+    @Test
+    void retornaItemInexistenteQuandoORestauranteFoiExcluido() {
+        Produto produto = produto(101L, 10L, true);
+        produto.getCardapio().setExcluidoEm(Instant.parse("2026-11-16T12:00:00Z"));
+        when(produtoRepo.findById(101L)).thenReturn(Optional.of(produto));
+
+        List<ValidacaoItemResponseDTO> resultado = produtoService.validarItens(request(10L, 101L, 1));
+
+        assertEquals(List.of(new ValidacaoItemResponseDTO(
+                101L, false, false, null, null, null)), resultado);
     }
 
     @Test
