@@ -25,6 +25,7 @@ public class RestauranteMapper {
         restaurante.setTempoEstimadoMin(dto.tempoEstimadoMin());
         restaurante.setTempoEstimadoMax(dto.tempoEstimadoMax());
         restaurante.setUrlImagem(dto.urlImagem());
+        restaurante.setOwnerUserId(dto.ownerUserId());
         restaurante.setStatusRestaurante(dto.statusRestaurante());
         restaurante.setCategoriaRestaurante(dto.categoriaRestaurante());
 
@@ -40,8 +41,7 @@ public class RestauranteMapper {
                 restaurante.getCidade(),
                 restaurante.getEstado(),
                 restaurante.getUrlImagem(),
-//                restaurante.getRestauranteDono().getId(),
-                restaurante.getRestauranteDono().getNomeDono(),
+                restaurante.getOwnerUserId(),
                 restaurante.getStatusRestaurante(),
                 restaurante.getCategoriaRestaurante(),
                 restaurante.getTaxaEntrega()

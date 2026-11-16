@@ -3,10 +3,8 @@ package br.upe.catalogosdelivery.restaurantes.services;
 import br.upe.catalogosdelivery.common.excecoes.RecursoNaoEncontradoException;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.RestauranteDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.RestauranteResponseDTO;
-import br.upe.catalogosdelivery.restaurantes.entities.Dono;
 import br.upe.catalogosdelivery.restaurantes.entities.Restaurante;
 import br.upe.catalogosdelivery.restaurantes.mappers.RestauranteMapper;
-import br.upe.catalogosdelivery.restaurantes.repositories.DonoRepo;
 import br.upe.catalogosdelivery.restaurantes.repositories.RestauranteRepo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -20,21 +18,11 @@ public class RestauranteService {
     @Autowired
     RestauranteRepo restauranteRepo;
 
-    @Autowired
-    DonoRepo donoRepo;
-
     private final RestauranteMapper restauranteMapper = new RestauranteMapper();
 
 
     public Restaurante cadastrarRestaurante(RestauranteDTO dto){
-        Dono dono = donoRepo.findById(dto.idDono())
-                .orElseThrow(() ->
-                        new RuntimeException("Dono não encontrado")
-                );
-
         Restaurante restaurante = restauranteMapper.toEntity(dto);
-
-        restaurante.setRestauranteDono(dono);
 
         // O cardápio agora pertence ao serviço de Cardápio, que o cria no primeiro
         // produto cadastrado depois de validar o restaurante aqui via HTTP.

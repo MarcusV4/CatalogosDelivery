@@ -20,7 +20,7 @@ public record RestauranteDTO(
         Integer tempoEstimadoMin,
         Integer tempoEstimadoMax,
         String urlImagem,
-        Long idDono,
+        Long ownerUserId,
         StatusRestaurante statusRestaurante,
         CategoriaRestaurante categoriaRestaurante
 ) {}

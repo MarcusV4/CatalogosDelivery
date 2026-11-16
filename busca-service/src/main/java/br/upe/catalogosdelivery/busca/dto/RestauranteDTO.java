@@ -11,7 +11,6 @@ public record RestauranteDTO(
         String cidade,
         String estado,
         String urlImagem,
-        String nomeDono,
         String statusRestaurante,
         String categoriaRestaurante,
         float taxaEntrega

@@ -25,9 +25,9 @@ class BuscaServiceTest {
     private BuscaService buscaService;
 
     private final RestauranteDTO pizzaria = new RestauranteDTO(1L, "Pizzaria do João", null, "Recife", "PE",
-            null, "João", "ABERTO", "PIZZARIA", 5f);
+            null, "ABERTO", "PIZZARIA", 5f);
     private final RestauranteDTO acaiteria = new RestauranteDTO(2L, "Açaí da Praia", null, "Olinda", "PE",
-            null, "Maria", "FECHADO", "AÇAÍ", 3f);
+            null, "FECHADO", "AÇAÍ", 3f);
 
     private final ProdutoDTO calabresa = new ProdutoDTO(10L, "Pizza Calabresa", null, new BigDecimal("45.90"), true, "PIZZA", 1L);
     private final ProdutoDTO marguerita = new ProdutoDTO(11L, "Pizza Marguerita", null, new BigDecimal("42.00"), false, "PIZZA", 1L);

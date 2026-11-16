@@ -10,8 +10,7 @@ public record RestauranteResponseDTO(
         String cidade,
         String estado,
         String urlImagem,
-//        Long idDono,
-        String nomeDono,
+        Long ownerUserId,
         StatusRestaurante statusRestaurante,
         CategoriaRestaurante categoriaRestaurante,
         float taxaEntrega
