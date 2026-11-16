@@ -41,7 +41,9 @@ class CategoriaProdutoMigrationTest {
         try (Connection connection = DriverManager.getConnection(
                 postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
              Statement statement = connection.createStatement()) {
-            statement.execute("create table produto (id bigint primary key, categoria smallint)");
+            // Mesma definição que o Hibernate gera para enum ordinal, incluindo o CHECK numérico
+            statement.execute("create table produto (id bigint primary key, "
+                    + "categoria smallint check (categoria between 0 and 8))");
             try (PreparedStatement insert = connection.prepareStatement(
                     "insert into produto (id, categoria) values (?, ?)")) {
                 for (short ordinal = 0; ordinal <= 8; ordinal++) {

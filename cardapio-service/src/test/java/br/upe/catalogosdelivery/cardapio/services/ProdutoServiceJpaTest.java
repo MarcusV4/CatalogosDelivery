@@ -62,6 +62,14 @@ class ProdutoServiceJpaTest {
     }
 
     @Test
+    void flywayExecutaAMigracaoAoSubirOContexto() {
+        Integer migracoes = jdbcTemplate.queryForObject(
+                "select count(*) from flyway_schema_history where version = '1' and success", Integer.class);
+
+        assertEquals(1, migracoes);
+    }
+
+    @Test
     void persisteCategoriaPeloNomeDoEnum() {
         Cardapio cardapio = cardapio(10L);
         Produto produto = produto("Prato oriental", cardapio, CategoriaProduto.ORIENTAL);

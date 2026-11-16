@@ -1,6 +1,7 @@
 DO $$
 DECLARE
     categoria_data_type text;
+    restricao record;
 BEGIN
     IF to_regclass('public.produto') IS NOT NULL THEN
         SELECT data_type
@@ -19,6 +20,20 @@ BEGIN
             ) THEN
                 RAISE EXCEPTION 'Produto possui ordinal de categoria sem mapeamento.';
             END IF;
+
+            -- O Hibernate cria a coluna ordinal com CHECK (categoria >= 0 AND categoria <= 8).
+            -- Depois da conversão para texto essa comparação numérica não funciona mais,
+            -- então as restrições CHECK da coluna são removidas antes.
+            FOR restricao IN
+                SELECT c.conname
+                FROM pg_constraint c
+                JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)
+                WHERE c.conrelid = 'public.produto'::regclass
+                  AND c.contype = 'c'
+                  AND a.attname = 'categoria'
+            LOOP
+                EXECUTE format('ALTER TABLE public.produto DROP CONSTRAINT %I', restricao.conname);
+            END LOOP;
 
             ALTER TABLE public.produto
                 ALTER COLUMN categoria TYPE varchar(255)
