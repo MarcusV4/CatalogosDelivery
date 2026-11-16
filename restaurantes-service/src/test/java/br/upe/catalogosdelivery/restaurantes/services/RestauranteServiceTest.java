@@ -3,7 +3,9 @@ package br.upe.catalogosdelivery.restaurantes.services;
 import br.upe.catalogosdelivery.common.excecoes.RecursoNaoEncontradoException;
 import br.upe.catalogosdelivery.common.excecoes.ServicoIndisponivelException;
 import br.upe.catalogosdelivery.restaurantes.clients.CardapioClient;
-import br.upe.catalogosdelivery.restaurantes.repositories.DonoRepo;
+import br.upe.catalogosdelivery.restaurantes.entities.DTOs.RestauranteDTO;
+import br.upe.catalogosdelivery.restaurantes.entities.Enums.CategoriaRestaurante;
+import br.upe.catalogosdelivery.restaurantes.entities.Enums.StatusRestaurante;
 import br.upe.catalogosdelivery.restaurantes.repositories.RestauranteRepo;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,7 +13,10 @@ import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
@@ -28,13 +33,22 @@ class RestauranteServiceTest {
     RestauranteRepo restauranteRepo;
 
     @Mock
-    DonoRepo donoRepo;
-
-    @Mock
     CardapioClient cardapioClient;
 
     @InjectMocks
     RestauranteService restauranteService;
+
+    @Test
+    void cadastroSemOwnerUserIdRetorna400SemSalvar() {
+        RestauranteDTO semDono = new RestauranteDTO("Pizzaria", null, null, null, null, null, "Recife", "PE",
+                null, null, 5f, null, null, null, null, StatusRestaurante.ABERTO, CategoriaRestaurante.PIZZARIA);
+
+        ResponseStatusException e = assertThrows(ResponseStatusException.class,
+                () -> restauranteService.cadastrarRestaurante(semDono));
+
+        assertEquals(HttpStatus.BAD_REQUEST, e.getStatusCode());
+        verify(restauranteRepo, never()).save(any());
+    }
 
     @Test
     void excluiOCardapioAntesDoRestaurante() {

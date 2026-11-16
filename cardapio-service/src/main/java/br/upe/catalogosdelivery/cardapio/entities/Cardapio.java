@@ -25,8 +25,8 @@ public class Cardapio {
     @Column(name = "restaurante_id", unique = true, nullable = false)
     private Long restauranteId;
 
-    // Preenchido quando o restaurante é excluído no serviço de Restaurantes. A exclusão é
-    // lógica porque pedidos já feitos continuam referenciando o cardápio e seus produtos.
+    // Preenchido quando o restaurante é excluído no serviço de Restaurantes (exclusão lógica):
+    // os produtos deixam de aparecer nas listagens, na busca e na validação para o Checkout.
     private Instant excluidoEm;
 
     @OneToMany(mappedBy = "cardapio")

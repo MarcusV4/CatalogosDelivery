@@ -48,9 +48,8 @@ public class Restaurante {
 
     private String urlImagem;
 
-    @ManyToOne
-    @JoinColumn(name = "idDono", nullable = false)
-    private Dono restauranteDono;
+    @Column(nullable = false)
+    private Long ownerUserId;
 
     @Enumerated(EnumType.STRING)
     private StatusRestaurante statusRestaurante;
