@@ -29,6 +29,7 @@ public class Produto {
 
     private String urlImagem;
 
+    @Enumerated(EnumType.STRING)
     private CategoriaProduto categoria;
 
     @ManyToOne
