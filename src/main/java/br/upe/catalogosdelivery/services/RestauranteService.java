@@ -5,6 +5,7 @@ import br.upe.catalogosdelivery.entities.DTOs.RestauranteDTO;
 import br.upe.catalogosdelivery.entities.DTOs.RestauranteResponseDTO;
 import br.upe.catalogosdelivery.entities.Dono;
 import br.upe.catalogosdelivery.entities.Restaurante;
+import br.upe.catalogosdelivery.exceptions.RestauranteNaoEncontradoException;
 import br.upe.catalogosdelivery.mappers.RestauranteMapper;
 import br.upe.catalogosdelivery.repositories.CardapioRepo;
 import br.upe.catalogosdelivery.repositories.DonoRepo;
@@ -57,7 +58,9 @@ public class RestauranteService {
     }
 
     public RestauranteResponseDTO buscarRestaurante(Long idRestaurante){
-        Restaurante restaurante = restauranteRepo.findById(idRestaurante).orElseThrow(()-> new RuntimeException("Restaurante inexistente!") );
+        Restaurante restaurante = restauranteRepo.findById(idRestaurante)
+                .orElseThrow(()->
+                        new RestauranteNaoEncontradoException());
         RestauranteResponseDTO restauranteDTO = restauranteMapper.toResponseDTO(restaurante);
         return restauranteDTO;
     }
@@ -65,7 +68,7 @@ public class RestauranteService {
     public void deletarRestaurante(Long idRestaurante){
         boolean restauranteExiste = restauranteRepo.existsById(idRestaurante);
 
-        if(!restauranteExiste) throw new RuntimeException("Restaurante não existe");
+        if(!restauranteExiste) throw new RestauranteNaoEncontradoException();
 
 
         restauranteRepo.deleteById(idRestaurante);
