@@ -1,6 +1,7 @@
 package br.upe.catalogosdelivery.restaurantes.services;
 
 import br.upe.catalogosdelivery.common.excecoes.RecursoNaoEncontradoException;
+import br.upe.catalogosdelivery.restaurantes.clients.CardapioClient;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.RestauranteDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.RestauranteResponseDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.Dono;
@@ -22,6 +23,9 @@ public class RestauranteService {
 
     @Autowired
     DonoRepo donoRepo;
+
+    @Autowired
+    CardapioClient cardapioClient;
 
     private final RestauranteMapper restauranteMapper = new RestauranteMapper();
 
@@ -55,8 +59,12 @@ public class RestauranteService {
     public void deletarRestaurante(Long idRestaurante){
         boolean restauranteExiste = restauranteRepo.existsById(idRestaurante);
 
-        if(!restauranteExiste) throw new RuntimeException("Restaurante não existe");
+        if(!restauranteExiste) throw new RecursoNaoEncontradoException("Restaurante não existe");
 
+        // Primeiro o Cardápio exclui o cardápio e os produtos do restaurante. Se ele estiver
+        // fora do ar, a chamada lança 503 e o restaurante NÃO é excluído: os dois serviços
+        // continuam consistentes e a exclusão pode ser repetida depois.
+        cardapioClient.excluirCardapioDoRestaurante(idRestaurante);
 
         restauranteRepo.deleteById(idRestaurante);
     }

@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.text.Normalizer;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -46,10 +47,14 @@ public class BuscaService {
                 .filter(p -> disponivel == null || disponivel == p.disponivel())
                 .toList();
 
-        Map<Long, RestauranteDTO> restaurantes = restaurantesPorId(produtos);
+        Optional<Map<Long, RestauranteDTO>> restaurantes = restaurantesPorId(produtos);
 
-        return produtos.stream().map(p -> {
-            RestauranteDTO r = restaurantes.get(p.restauranteId());
+        return produtos.stream()
+                // Item de restaurante que não existe mais não aparece. Se Restaurantes estiver
+                // fora do ar não dá para saber, então o item aparece sem os dados do restaurante.
+                .filter(p -> restaurantes.isEmpty() || restaurantes.get().containsKey(p.restauranteId()))
+                .map(p -> {
+            RestauranteDTO r = restaurantes.map(m -> m.get(p.restauranteId())).orElse(null);
             return new ItemBuscaDTO(p.id(), p.nome(), p.descricao(), p.preco(), p.disponivel(), p.categoria(),
                     p.restauranteId(),
                     r == null ? null : r.restauranteNome(),
@@ -57,17 +62,20 @@ public class BuscaService {
         }).toList();
     }
 
-    /** Se Restaurantes cair, a busca de itens continua, só sem o nome do restaurante. */
-    private Map<Long, RestauranteDTO> restaurantesPorId(List<ProdutoDTO> produtos) {
+    /**
+     * Restaurantes existentes por id, ou vazio se o serviço de Restaurantes estiver fora do ar
+     * (nesse caso a busca de itens continua, só sem os dados do restaurante).
+     */
+    private Optional<Map<Long, RestauranteDTO>> restaurantesPorId(List<ProdutoDTO> produtos) {
         if (produtos.isEmpty()) {
-            return Map.of();
+            return Optional.of(Map.of());
         }
         try {
-            return restauranteClient.listarRestaurantes().stream()
-                    .collect(Collectors.toMap(RestauranteDTO::restauranteId, Function.identity(), (a, b) -> a));
+            return Optional.of(restauranteClient.listarRestaurantes().stream()
+                    .collect(Collectors.toMap(RestauranteDTO::restauranteId, Function.identity(), (a, b) -> a)));
         } catch (ServicoIndisponivelException e) {
             log.warn("[Busca] Restaurantes indisponível: retornando itens sem os dados do restaurante");
-            return Map.of();
+            return Optional.empty();
         }
     }
 

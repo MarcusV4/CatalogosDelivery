@@ -5,6 +5,7 @@ import br.upe.catalogosdelivery.common.excecoes.RecursoNaoEncontradoException;
 import br.upe.catalogosdelivery.common.excecoes.ServicoIndisponivelException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
@@ -14,7 +15,9 @@ import java.io.IOException;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withException;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
@@ -76,5 +79,24 @@ class ClienteHttpTest {
 
         assertThrows(FalhaIntegracaoException.class,
                 () -> cliente.get("/api/restaurantes", Map.class, "x"));
+    }
+
+    @Test
+    void deleteComSucesso() {
+        servidor.expect(requestTo(BASE + "/api/cardapios/restaurante/1"))
+                .andExpect(method(HttpMethod.DELETE))
+                .andRespond(withStatus(HttpStatus.NO_CONTENT));
+
+        assertDoesNotThrow(() -> cliente.delete("/api/cardapios/restaurante/{id}", "x", 1));
+        servidor.verify();
+    }
+
+    @Test
+    void deleteComServicoForaDoArViraServicoIndisponivel() {
+        servidor.expect(requestTo(BASE + "/api/cardapios/restaurante/1"))
+                .andRespond(withException(new IOException("Connection refused")));
+
+        assertThrows(ServicoIndisponivelException.class,
+                () -> cliente.delete("/api/cardapios/restaurante/{id}", "x", 1));
     }
 }
