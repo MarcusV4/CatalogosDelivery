@@ -8,5 +8,8 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ProdutoRepo extends JpaRepository<Produto, Long> {
-    List<Produto> findByCardapio_RestauranteId(Long restauranteId);
+    // Só produtos de cardápios ativos (restaurante não excluído)
+    List<Produto> findByCardapio_RestauranteIdAndCardapio_ExcluidoEmIsNull(Long restauranteId);
+
+    List<Produto> findByCardapio_ExcluidoEmIsNull();
 }
