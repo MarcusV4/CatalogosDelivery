@@ -3,6 +3,7 @@ package br.upe.catalogosdelivery.services;
 import br.upe.catalogosdelivery.entities.Cardapio;
 import br.upe.catalogosdelivery.entities.DTOs.ProdutoResponseDTO;
 import br.upe.catalogosdelivery.entities.Produto;
+import br.upe.catalogosdelivery.exceptions.CardapioNaoEncontrado;
 import br.upe.catalogosdelivery.mappers.ProdutoMapper;
 import br.upe.catalogosdelivery.repositories.CardapioRepo;
 import br.upe.catalogosdelivery.repositories.ProdutoRepo;
@@ -25,7 +26,7 @@ public class ProdutoService {
     public ProdutoResponseDTO cadastrarProduto(Produto produto, Long restauranteId){
         Cardapio cardapio = cardapioRepo
                 .findByRestaurante_restauranteId(restauranteId)
-                .orElseThrow(() -> new RuntimeException("Cardápio não encontrado!"));
+                .orElseThrow(() -> new CardapioNaoEncontrado());
 
         produto.setCardapio(cardapio);
 

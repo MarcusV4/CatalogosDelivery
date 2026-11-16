@@ -5,6 +5,7 @@ import br.upe.catalogosdelivery.entities.DTOs.RestauranteDTO;
 import br.upe.catalogosdelivery.entities.DTOs.RestauranteResponseDTO;
 import br.upe.catalogosdelivery.entities.Dono;
 import br.upe.catalogosdelivery.entities.Restaurante;
+import br.upe.catalogosdelivery.exceptions.DonoNaoEncontrado;
 import br.upe.catalogosdelivery.exceptions.RestauranteNaoEncontradoException;
 import br.upe.catalogosdelivery.mappers.RestauranteMapper;
 import br.upe.catalogosdelivery.repositories.CardapioRepo;
@@ -34,7 +35,7 @@ public class RestauranteService {
     public Restaurante cadastrarRestaurante(RestauranteDTO dto){
         Dono dono = donoRepo.findById(dto.idDono())
                 .orElseThrow(() ->
-                        new RuntimeException("Dono não encontrado")
+                        new DonoNaoEncontrado()
                 );
 
         Restaurante restaurante = restauranteMapper.toEntity(dto);
