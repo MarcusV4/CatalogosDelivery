@@ -1,0 +1,111 @@
+# Catálogo (Equipe 2): 3 serviços independentes, cada um na sua porta.
+# Restaurantes e Cardápio têm cada um o seu banco (database per service); a Busca não tem banco.
+# Subir tudo: docker compose up -d --build
+name: catalogo
+
+x-app: &app
+  build: &build
+    context: .
+    dockerfile: Dockerfile
+  restart: unless-stopped
+  healthcheck: &app-healthcheck
+    interval: 15s
+    timeout: 5s
+    retries: 5
+    start_period: 40s
+
+x-db-healthcheck: &db-healthcheck
+  interval: 5s
+  timeout: 5s
+  retries: 10
+
+services:
+  db-restaurantes:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: restaurantes
+      POSTGRES_USER: ${RESTAURANTES_DB_USERNAME:-catalogo}
+      POSTGRES_PASSWORD: ${RESTAURANTES_DB_PASSWORD:-catalogo}
+    ports:
+      - "${RESTAURANTES_DB_PORT:-5433}:5432"
+    volumes:
+      - restaurantes-data:/var/lib/postgresql/data
+    healthcheck:
+      <<: *db-healthcheck
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d restaurantes"]
+
+  db-cardapio:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: cardapio
+      POSTGRES_USER: ${CARDAPIO_DB_USERNAME:-catalogo}
+      POSTGRES_PASSWORD: ${CARDAPIO_DB_PASSWORD:-catalogo}
+    ports:
+      - "${CARDAPIO_DB_PORT:-5434}:5432"
+    volumes:
+      - cardapio-data:/var/lib/postgresql/data
+    healthcheck:
+      <<: *db-healthcheck
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d cardapio"]
+
+  restaurantes:
+    <<: *app
+    build:
+      <<: *build
+      args:
+        SERVICE: restaurantes-service
+    environment:
+      SERVER_PORT: 8004
+      RESTAURANTES_DB_URL: ${RESTAURANTES_DB_URL:-jdbc:postgresql://db-restaurantes:5432/restaurantes}
+      RESTAURANTES_DB_USERNAME: ${RESTAURANTES_DB_USERNAME:-catalogo}
+      RESTAURANTES_DB_PASSWORD: ${RESTAURANTES_DB_PASSWORD:-catalogo}
+    ports:
+      - "${RESTAURANTES_PORT:-8004}:8004"
+    depends_on:
+      db-restaurantes:
+        condition: service_healthy
+    healthcheck:
+      <<: *app-healthcheck
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost:8004/actuator/health"]
+
+  cardapio:
+    <<: *app
+    build:
+      <<: *build
+      args:
+        SERVICE: cardapio-service
+    environment:
+      SERVER_PORT: 8005
+      CARDAPIO_DB_URL: ${CARDAPIO_DB_URL:-jdbc:postgresql://db-cardapio:5432/cardapio}
+      CARDAPIO_DB_USERNAME: ${CARDAPIO_DB_USERNAME:-catalogo}
+      CARDAPIO_DB_PASSWORD: ${CARDAPIO_DB_PASSWORD:-catalogo}
+      RESTAURANTES_URL: http://restaurantes:8004
+    ports:
+      - "${CARDAPIO_PORT:-8005}:8005"
+    # Depende só do próprio banco: se Restaurantes cair, o Cardápio continua no ar
+    depends_on:
+      db-cardapio:
+        condition: service_healthy
+    healthcheck:
+      <<: *app-healthcheck
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost:8005/actuator/health"]
+
+  busca:
+    <<: *app
+    build:
+      <<: *build
+      args:
+        SERVICE: busca-service
+    environment:
+      SERVER_PORT: 8006
+      RESTAURANTES_URL: http://restaurantes:8004
+      CARDAPIO_URL: http://cardapio:8005
+    ports:
+      - "${BUSCA_PORT:-8006}:8006"
+    healthcheck:
+      <<: *app-healthcheck
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost:8006/actuator/health"]
+
+volumes:
+  restaurantes-data:
+  cardapio-data:
