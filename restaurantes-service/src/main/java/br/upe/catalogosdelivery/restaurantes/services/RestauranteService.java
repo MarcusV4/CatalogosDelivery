@@ -8,7 +8,9 @@ import br.upe.catalogosdelivery.restaurantes.entities.Restaurante;
 import br.upe.catalogosdelivery.restaurantes.mappers.RestauranteMapper;
 import br.upe.catalogosdelivery.restaurantes.repositories.RestauranteRepo;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -26,6 +28,13 @@ public class RestauranteService {
 
 
     public Restaurante cadastrarRestaurante(RestauranteDTO dto){
+        // ownerUserId é obrigatório no banco; sem esta checagem o erro viraria 500.
+        // Quando a #31 integrar o JWT, ele passará a vir do `sub` do token.
+        if (dto.ownerUserId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Informe ownerUserId (identificador do dono do restaurante).");
+        }
+
         Restaurante restaurante = restauranteMapper.toEntity(dto);
 
         // O cardápio agora pertence ao serviço de Cardápio, que o cria no primeiro
