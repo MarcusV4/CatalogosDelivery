@@ -3,6 +3,7 @@ package br.upe.catalogosdelivery.restaurantes.entities;
 
 import br.upe.catalogosdelivery.restaurantes.entities.Enums.CategoriaRestaurante;
 import br.upe.catalogosdelivery.restaurantes.entities.Enums.StatusRestaurante;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -40,7 +41,8 @@ public class Restaurante {
 
     private String restauranteTelefone;
 
-    private float taxaEntrega;
+    @Schema(description = "Taxa fixa informada pelo restaurante, em centavos; não é cálculo de frete", example = "550", minimum = "0")
+    private Long taxaEntrega;
 
     private Integer tempoEstimadoMin;
 

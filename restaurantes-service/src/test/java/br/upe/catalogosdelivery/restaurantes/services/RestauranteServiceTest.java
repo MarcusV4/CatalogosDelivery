@@ -43,10 +43,22 @@ class RestauranteServiceTest {
     @Test
     void cadastroSemOwnerUserIdRetorna400SemSalvar() {
         RestauranteDTO semDono = new RestauranteDTO("Pizzaria", null, null, null, null, null, "Recife", "PE",
-                null, null, 5f, null, null, null, null, StatusRestaurante.ABERTO, CategoriaRestaurante.PIZZARIA);
+                null, null, 500L, null, null, null, null, StatusRestaurante.ABERTO, CategoriaRestaurante.PIZZARIA);
 
         ResponseStatusException e = assertThrows(ResponseStatusException.class,
                 () -> restauranteService.cadastrarRestaurante(semDono));
+
+        assertEquals(HttpStatus.BAD_REQUEST, e.getStatusCode());
+        verify(restauranteRepo, never()).save(any());
+    }
+
+    @Test
+    void cadastroComTaxaNegativaRetorna400SemSalvar() {
+        RestauranteDTO taxaNegativa = new RestauranteDTO("Pizzaria", null, null, null, null, null, "Recife", "PE",
+                null, null, -1L, null, null, null, 1L, StatusRestaurante.ABERTO, CategoriaRestaurante.PIZZARIA);
+
+        ResponseStatusException e = assertThrows(ResponseStatusException.class,
+                () -> restauranteService.cadastrarRestaurante(taxaNegativa));
 
         assertEquals(HttpStatus.BAD_REQUEST, e.getStatusCode());
         verify(restauranteRepo, never()).save(any());

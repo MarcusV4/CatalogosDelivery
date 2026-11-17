@@ -13,6 +13,6 @@ public record RestauranteDTO(
         String urlImagem,
         String statusRestaurante,
         String categoriaRestaurante,
-        float taxaEntrega
+        Long taxaEntrega
 ) {
 }

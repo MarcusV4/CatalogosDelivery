@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
@@ -122,7 +121,7 @@ class ProdutoServiceTest {
         Produto produto = new Produto();
         produto.setId(id);
         produto.setNome("Pizza Calabresa");
-        produto.setPreco(new BigDecimal("45.90"));
+        produto.setPreco(4590L);
         produto.setDisponivel(disponivel);
         produto.setCardapio(cardapio);
         return produto;

@@ -103,6 +103,29 @@ Suba só os bancos com `docker compose up -d db-restaurantes db-cardapio` e rode
 
 ## Endpoints
 
+### Valores monetários
+
+Todos os valores monetários da API são inteiros em centavos: `2590` representa
+R$ 25,90. Os campos `preco` (produto, busca e validação para Checkout) e
+`taxaEntrega` (restaurante) mantêm os nomes atuais, mas agora recebem e retornam
+inteiros não negativos. Requisições com preço decimal ou negativo são recusadas.
+`taxaEntrega` representa somente uma taxa fixa informada pelo restaurante;
+o cálculo de frete pertence ao serviço de Despacho. A permanência dessa taxa
+no contrato do Catálogo ainda depende do alinhamento com a Equipe 4 e da issue #20.
+
+Se os bancos locais já contêm valores em reais, converta os dados **antes** de
+subir a nova versão. Com as credenciais padrão do Compose:
+
+```bash
+docker compose stop restaurantes cardapio busca
+docker compose exec -T db-restaurantes psql -v ON_ERROR_STOP=1 -U catalogo -d restaurantes < docs/migrations/issue-23-restaurantes-centavos.sql
+docker compose exec -T db-cardapio psql -v ON_ERROR_STOP=1 -U catalogo -d cardapio < docs/migrations/issue-23-cardapio-centavos.sql
+docker compose up -d --build
+```
+
+Em bancos novos não é preciso executar a migração. Se as credenciais foram
+alteradas no `.env`, ajuste o usuário nos comandos acima.
+
 | Serviço | Método e rota | Descrição |
 |---|---|---|
 | Restaurantes | `POST/GET /api/restaurantes`, `GET/DELETE /api/restaurantes/{id}` | CRUD de restaurantes |

@@ -8,6 +8,6 @@ public record RestauranteResumoDTO(
         Long restauranteId,
         String restauranteNome,
         String statusRestaurante,
-        float taxaEntrega
+        Long taxaEntrega
 ) {
 }

@@ -33,6 +33,11 @@ public class ProdutoService {
     private final ProdutoMapper produtoMapper = new ProdutoMapper();
 
     public ProdutoResponseDTO cadastrarProduto(Produto produto, Long restauranteId){
+        if (produto == null || produto.getPreco() == null || produto.getPreco() < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Informe o preço em centavos, maior ou igual a zero.");
+        }
+
         // Valida no serviço de Restaurantes (404 se não existir, 503 se estiver fora do ar)
         restauranteClient.buscarRestaurante(restauranteId);
 
@@ -112,9 +117,8 @@ public class ProdutoService {
                     "Todos os itens devem pertencer ao restaurante informado.");
         }
 
-        long precoCentavos = produto.getPreco().movePointRight(2).longValueExact();
         return new ValidacaoItemResponseDTO(
-                produto.getId(), true, produto.isDisponivel(), precoCentavos,
+                produto.getId(), true, produto.isDisponivel(), produto.getPreco(),
                 restauranteDoProduto, produto.getNome());
     }
 
