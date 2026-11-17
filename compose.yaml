@@ -107,6 +107,25 @@ services:
       <<: *app-healthcheck
       test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost:8006/actuator/health"]
 
+  seed:
+    image: python:3.13-alpine
+    restart: "no"
+    volumes:
+      - ./scripts/seed.py:/app/seed.py:ro
+    environment:
+      RESTAURANTES_URL: http://restaurantes:8004
+      CARDAPIO_URL: http://cardapio:8005
+      RESTAURANTES_DB_URL: ${RESTAURANTES_DB_URL:-jdbc:postgresql://db-restaurantes:5432/restaurantes}
+      CARDAPIO_DB_URL: ${CARDAPIO_DB_URL:-jdbc:postgresql://db-cardapio:5432/cardapio}
+      SEED_ENABLED: ${SEED_ENABLED:-true}
+      SEED_ALLOW_EXTERNAL: ${SEED_ALLOW_EXTERNAL:-false}
+    command: ["python", "/app/seed.py"]
+    depends_on:
+      restaurantes:
+        condition: service_healthy
+      cardapio:
+        condition: service_healthy
+
 volumes:
   restaurantes-data:
   cardapio-data:
