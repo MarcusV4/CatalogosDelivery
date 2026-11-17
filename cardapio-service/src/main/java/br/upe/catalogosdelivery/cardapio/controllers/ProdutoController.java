@@ -1,6 +1,8 @@
 package br.upe.catalogosdelivery.cardapio.controllers;
 
 import br.upe.catalogosdelivery.cardapio.entities.DTOs.ProdutoResponseDTO;
+import br.upe.catalogosdelivery.cardapio.entities.DTOs.ValidacaoItensRequestDTO;
+import br.upe.catalogosdelivery.cardapio.entities.DTOs.ValidacaoItemResponseDTO;
 import br.upe.catalogosdelivery.cardapio.entities.Produto;
 import br.upe.catalogosdelivery.cardapio.services.ProdutoService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +18,12 @@ public class ProdutoController {
 
     @Autowired
     ProdutoService produtoService;
+
+    @PostMapping("/validacao")
+    public ResponseEntity<List<ValidacaoItemResponseDTO>> validarItensCheckout(
+            @RequestBody ValidacaoItensRequestDTO request) {
+        return ResponseEntity.ok(produtoService.validarItens(request));
+    }
 
     @GetMapping
     public ResponseEntity<List<ProdutoResponseDTO>> listarTodosProdutos() {

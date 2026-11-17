@@ -23,20 +23,31 @@ Cada responsabilidade é um **microsserviço independente** (Spring Boot), com p
 | Cardápio | `cardapio-service` | `8005` | `db-cardapio` (Postgres, host `5434`) | Restaurantes |
 | Busca | `busca-service` | `8006` | — (sem banco) | Restaurantes e Cardápio |
 
-O módulo `catalogo-common` é uma biblioteca compartilhada (não é um serviço). Ela contém o formato de erro padrão e o cliente HTTP entre serviços, que tem timeout, gera log de cada chamada e converte falhas em erros amigáveis.
+O módulo `catalogo-common` é uma biblioteca compartilhada (não é um serviço). Ela contém o `GlobalExceptionHandler`, que faz todo erro dos 3 serviços sair no formato padrão, e o cliente HTTP entre serviços, que tem timeout, gera log de cada chamada e converte falhas em erros amigáveis.
 
 > As portas seguem a sugestão `8000 + 3 × (equipe − 1) + n` (Equipe 2 → 8004–8006) e ainda dependem do alinhamento da turma (#20). Todas podem ser trocadas pelo `.env`.
 
 ## Como os serviços conversam
 
-- **Cardápio → Restaurantes:** ao cadastrar um produto, o Cardápio valida o restaurante em `GET /api/restaurantes/{id}`. O cardápio do restaurante é criado automaticamente no primeiro produto. Os pedidos também buscam ali o nome e a taxa de entrega do restaurante.
-- **Restaurantes → Cardápio:** ao excluir um restaurante, o Restaurantes primeiro pede ao Cardápio para excluir o cardápio (`DELETE /api/cardapios/restaurante/{id}`). Se o Cardápio estiver fora do ar, a exclusão é recusada com 503 e **nada é apagado**, mantendo os dois serviços consistentes. No Cardápio a exclusão é lógica (`excluido_em`), porque pedidos já feitos continuam referenciando os produtos, e esses produtos deixam de aparecer nas listagens e na busca.
+- **Cardápio → Restaurantes:** ao cadastrar um produto, o Cardápio valida o restaurante em `GET /api/restaurantes/{id}`. O cardápio do restaurante é criado automaticamente no primeiro produto.
+- **Restaurantes → Cardápio:** ao excluir um restaurante, o Restaurantes primeiro pede ao Cardápio para excluir o cardápio (`DELETE /api/cardapios/restaurante/{id}`). Se o Cardápio estiver fora do ar, a exclusão é recusada com 503 e **nada é apagado**, mantendo os dois serviços consistentes. No Cardápio a exclusão é lógica (`excluido_em`): os itens do restaurante excluído deixam de aparecer nas listagens e na busca, e a validação para o Checkout passa a responder `existe: false` para eles.
 - **Busca → Restaurantes e Cardápio:** a busca lê `GET /api/restaurantes` e `GET /api/produtos` e aplica os filtros.
 - Toda chamada aparece no log do terminal, por exemplo:
   ```
   [Cardápio] -> GET http://restaurantes:8004/api/restaurantes/1 (consultando o serviço de Restaurantes)
   [Cardápio] <- 200 de Restaurantes em 12 ms
   ```
+
+## Datas e horários
+
+As APIs usam ISO 8601. Horários de funcionamento são enviados como `HH:mm:ss`
+(por exemplo, `18:00:00`) e o dia da semana usa os valores do enum `DiaSemana`
+(`DOMINGO` a `SABADO`). Instantes, como `excluidoEm`, usam UTC com `Z`
+(por exemplo, `2026-08-24T14:30:00Z`). Não envie datas em formato regional.
+
+Os horários de funcionamento representam a hora local de `America/Recife`.
+Esse é o fuso definido para o futuro cálculo de "aberto agora"; instantes
+gravados e serializados usam UTC.
 
 ## Resiliência
 
@@ -45,6 +56,7 @@ Se um serviço cair, quem depende dele **continua no ar** e responde com o forma
 | Situação | Resposta |
 |---|---|
 | Recurso não existe no outro serviço | `404 {"erro": true, "mensagem": "Restaurante 99 não encontrado."}` |
+| Requisição inválida (ex.: cadastro sem `ownerUserId`) | `400 {"erro": true, "mensagem": "Informe ownerUserId ..."}` |
 | Outro serviço fora do ar, em timeout (3 s) ou com erro 5xx | `503 {"erro": true, "mensagem": "O serviço de Restaurantes está indisponível no momento. ..."}` |
 | Resposta inesperada do outro serviço | `502` |
 
@@ -80,12 +92,10 @@ Suba só os bancos com `docker compose up -d db-restaurantes db-cardapio` e rode
 | Serviço | Método e rota | Descrição |
 |---|---|---|
 | Restaurantes | `POST/GET /api/restaurantes`, `GET/DELETE /api/restaurantes/{id}` | CRUD de restaurantes |
-| Restaurantes | `POST/GET /api/donos`, `GET/DELETE /api/donos/{id}` | Donos (sairá do Catálogo com a #22) |
 | Cardápio | `GET /api/produtos` | Todos os itens (usado pela Busca) |
 | Cardápio | `DELETE /api/cardapios/restaurante/{restauranteId}` | Exclui o cardápio de um restaurante (usado pelo Restaurantes) |
 | Cardápio | `GET/POST /api/produtos/{restauranteId}` | Itens do cardápio de um restaurante |
-| Cardápio | `POST /api/pedidos`, `GET /api/pedidos/{id}` | Pedidos (sairá do Catálogo com a #22) |
-| Cardápio | `POST/GET /api/clientes` | Clientes (sairá do Catálogo com a #22) |
+| Cardápio | `POST /api/produtos/validacao` | Valida existência, disponibilidade, preço e restaurante dos itens para Checkout |
 | Busca | `GET /api/busca/restaurantes?nome=&categoria=&status=` | Busca de restaurantes |
 | Busca | `GET /api/busca/itens?nome=&categoria=&restauranteId=&disponivel=` | Busca de pratos ("Buscar Prato") |
 
@@ -158,8 +168,8 @@ O Catálogo mantém apenas a referência necessária para relacionar um restaura
 | **Entra no Catálogo**                   | **Vem de**            | **Uso no Catálogo**                                                          | **Sai do Catálogo**                       | **Vai para**     |
 | --------------------------------------- | --------------------- | ---------------------------------------------------------------------------- | ----------------------------------------- | ---------------- |
 | JWT (`sub`, `role`)                     | Identidade            | Identificar o usuário e verificar suas permissões gerais                     | Autorização da operação ou erro de acesso | Cliente/Frontend |
-| Dados para criação de restaurante       | Cliente/Frontend      | Criar restaurante e associar o `ownerUserId` ao `sub` do usuário autenticado | Restaurante criado                        | Cliente/Frontend |
-| Dados para atualização do restaurante   | Proprietário/Frontend | Verificar `JWT.sub == ownerUserId` e atualizar os dados                      | Restaurante atualizado                    | Cliente/Frontend |
+| Dados para criação de restaurante       | Cliente/Frontend      | Receber `ownerUserId` no DTO nesta etapa; a #31 irá obtê-lo do JWT validado  | Restaurante criado                        | Cliente/Frontend |
+| Dados para atualização do restaurante   | Proprietário/Frontend | Verificar `JWT.sub == ownerUserId` após a integração da #31                  | Restaurante atualizado                    | Cliente/Frontend |
 | Dados de horário e status               | Proprietário/Frontend | Gerenciar o funcionamento do restaurante                                     | Horário/status atualizado                 | Cliente/Frontend |
 | Dados de itens do cardápio              | Proprietário/Frontend | Criar ou atualizar itens pertencentes ao restaurante                         | Item criado/atualizado                    | Cliente/Frontend |
 | Solicitação de listagem de restaurantes | Cliente/Frontend      | Buscar restaurantes disponíveis                                              | Lista de restaurantes                     | Cliente/Frontend |
@@ -174,7 +184,7 @@ O Catálogo mantém apenas a referência necessária para relacionar um restaura
 
 O serviço de Identidade é responsável por identificar o usuário, enquanto o Catálogo é responsável por determinar quais restaurantes pertencem a esse usuário.
 
-Ao criar um restaurante, o identificador presente no campo `sub` do JWT é associado ao restaurante como `ownerUserId`.
+O Catálogo armazena somente o identificador do proprietário em `ownerUserId`, sem copiar nome, e-mail ou CPF do serviço de Identidade. Nesta etapa, o DTO de criação recebe `ownerUserId`; a extração desse valor a partir do `sub` do JWT e a verificação de propriedade ficam para a integração de Identidade (#31), usando o contrato acordado na #20. Até essa integração, o valor do DTO ainda não prova a identidade do usuário nem deve ser usado para autorizar operações.
 
 Exemplo de informações obtidas a partir do JWT:
 
@@ -196,7 +206,7 @@ Exemplo simplificado de restaurante armazenado pelo Catálogo:
 }
 ```
 
-Para operações de gerenciamento, o Catálogo compara a identidade do usuário autenticado com o proprietário do restaurante:
+Quando a integração da #31 estiver concluída, o Catálogo comparará a identidade validada do usuário com o proprietário do restaurante:
 
 ```text
 JWT.sub == Restaurant.ownerUserId
@@ -212,23 +222,25 @@ Dessa forma, o serviço de Identidade não precisa conhecer os restaurantes exis
 
 O Catálogo funciona como a **fonte de verdade** para informações relacionadas aos restaurantes e seus cardápios.
 
-Quando um cliente seleciona itens para realizar uma compra, o Checkout pode enviar ao Catálogo os identificadores dos itens selecionados:
+Quando um cliente seleciona itens para realizar uma compra, o Checkout pode validar os itens selecionados no Cardápio:
 
 ```json
 {
-  "restaurantId": 10,
-  "items": [
+  "restauranteId": 10,
+  "itens": [
     {
       "itemId": 101,
-      "quantity": 2
+      "quantidade": 2
     },
     {
       "itemId": 102,
-      "quantity": 1
+      "quantidade": 1
     }
   ]
 }
 ```
+
+`POST /api/produtos/validacao` retorna por item `existe`, `disponivel`, `preco` em centavos, `restauranteId` e `nome`. Um item inexistente retorna `existe: false`; itens pertencentes a outro restaurante são rejeitados. O formato final deve seguir o contrato combinado com Checkout na #20/#30.
 
 O Catálogo é responsável por fornecer informações atualizadas sobre esses itens, como:
 
@@ -236,7 +248,7 @@ O Catálogo é responsável por fornecer informações atualizadas sobre esses i
 * preço atual;
 * disponibilidade;
 * restaurante ao qual pertence;
-* status e horário de funcionamento do restaurante.
+* status e horário de funcionamento do restaurante, consultados pelo endpoint próprio de Restaurantes.
 
 O cálculo do subtotal, aplicação de promoções e criação do pedido permanecem sob responsabilidade do **Microsserviço de Checkout**.
 

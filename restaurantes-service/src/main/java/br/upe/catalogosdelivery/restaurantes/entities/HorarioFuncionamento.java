@@ -7,7 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.sql.Time;
+import java.time.LocalTime;
 
 @Entity
 @Getter
@@ -20,9 +20,9 @@ public class HorarioFuncionamento {
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
     private Long id;
 
-    private Time horaAbertura;
+    private LocalTime horaAbertura;
 
-    private Time horaFechamento;
+    private LocalTime horaFechamento;
 
     @Enumerated(EnumType.STRING)
     private DiaSemana diaSemana;
