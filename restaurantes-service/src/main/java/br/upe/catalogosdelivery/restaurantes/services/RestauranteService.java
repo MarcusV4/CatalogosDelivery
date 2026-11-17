@@ -34,6 +34,10 @@ public class RestauranteService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Informe ownerUserId (identificador do dono do restaurante).");
         }
+        if (dto.taxaEntrega() == null || dto.taxaEntrega() < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Informe a taxa de entrega em centavos, maior ou igual a zero.");
+        }
 
         Restaurante restaurante = restauranteMapper.toEntity(dto);
 

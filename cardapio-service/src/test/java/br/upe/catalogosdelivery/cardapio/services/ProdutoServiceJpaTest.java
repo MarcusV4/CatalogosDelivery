@@ -17,7 +17,6 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -89,7 +88,7 @@ class ProdutoServiceJpaTest {
     private Produto produto(String nome, Cardapio cardapio, CategoriaProduto categoria) {
         Produto produto = new Produto();
         produto.setNome(nome);
-        produto.setPreco(new BigDecimal("19.90"));
+        produto.setPreco(1990L);
         produto.setDisponivel(true);
         produto.setCategoria(categoria);
         produto.setCardapio(cardapio);

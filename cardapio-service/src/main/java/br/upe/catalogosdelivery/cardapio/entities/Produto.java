@@ -7,7 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.math.BigDecimal;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 @Entity
 @Getter
@@ -23,7 +23,8 @@ public class Produto {
 
     private String descricao;
 
-    private BigDecimal preco;
+    @Schema(description = "Preço em centavos (R$ 25,90 = 2590)", example = "2590", minimum = "0", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Long preco;
 
     private boolean disponivel;
 

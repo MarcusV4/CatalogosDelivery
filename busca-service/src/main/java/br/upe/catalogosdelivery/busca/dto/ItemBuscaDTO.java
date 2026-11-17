@@ -1,6 +1,6 @@
 package br.upe.catalogosdelivery.busca.dto;
 
-import java.math.BigDecimal;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
  * Item encontrado na busca, já com os dados do restaurante.
@@ -11,7 +11,7 @@ public record ItemBuscaDTO(
         Long id,
         String nome,
         String descricao,
-        BigDecimal preco,
+        @Schema(description = "Preço em centavos", example = "2590", minimum = "0") Long preco,
         boolean disponivel,
         String categoria,
         Long restauranteId,

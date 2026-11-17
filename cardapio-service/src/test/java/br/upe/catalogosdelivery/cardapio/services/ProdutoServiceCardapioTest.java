@@ -12,14 +12,18 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /** Criação do cardápio no primeiro produto, inclusive com requisições simultâneas. */
@@ -45,6 +49,7 @@ class ProdutoServiceCardapioTest {
         when(cardapioRepo.saveAndFlush(any())).thenReturn(criado);
         when(produtoRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
         Produto produto = new Produto();
+        produto.setPreco(2590L);
 
         produtoService.cadastrarProduto(produto, 10L);
 
@@ -61,6 +66,7 @@ class ProdutoServiceCardapioTest {
                 .thenThrow(new DataIntegrityViolationException("duplicate key restaurante_id"));
         when(produtoRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
         Produto produto = new Produto();
+        produto.setPreco(2590L);
 
         produtoService.cadastrarProduto(produto, 10L);
 
@@ -73,10 +79,20 @@ class ProdutoServiceCardapioTest {
                 .thenThrow(new RecursoNaoEncontradoException("Restaurante 99 não encontrado."));
 
         assertThrows(RecursoNaoEncontradoException.class,
-                () -> produtoService.cadastrarProduto(new Produto(), 99L));
+                () -> produtoService.cadastrarProduto(produtoComPreco(2590L), 99L));
 
         verify(cardapioRepo, never()).saveAndFlush(any());
         verify(produtoRepo, never()).save(any());
+    }
+
+    @Test
+    void rejeitaPrecoAusenteOuNegativoAntesDeChamarOutrosServicos() {
+        for (Long preco : new Long[]{null, -1L}) {
+            ResponseStatusException erro = assertThrows(ResponseStatusException.class,
+                    () -> produtoService.cadastrarProduto(produtoComPreco(preco), 10L));
+            assertEquals(HttpStatus.BAD_REQUEST, erro.getStatusCode());
+        }
+        verifyNoInteractions(restauranteClient, cardapioRepo, produtoRepo);
     }
 
     private static Cardapio cardapio(Long restauranteId) {
@@ -84,5 +100,11 @@ class ProdutoServiceCardapioTest {
         cardapio.setIdCardapio(1L);
         cardapio.setRestauranteId(restauranteId);
         return cardapio;
+    }
+
+    private static Produto produtoComPreco(Long preco) {
+        Produto produto = new Produto();
+        produto.setPreco(preco);
+        return produto;
     }
 }

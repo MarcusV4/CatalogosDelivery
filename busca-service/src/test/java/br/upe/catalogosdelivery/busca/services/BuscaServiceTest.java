@@ -9,7 +9,6 @@ import br.upe.catalogosdelivery.common.excecoes.ServicoIndisponivelException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -25,13 +24,13 @@ class BuscaServiceTest {
     private BuscaService buscaService;
 
     private final RestauranteDTO pizzaria = new RestauranteDTO(1L, "Pizzaria do João", null, "Recife", "PE",
-            null, "ABERTO", "PIZZARIA", 5f);
+            null, "ABERTO", "PIZZARIA", 500L);
     private final RestauranteDTO acaiteria = new RestauranteDTO(2L, "Açaí da Praia", null, "Olinda", "PE",
-            null, "FECHADO", "AÇAÍ", 3f);
+            null, "FECHADO", "AÇAÍ", 300L);
 
-    private final ProdutoDTO calabresa = new ProdutoDTO(10L, "Pizza Calabresa", null, new BigDecimal("45.90"), true, "PIZZA", 1L);
-    private final ProdutoDTO marguerita = new ProdutoDTO(11L, "Pizza Marguerita", null, new BigDecimal("42.00"), false, "PIZZA", 1L);
-    private final ProdutoDTO acai = new ProdutoDTO(20L, "Açaí 500ml", null, new BigDecimal("18.00"), true, "SOBREMESA", 2L);
+    private final ProdutoDTO calabresa = new ProdutoDTO(10L, "Pizza Calabresa", null, 4590L, true, "PIZZA", 1L);
+    private final ProdutoDTO marguerita = new ProdutoDTO(11L, "Pizza Marguerita", null, 4200L, false, "PIZZA", 1L);
+    private final ProdutoDTO acai = new ProdutoDTO(20L, "Açaí 500ml", null, 1800L, true, "SOBREMESA", 2L);
 
     @BeforeEach
     void setUp() {
