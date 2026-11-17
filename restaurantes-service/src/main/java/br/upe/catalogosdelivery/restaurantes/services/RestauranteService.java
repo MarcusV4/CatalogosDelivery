@@ -1,10 +1,10 @@
 package br.upe.catalogosdelivery.restaurantes.services;
 
-import br.upe.catalogosdelivery.common.excecoes.RecursoNaoEncontradoException;
 import br.upe.catalogosdelivery.restaurantes.clients.CardapioClient;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.RestauranteDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.RestauranteResponseDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.Restaurante;
+import br.upe.catalogosdelivery.restaurantes.exceptions.RestauranteNaoEncontradoException;
 import br.upe.catalogosdelivery.restaurantes.mappers.RestauranteMapper;
 import br.upe.catalogosdelivery.restaurantes.repositories.RestauranteRepo;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,7 +48,7 @@ public class RestauranteService {
     }
 
     public RestauranteResponseDTO buscarRestaurante(Long idRestaurante){
-        Restaurante restaurante = restauranteRepo.findById(idRestaurante).orElseThrow(()-> new RecursoNaoEncontradoException("Restaurante inexistente!") );
+        Restaurante restaurante = restauranteRepo.findById(idRestaurante).orElseThrow(()-> new RestauranteNaoEncontradoException());
         RestauranteResponseDTO restauranteDTO = restauranteMapper.toResponseDTO(restaurante);
         return restauranteDTO;
     }
@@ -56,7 +56,7 @@ public class RestauranteService {
     public void deletarRestaurante(Long idRestaurante){
         boolean restauranteExiste = restauranteRepo.existsById(idRestaurante);
 
-        if(!restauranteExiste) throw new RecursoNaoEncontradoException("Restaurante não existe");
+        if(!restauranteExiste) throw new RestauranteNaoEncontradoException();
 
         // Primeiro o Cardápio exclui o cardápio e os produtos do restaurante. Se ele estiver
         // fora do ar, a chamada lança 503 e o restaurante NÃO é excluído: os dois serviços
