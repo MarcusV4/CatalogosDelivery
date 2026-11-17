@@ -74,7 +74,21 @@ docker compose down               # para tudo (adicione -v para apagar os dados)
 
 Nenhum `.env` é necessário. Para trocar portas ou credenciais, copie `.env.example` para `.env`.
 
-Swagger de cada serviço: `http://localhost:{porta}/swagger-ui.html`. Health: `http://localhost:{porta}/actuator/health`.
+### Swagger e especificação OpenAPI
+
+Com `docker compose up -d --build`, cada serviço disponibiliza sua própria documentação:
+
+| Serviço | Swagger UI | OpenAPI (JSON) |
+|---|---|---|
+| Restaurantes | <http://localhost:8004/swagger-ui.html> | <http://localhost:8004/v3/api-docs> |
+| Cardápio | <http://localhost:8005/swagger-ui.html> | <http://localhost:8005/v3/api-docs> |
+| Busca | <http://localhost:8006/swagger-ui.html> | <http://localhost:8006/v3/api-docs> |
+
+No Swagger UI, abra uma rota e use **Try it out** para enviar uma requisição.
+Para verificar a especificação diretamente, execute, por exemplo,
+`curl http://localhost:8004/v3/api-docs`. Se alterar as portas no `.env`, use
+as portas configuradas. O healthcheck de cada serviço está em
+`http://localhost:{porta}/actuator/health`.
 
 ### Rodando um serviço pela IDE
 

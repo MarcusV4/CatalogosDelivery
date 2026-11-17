@@ -20,6 +20,11 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-validation</artifactId>
 		</dependency>
+		<!-- OpenApiCustomizer que documenta o formato de erro nos 3 serviços -->
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+		</dependency>
 		<!-- DataIntegrityViolationException (tratada no GlobalExceptionHandler) -->
 		<dependency>
 			<groupId>org.springframework</groupId>
