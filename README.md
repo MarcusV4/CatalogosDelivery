@@ -113,18 +113,25 @@ inteiros não negativos. Requisições com preço decimal ou negativo são recus
 o cálculo de frete pertence ao serviço de Despacho. A permanência dessa taxa
 no contrato do Catálogo ainda depende do alinhamento com a Equipe 4 e da issue #20.
 
-Se os bancos locais já contêm valores em reais, converta os dados **antes** de
-subir a nova versão. Com as credenciais padrão do Compose:
+**Bancos que já existiam antes dessa mudança:**
 
-```bash
-docker compose stop restaurantes cardapio busca
-docker compose exec -T db-restaurantes psql -v ON_ERROR_STOP=1 -U catalogo -d restaurantes < docs/migrations/issue-23-restaurantes-centavos.sql
-docker compose exec -T db-cardapio psql -v ON_ERROR_STOP=1 -U catalogo -d cardapio < docs/migrations/issue-23-cardapio-centavos.sql
-docker compose up -d --build
-```
+- **Cardápio:** nada a fazer. A migração Flyway
+  `V2__preco_produto_em_centavos.sql` converte `produto.preco` de reais para
+  centavos automaticamente ao subir o serviço.
+- **Restaurantes:** o serviço ainda não usa Flyway, então converta
+  `taxa_entrega` uma vez, **antes** de subir a nova versão (com as credenciais
+  padrão do Compose; se mudou no `.env`, ajuste o usuário):
 
-Em bancos novos não é preciso executar a migração. Se as credenciais foram
-alteradas no `.env`, ajuste o usuário nos comandos acima.
+  ```bash
+  docker compose stop restaurantes
+  docker compose exec -T db-restaurantes psql -v ON_ERROR_STOP=1 -U catalogo -d restaurantes < docs/migrations/issue-23-restaurantes-centavos.sql
+  docker compose up -d --build
+  ```
+
+Em bancos novos não é preciso fazer nada. Se você já subiu a versão em centavos
+sobre um banco antigo sem converter, os valores ficaram misturados (reais e
+centavos) e não há como separá-los: recrie os bancos locais com
+`docker compose down -v`.
 
 | Serviço | Método e rota | Descrição |
 |---|---|---|
