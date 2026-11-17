@@ -1,11 +1,11 @@
 package br.upe.catalogosdelivery.restaurantes.services;
 
-import br.upe.catalogosdelivery.common.excecoes.RecursoNaoEncontradoException;
 import br.upe.catalogosdelivery.common.excecoes.ServicoIndisponivelException;
 import br.upe.catalogosdelivery.restaurantes.clients.CardapioClient;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.RestauranteDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.Enums.CategoriaRestaurante;
 import br.upe.catalogosdelivery.restaurantes.entities.Enums.StatusRestaurante;
+import br.upe.catalogosdelivery.restaurantes.exceptions.RestauranteNaoEncontradoException;
 import br.upe.catalogosdelivery.restaurantes.repositories.RestauranteRepo;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +15,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -51,6 +53,13 @@ class RestauranteServiceTest {
     }
 
     @Test
+    void buscarRestauranteInexistenteLancaRestauranteNaoEncontrado() {
+        when(restauranteRepo.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(RestauranteNaoEncontradoException.class, () -> restauranteService.buscarRestaurante(99L));
+    }
+
+    @Test
     void excluiOCardapioAntesDoRestaurante() {
         when(restauranteRepo.existsById(1L)).thenReturn(true);
 
@@ -76,7 +85,7 @@ class RestauranteServiceTest {
     void restauranteInexistenteRetorna404SemChamarOCardapio() {
         when(restauranteRepo.existsById(99L)).thenReturn(false);
 
-        assertThrows(RecursoNaoEncontradoException.class, () -> restauranteService.deletarRestaurante(99L));
+        assertThrows(RestauranteNaoEncontradoException.class, () -> restauranteService.deletarRestaurante(99L));
 
         verifyNoInteractions(cardapioClient);
     }

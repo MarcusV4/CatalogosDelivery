@@ -23,7 +23,7 @@ Cada responsabilidade é um **microsserviço independente** (Spring Boot), com p
 | Cardápio | `cardapio-service` | `8005` | `db-cardapio` (Postgres, host `5434`) | Restaurantes |
 | Busca | `busca-service` | `8006` | — (sem banco) | Restaurantes e Cardápio |
 
-O módulo `catalogo-common` é uma biblioteca compartilhada (não é um serviço). Ela contém o formato de erro padrão e o cliente HTTP entre serviços, que tem timeout, gera log de cada chamada e converte falhas em erros amigáveis.
+O módulo `catalogo-common` é uma biblioteca compartilhada (não é um serviço). Ela contém o `GlobalExceptionHandler`, que faz todo erro dos 3 serviços sair no formato padrão, e o cliente HTTP entre serviços, que tem timeout, gera log de cada chamada e converte falhas em erros amigáveis.
 
 > As portas seguem a sugestão `8000 + 3 × (equipe − 1) + n` (Equipe 2 → 8004–8006) e ainda dependem do alinhamento da turma (#20). Todas podem ser trocadas pelo `.env`.
 
@@ -45,6 +45,7 @@ Se um serviço cair, quem depende dele **continua no ar** e responde com o forma
 | Situação | Resposta |
 |---|---|
 | Recurso não existe no outro serviço | `404 {"erro": true, "mensagem": "Restaurante 99 não encontrado."}` |
+| Requisição inválida (ex.: cadastro sem `ownerUserId`) | `400 {"erro": true, "mensagem": "Informe ownerUserId ..."}` |
 | Outro serviço fora do ar, em timeout (3 s) ou com erro 5xx | `503 {"erro": true, "mensagem": "O serviço de Restaurantes está indisponível no momento. ..."}` |
 | Resposta inesperada do outro serviço | `502` |
 
