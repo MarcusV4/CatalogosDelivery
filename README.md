@@ -77,14 +77,25 @@ Nenhum `.env` é necessário. Para trocar portas ou credenciais, copie `.env.exa
 ### Dados de exemplo
 
 No Compose local, o contêiner `seed` espera Restaurantes e Cardápio ficarem
-saudáveis e cadastra a **Pizzaria Exemplo** com **Pizza Margherita** (R$ 25,90) e
-**Refrigerante Lata** (R$ 6,00). A seed usa as APIs, termina após o cadastro e
-não duplica registros existentes. Os dados ficam nos volumes dos bancos.
+saudáveis e cadastra, pelas APIs, dois restaurantes pensados para exercitar
+os filtros da Busca:
+
+| Restaurante | Cidade | Status | Categoria | Produtos |
+|---|---|---|---|---|
+| Pizzaria Exemplo | Recife | `ABERTO` | `PIZZARIA` | Pizza Margherita (R$ 25,90), Pizza Calabresa (R$ 28,90), Pizza Quatro Queijos (R$ 32,90, **indisponível**), Refrigerante Lata (R$ 6,00) |
+| Açaí Exemplo | Olinda | `FECHADO` | `AÇAÍ` | Açaí 500 ml (R$ 18,00), Água Mineral (R$ 3,50) |
+
+A seed termina após o cadastro e não duplica registros: o que já existe (mesmo
+nome) é mantido e só o que falta é cadastrado. Os dados ficam nos volumes dos
+bancos. Os dados e o dono de exemplo (`ownerUserId` 1) estão em `scripts/seed.py`.
 
 ```bash
 docker compose logs seed                  # confere o resultado da seed
 curl http://localhost:8004/api/restaurantes
 curl http://localhost:8005/api/produtos
+curl "http://localhost:8006/api/busca/restaurantes?status=ABERTO"
+curl "http://localhost:8006/api/busca/itens?nome=acai"          # ignora acentos
+curl "http://localhost:8006/api/busca/itens?disponivel=false"
 ```
 
 Para desativar a seed, defina `SEED_ENABLED=false` no `.env`. Se algum serviço
