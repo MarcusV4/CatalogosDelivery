@@ -1,72 +1,186 @@
 package br.upe.catalogosdelivery.restaurantes.services;
 
-import br.upe.catalogosdelivery.restaurantes.clients.CardapioClient;
+import br.upe.catalogosdelivery.restaurantes.entities.DTOs.AtualizarRestauranteDTO;
+import br.upe.catalogosdelivery.restaurantes.entities.DTOs.AtualizarStatusRestauranteDTO;
+import br.upe.catalogosdelivery.restaurantes.entities.DTOs.HorarioFuncionamentoDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.RestauranteDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.RestauranteResponseDTO;
+import br.upe.catalogosdelivery.restaurantes.entities.DTOs.SubstituirHorariosDTO;
+import br.upe.catalogosdelivery.restaurantes.entities.Enums.DiaSemana;
+import br.upe.catalogosdelivery.restaurantes.entities.Enums.StatusRestaurante;
+import br.upe.catalogosdelivery.restaurantes.entities.HorarioFuncionamento;
 import br.upe.catalogosdelivery.restaurantes.entities.Restaurante;
 import br.upe.catalogosdelivery.restaurantes.exceptions.RestauranteNaoEncontradoException;
 import br.upe.catalogosdelivery.restaurantes.mappers.RestauranteMapper;
+import br.upe.catalogosdelivery.restaurantes.repositories.HorarioFuncRepo;
 import br.upe.catalogosdelivery.restaurantes.repositories.RestauranteRepo;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class RestauranteService {
 
+    private final RestauranteRepo restauranteRepo;
+    private final HorarioFuncRepo horarioFuncRepo;
+    private final RestauranteMapper restauranteMapper;
+    private final Clock clock;
 
-    @Autowired
-    RestauranteRepo restauranteRepo;
+    @Value("${catalogo.horarios.zone-id:America/Recife}")
+    private String zoneId;
 
-    @Autowired
-    CardapioClient cardapioClient;
+    public RestauranteService(RestauranteRepo restauranteRepo, HorarioFuncRepo horarioFuncRepo,
+                              RestauranteMapper restauranteMapper, Clock clock) {
+        this.restauranteRepo = restauranteRepo;
+        this.horarioFuncRepo = horarioFuncRepo;
+        this.restauranteMapper = restauranteMapper;
+        this.clock = clock;
+    }
 
-    private final RestauranteMapper restauranteMapper = new RestauranteMapper();
-
-
-    public Restaurante cadastrarRestaurante(RestauranteDTO dto){
-        // ownerUserId é obrigatório no banco; sem esta checagem o erro viraria 500.
-        // Quando a #31 integrar o JWT, ele passará a vir do `sub` do token.
+    public Restaurante cadastrarRestaurante(RestauranteDTO dto) {
         if (dto.ownerUserId() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Informe ownerUserId (identificador do dono do restaurante).");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe ownerUserId.");
         }
-        if (dto.taxaEntrega() == null || dto.taxaEntrega() < 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Informe a taxa de entrega em centavos, maior ou igual a zero.");
+        validarDados(dto.taxaEntrega(), dto.tempoEstimadoMin(), dto.tempoEstimadoMax());
+        return restauranteRepo.save(restauranteMapper.toEntity(dto));
+    }
+
+    public List<RestauranteResponseDTO> listarRestaurante() {
+        return restauranteRepo.findAll().stream().map(this::toResponse).toList();
+    }
+
+    public RestauranteResponseDTO buscarRestaurante(Long idRestaurante) {
+        return toResponse(buscarEntidade(idRestaurante));
+    }
+
+    @Transactional
+    public RestauranteResponseDTO atualizarRestaurante(Long id, AtualizarRestauranteDTO dto) {
+        Restaurante restaurante = buscarEntidade(id);
+        validarProprietario(restaurante, dto.ownerUserId());
+        validarDados(dto.taxaEntrega(), dto.tempoEstimadoMin(), dto.tempoEstimadoMax());
+        restaurante.setRestauranteNome(dto.restauranteNome());
+        restaurante.setRestauranteDesc(dto.restauranteDesc());
+        restaurante.setLogradouro(dto.logradouro());
+        restaurante.setNumero(dto.numero());
+        restaurante.setComplemento(dto.complemento());
+        restaurante.setBairro(dto.bairro());
+        restaurante.setCidade(dto.cidade());
+        restaurante.setEstado(dto.estado());
+        restaurante.setCep(dto.cep());
+        restaurante.setRestauranteTelefone(dto.restauranteTelefone());
+        restaurante.setTaxaEntrega(dto.taxaEntrega());
+        restaurante.setTempoEstimadoMin(dto.tempoEstimadoMin());
+        restaurante.setTempoEstimadoMax(dto.tempoEstimadoMax());
+        restaurante.setUrlImagem(dto.urlImagem());
+        restaurante.setCategoriaRestaurante(dto.categoriaRestaurante());
+        return toResponse(restauranteRepo.save(restaurante));
+    }
+
+    @Transactional
+    public RestauranteResponseDTO atualizarStatus(Long id, AtualizarStatusRestauranteDTO dto) {
+        Restaurante restaurante = buscarEntidade(id);
+        validarProprietario(restaurante, dto.ownerUserId());
+        if (dto.statusRestaurante() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe statusRestaurante.");
         }
-
-        Restaurante restaurante = restauranteMapper.toEntity(dto);
-
-        // O cardápio agora pertence ao serviço de Cardápio, que o cria no primeiro
-        // produto cadastrado depois de validar o restaurante aqui via HTTP.
-        return restauranteRepo.save(restaurante);
+        restaurante.setStatusRestaurante(dto.statusRestaurante());
+        return toResponse(restauranteRepo.save(restaurante));
     }
 
-
-    public List<RestauranteResponseDTO> listarRestaurante(){
-        return restauranteRepo.findAll().stream().map(restauranteMapper::toResponseDTO).toList();
+    public List<HorarioFuncionamentoDTO> listarHorarios(Long id) {
+        buscarEntidade(id);
+        return horarioFuncRepo.findAllByIdRestauranteRestauranteIdOrderByDiaSemana(id).stream()
+                .map(h -> new HorarioFuncionamentoDTO(h.getDiaSemana(), h.getHoraAbertura(), h.getHoraFechamento()))
+                .toList();
     }
 
-    public RestauranteResponseDTO buscarRestaurante(Long idRestaurante){
-        Restaurante restaurante = restauranteRepo.findById(idRestaurante).orElseThrow(()-> new RestauranteNaoEncontradoException());
-        RestauranteResponseDTO restauranteDTO = restauranteMapper.toResponseDTO(restaurante);
-        return restauranteDTO;
+    @Transactional
+    public List<HorarioFuncionamentoDTO> substituirHorarios(Long id, SubstituirHorariosDTO dto) {
+        Restaurante restaurante = buscarEntidade(id);
+        validarProprietario(restaurante, dto.ownerUserId());
+        if (dto.horarios() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe a lista de horarios.");
+        }
+        Set<DiaSemana> dias = EnumSet.noneOf(DiaSemana.class);
+        for (HorarioFuncionamentoDTO horario : dto.horarios()) {
+            if (horario == null || horario.diaSemana() == null || horario.horaAbertura() == null
+                    || horario.horaFechamento() == null || !horario.horaAbertura().isBefore(horario.horaFechamento())
+                    || !dias.add(horario.diaSemana())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Cada dia deve ser único e ter horários válidos, com abertura anterior ao fechamento.");
+            }
+        }
+        horarioFuncRepo.deleteAllByIdRestauranteRestauranteId(id);
+        List<HorarioFuncionamento> entidades = dto.horarios().stream().map(h -> {
+            HorarioFuncionamento horario = new HorarioFuncionamento();
+            horario.setDiaSemana(h.diaSemana());
+            horario.setHoraAbertura(h.horaAbertura());
+            horario.setHoraFechamento(h.horaFechamento());
+            horario.setIdRestaurante(restaurante);
+            return horario;
+        }).toList();
+        return horarioFuncRepo.saveAll(entidades).stream()
+                .map(h -> new HorarioFuncionamentoDTO(h.getDiaSemana(), h.getHoraAbertura(), h.getHoraFechamento()))
+                .toList();
     }
 
-    public void deletarRestaurante(Long idRestaurante){
-        boolean restauranteExiste = restauranteRepo.existsById(idRestaurante);
+    @Transactional
+    public void deletarRestaurante(Long id, Long ownerUserId) {
+        Restaurante restaurante = buscarEntidade(id);
+        validarProprietario(restaurante, ownerUserId);
+        restaurante.setStatusRestaurante(StatusRestaurante.INDISPONIVEL);
+        restauranteRepo.save(restaurante);
+    }
 
-        if(!restauranteExiste) throw new RestauranteNaoEncontradoException();
+    private Restaurante buscarEntidade(Long id) {
+        return restauranteRepo.findById(id).orElseThrow(RestauranteNaoEncontradoException::new);
+    }
 
-        // Primeiro o Cardápio exclui o cardápio e os produtos do restaurante. Se ele estiver
-        // fora do ar, a chamada lança 503 e o restaurante NÃO é excluído: os dois serviços
-        // continuam consistentes e a exclusão pode ser repetida depois.
-        cardapioClient.excluirCardapioDoRestaurante(idRestaurante);
+    private void validarProprietario(Restaurante restaurante, Long ownerUserId) {
+        if (ownerUserId == null || !ownerUserId.equals(restaurante.getOwnerUserId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Usuário não é proprietário do restaurante.");
+        }
+    }
 
-        restauranteRepo.deleteById(idRestaurante);
+    private void validarDados(Long taxa, Integer tempoMin, Integer tempoMax) {
+        if (taxa == null || taxa < 0 || tempoMin != null && tempoMin < 0 || tempoMax != null && tempoMax < 0
+                || tempoMin != null && tempoMax != null && tempoMin > tempoMax) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Taxa ou tempo estimado inválido.");
+        }
+    }
+
+    private RestauranteResponseDTO toResponse(Restaurante restaurante) {
+        RestauranteResponseDTO dto = restauranteMapper.toResponseDTO(restaurante);
+        List<HorarioFuncionamento> horarios = horarioFuncRepo
+                .findAllByIdRestauranteRestauranteIdOrderByDiaSemana(restaurante.getRestauranteId());
+        ZoneId zone = ZoneId.of(zoneId == null ? "America/Recife" : zoneId);
+        LocalDate hoje = LocalDate.now(clock.withZone(zone));
+        LocalTime agora = LocalTime.now(clock.withZone(zone));
+        DiaSemana diaHoje = switch (hoje.getDayOfWeek()) {
+            case SUNDAY -> DiaSemana.DOMINGO;
+            case MONDAY -> DiaSemana.SEGUNDA;
+            case TUESDAY -> DiaSemana.TERCA;
+            case WEDNESDAY -> DiaSemana.QUARTA;
+            case THURSDAY -> DiaSemana.QUINTA;
+            case FRIDAY -> DiaSemana.SEXTA;
+            case SATURDAY -> DiaSemana.SABADO;
+        };
+        boolean abertoAgora = restaurante.getStatusRestaurante() == StatusRestaurante.ABERTO
+                && horarios.stream().anyMatch(h -> h.getDiaSemana() == diaHoje
+                && !agora.isBefore(h.getHoraAbertura()) && agora.isBefore(h.getHoraFechamento()));
+        return new RestauranteResponseDTO(dto.restauranteId(), dto.restauranteNome(), dto.restauranteDesc(),
+                dto.logradouro(), dto.numero(), dto.complemento(), dto.bairro(), dto.cidade(), dto.estado(), dto.cep(),
+                dto.restauranteTelefone(), dto.urlImagem(), dto.ownerUserId(), dto.statusRestaurante(),
+                dto.categoriaRestaurante(), dto.taxaEntrega(), dto.tempoEstimadoMin(), dto.tempoEstimadoMax(), abertoAgora);
     }
 }

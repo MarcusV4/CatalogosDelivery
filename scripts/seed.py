@@ -95,7 +95,7 @@ RESTAURANTES = [
             "tempoEstimadoMax": 30,
             "ownerUserId": OWNER_USER_ID,
             "statusRestaurante": "FECHADO",
-            "categoriaRestaurante": "AÇAÍ",
+            "categoriaRestaurante": "ACAI",
         },
         "produtos": [
             {
