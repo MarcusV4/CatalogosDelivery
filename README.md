@@ -67,12 +67,30 @@ A busca de itens continua funcionando sem o serviço de Restaurantes: os itens v
 Pré-requisito: apenas Docker. Não é preciso instalar Java, Maven nem Postgres.
 
 ```bash
-docker compose up -d --build      # sobe os 3 serviços e os 2 bancos
+docker compose up -d --build      # sobe os 3 serviços, os 2 bancos e a seed de exemplo
 docker compose logs -f cardapio busca   # acompanha as integrações
 docker compose down               # para tudo (adicione -v para apagar os dados)
 ```
 
 Nenhum `.env` é necessário. Para trocar portas ou credenciais, copie `.env.example` para `.env`.
+
+### Dados de exemplo
+
+No Compose local, o contêiner `seed` espera Restaurantes e Cardápio ficarem
+saudáveis e cadastra a **Pizzaria Exemplo** com **Pizza Margherita** (R$ 25,90) e
+**Refrigerante Lata** (R$ 6,00). A seed usa as APIs, termina após o cadastro e
+não duplica registros existentes. Os dados ficam nos volumes dos bancos.
+
+```bash
+docker compose logs seed                  # confere o resultado da seed
+curl http://localhost:8004/api/restaurantes
+curl http://localhost:8005/api/produtos
+```
+
+Para desativar a seed, defina `SEED_ENABLED=false` no `.env`. Se algum serviço
+apontar para um banco externo, ela é ignorada; `SEED_ALLOW_EXTERNAL=true` no
+`.env` permite executar a seed nesse banco explicitamente. Para rodá-la
+novamente após apagar os exemplos, execute `docker compose run --rm seed`.
 
 ### Swagger e especificação OpenAPI
 
