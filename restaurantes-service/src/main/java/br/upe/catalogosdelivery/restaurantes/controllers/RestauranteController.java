@@ -33,7 +33,7 @@ public class RestauranteController {
     @Operation(summary = "Cadastrar restaurante")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Restaurante cadastrado"),
-            @ApiResponse(responseCode = "400", description = "Dados inválidos ou proprietário inexistente")
+            @ApiResponse(responseCode = "400", description = "Dados inválidos (ex.: sem ownerUserId ou JSON malformado)")
     })
     public ResponseEntity<RestauranteResponseDTO> cadastrarRestaurante(@RequestBody RestauranteDTO restauranteDTO) {
         Restaurante restaurante1 = restauranteService.cadastrarRestaurante(restauranteDTO);
