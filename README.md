@@ -38,6 +38,17 @@ O módulo `catalogo-common` é uma biblioteca compartilhada (não é um serviço
   [Cardápio] <- 200 de Restaurantes em 12 ms
   ```
 
+## Datas e horários
+
+As APIs usam ISO 8601. Horários de funcionamento são enviados como `HH:mm:ss`
+(por exemplo, `18:00:00`) e o dia da semana usa os valores do enum `DiaSemana`
+(`DOMINGO` a `SABADO`). Instantes, como `excluidoEm`, usam UTC com `Z`
+(por exemplo, `2026-08-24T14:30:00Z`). Não envie datas em formato regional.
+
+Os horários de funcionamento representam a hora local de `America/Recife`.
+Esse é o fuso definido para o futuro cálculo de "aberto agora"; instantes
+gravados e serializados usam UTC.
+
 ## Resiliência
 
 Se um serviço cair, quem depende dele **continua no ar** e responde com o formato de erro padrão:
