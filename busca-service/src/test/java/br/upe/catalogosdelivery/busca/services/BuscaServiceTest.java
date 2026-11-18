@@ -26,7 +26,7 @@ class BuscaServiceTest {
     private final RestauranteDTO pizzaria = new RestauranteDTO(1L, "Pizzaria do João", null, "Recife", "PE",
             null, "ABERTO", "PIZZARIA", 500L);
     private final RestauranteDTO acaiteria = new RestauranteDTO(2L, "Açaí da Praia", null, "Olinda", "PE",
-            null, "FECHADO", "AÇAÍ", 300L);
+            null, "FECHADO", "ACAI", 300L);
 
     private final ProdutoDTO calabresa = new ProdutoDTO(10L, "Pizza Calabresa", null, 4590L, true, "PIZZA", 1L);
     private final ProdutoDTO marguerita = new ProdutoDTO(11L, "Pizza Marguerita", null, 4200L, false, "PIZZA", 1L);

@@ -38,13 +38,22 @@ public class RestauranteMapper {
                 restaurante.getRestauranteId(),
                 restaurante.getRestauranteNome(),
                 restaurante.getRestauranteDesc(),
+                restaurante.getLogradouro(),
+                restaurante.getNumero(),
+                restaurante.getComplemento(),
+                restaurante.getBairro(),
                 restaurante.getCidade(),
                 restaurante.getEstado(),
+                restaurante.getCep(),
+                restaurante.getRestauranteTelefone(),
                 restaurante.getUrlImagem(),
                 restaurante.getOwnerUserId(),
                 restaurante.getStatusRestaurante(),
                 restaurante.getCategoriaRestaurante(),
-                restaurante.getTaxaEntrega()
+                restaurante.getTaxaEntrega(),
+                restaurante.getTempoEstimadoMin(),
+                restaurante.getTempoEstimadoMax(),
+                false
         );
     }
 

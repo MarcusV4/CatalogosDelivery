@@ -19,7 +19,7 @@ Cada responsabilidade é um **microsserviço independente** (Spring Boot), com p
 
 | Serviço | Módulo | Porta | Banco | Consome via HTTP |
 |---|---|---|---|---|
-| Restaurantes | `restaurantes-service` | `8004` | `db-restaurantes` (Postgres, host `5433`) | Cardápio (só na exclusão) |
+| Restaurantes | `restaurantes-service` | `8004` | `db-restaurantes` (Postgres, host `5433`) | — |
 | Cardápio | `cardapio-service` | `8005` | `db-cardapio` (Postgres, host `5434`) | Restaurantes |
 | Busca | `busca-service` | `8006` | — (sem banco) | Restaurantes e Cardápio |
 
@@ -30,7 +30,7 @@ O módulo `catalogo-common` é uma biblioteca compartilhada (não é um serviço
 ## Como os serviços conversam
 
 - **Cardápio → Restaurantes:** ao cadastrar um produto, o Cardápio valida o restaurante em `GET /api/restaurantes/{id}`. O cardápio do restaurante é criado automaticamente no primeiro produto.
-- **Restaurantes → Cardápio:** ao excluir um restaurante, o Restaurantes primeiro pede ao Cardápio para excluir o cardápio (`DELETE /api/cardapios/restaurante/{id}`). Se o Cardápio estiver fora do ar, a exclusão é recusada com 503 e **nada é apagado**, mantendo os dois serviços consistentes. No Cardápio a exclusão é lógica (`excluido_em`): os itens do restaurante excluído deixam de aparecer nas listagens e na busca, e a validação para o Checkout passa a responder `existe: false` para eles.
+- **Restaurantes:** `DELETE /api/restaurantes/{id}` é uma exclusão lógica, altera o status para `INDISPONIVEL` e não remove o cardápio do outro serviço.
 - **Busca → Restaurantes e Cardápio:** a busca lê `GET /api/restaurantes` e `GET /api/produtos` e aplica os filtros.
 - Toda chamada aparece no log do terminal, por exemplo:
   ```
@@ -83,7 +83,7 @@ os filtros da Busca:
 | Restaurante | Cidade | Status | Categoria | Produtos |
 |---|---|---|---|---|
 | Pizzaria Exemplo | Recife | `ABERTO` | `PIZZARIA` | Pizza Margherita (R$ 25,90), Pizza Calabresa (R$ 28,90), Pizza Quatro Queijos (R$ 32,90, **indisponível**), Refrigerante Lata (R$ 6,00) |
-| Açaí Exemplo | Olinda | `FECHADO` | `AÇAÍ` | Açaí 500 ml (R$ 18,00), Água Mineral (R$ 3,50) |
+| Açaí Exemplo | Olinda | `FECHADO` | `ACAI` | Açaí 500 ml (R$ 18,00), Água Mineral (R$ 3,50) |
 
 A seed termina após o cadastro e não duplica registros: o que já existe (mesmo
 nome) é mantido e só o que falta é cadastrado. Os dados ficam nos volumes dos
@@ -164,13 +164,19 @@ centavos) e não há como separá-los: recrie os bancos locais com
 
 | Serviço | Método e rota | Descrição |
 |---|---|---|
-| Restaurantes | `POST/GET /api/restaurantes`, `GET/DELETE /api/restaurantes/{id}` | CRUD de restaurantes |
+| Restaurantes | `POST/GET /api/restaurantes`, `GET/PUT/DELETE /api/restaurantes/{id}` | Cadastro, consulta, atualização e desativação lógica (`DELETE` retorna 204) |
+| Restaurantes | `PATCH /api/restaurantes/{id}/status` | Altera o status do restaurante |
+| Restaurantes | `GET/PUT /api/restaurantes/{id}/horarios` | Consulta ou substitui os horários da semana; dias omitidos ficam fechados |
 | Cardápio | `GET /api/produtos` | Todos os itens (usado pela Busca) |
 | Cardápio | `DELETE /api/cardapios/restaurante/{restauranteId}` | Exclui o cardápio de um restaurante (usado pelo Restaurantes) |
 | Cardápio | `GET/POST /api/produtos/{restauranteId}` | Itens do cardápio de um restaurante |
 | Cardápio | `POST /api/produtos/validacao` | Valida existência, disponibilidade, preço e restaurante dos itens para Checkout |
 | Busca | `GET /api/busca/restaurantes?nome=&categoria=&status=` | Busca de restaurantes |
 | Busca | `GET /api/busca/itens?nome=&categoria=&restauranteId=&disponivel=` | Busca de pratos ("Buscar Prato") |
+
+As respostas de restaurantes incluem endereço, telefone, taxa em centavos, tempo estimado, `ownerUserId` e `abertoAgora`. Este último só é `true` quando o status é `ABERTO` e o horário local de `America/Recife` está dentro do intervalo cadastrado. Os intervalos não podem cruzar a meia-noite.
+
+Para atualização, status, horários e exclusão lógica, o contrato temporário recebe `ownerUserId` e compara com o proprietário cadastrado. Atualização, status e horários o recebem no JSON; `DELETE` recebe `?ownerUserId=...`. A identidade autenticada ainda depende da integração JWT da #31; esse valor informado pelo cliente não deve ser tratado como prova de identidade em produção.
 
 A busca ignora maiúsculas/minúsculas e acentos (`acai` encontra `Açaí`).
 
@@ -242,8 +248,7 @@ O Catálogo mantém apenas a referência necessária para relacionar um restaura
 | --------------------------------------- | --------------------- | ---------------------------------------------------------------------------- | ----------------------------------------- | ---------------- |
 | JWT (`sub`, `role`)                     | Identidade            | Identificar o usuário e verificar suas permissões gerais                     | Autorização da operação ou erro de acesso | Cliente/Frontend |
 | Dados para criação de restaurante       | Cliente/Frontend      | Receber `ownerUserId` no DTO nesta etapa; a #31 irá obtê-lo do JWT validado  | Restaurante criado                        | Cliente/Frontend |
-| Dados para atualização do restaurante   | Proprietário/Frontend | Verificar `JWT.sub == ownerUserId` após a integração da #31                  | Restaurante atualizado                    | Cliente/Frontend |
-| Dados de horário e status               | Proprietário/Frontend | Gerenciar o funcionamento do restaurante                                     | Horário/status atualizado                 | Cliente/Frontend |
+| Dados para atualização, horário e status | Proprietário/Frontend | Comparar `ownerUserId` informado com o cadastrado; validar JWT na #31        | Restaurante/horário/status atualizado    | Cliente/Frontend |
 | Dados de itens do cardápio              | Proprietário/Frontend | Criar ou atualizar itens pertencentes ao restaurante                         | Item criado/atualizado                    | Cliente/Frontend |
 | Solicitação de listagem de restaurantes | Cliente/Frontend      | Buscar restaurantes disponíveis                                              | Lista de restaurantes                     | Cliente/Frontend |
 | Termos e filtros de busca               | Cliente/Frontend      | Filtrar por nome, categoria, status, disponibilidade ou preço                | Resultados filtrados                      | Cliente/Frontend |
