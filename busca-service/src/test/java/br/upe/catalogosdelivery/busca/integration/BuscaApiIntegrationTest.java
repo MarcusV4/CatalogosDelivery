@@ -39,9 +39,10 @@ class BuscaApiIntegrationTest {
     private static final String RESTAURANTES = """
             [
               {"restauranteId":1,"restauranteNome":"Pizzaria Exemplo","logradouro":"Rua A","cidade":"Recife",
-               "estado":"PE","statusRestaurante":"ABERTO","categoriaRestaurante":"PIZZARIA","taxaEntrega":500,
+               "estado":"PE","statusRestaurante":"ABERTO","categoriaRestaurante":"PIZZARIA","taxaEntrega":0,
                "tempoEstimadoMin":30,"tempoEstimadoMax":45,"ownerUserId":1,"abertoAgora":true},
-              {"restauranteId":2,"restauranteNome":"Açaí Exemplo","cidade":"Olinda","estado":"PE",
+              {"restauranteId":2,"restauranteNome":"Açaí Exemplo","restauranteDesc":"Tigelas e cremes gelados",
+               "cidade":"Olinda","estado":"PE",
                "statusRestaurante":"FECHADO","categoriaRestaurante":"ACAI","taxaEntrega":300,
                "tempoEstimadoMin":10,"tempoEstimadoMax":20,"ownerUserId":1,"abertoAgora":false}
             ]
@@ -52,7 +53,7 @@ class BuscaApiIntegrationTest {
               {"id":10,"nome":"Pizza Margherita","preco":2590,"disponivel":true,"categoria":"PIZZA",
                "restauranteId":1,"urlImagem":null,
                "adicionais":[{"id":1,"nome":"Queijo extra","preco":350,"disponivel":true}]},
-              {"id":11,"nome":"Pizza Calabresa","preco":2890,"disponivel":true,"categoria":"PIZZA",
+              {"id":11,"nome":"Pizza Calabresa","descricao":"Calabresa fatiada e cebola","preco":2890,"disponivel":true,"categoria":"PIZZA",
                "restauranteId":1,"urlImagem":"https://exemplo.test/calabresa.png","adicionais":[]},
               {"id":12,"nome":"Pizza Quatro Queijos","preco":3290,"disponivel":false,"categoria":"PIZZA",
                "restauranteId":1,"adicionais":[]},
@@ -90,6 +91,7 @@ class BuscaApiIntegrationTest {
         mockMvc.perform(get("/api/busca/itens").param("nome", "PIZZA"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElementos").value(3))
+                .andExpect(jsonPath("$.tamanho").value(20))
                 .andExpect(jsonPath("$.conteudo[*].nome",
                         contains("Pizza Calabresa", "Pizza Margherita", "Pizza Quatro Queijos")))
                 .andExpect(jsonPath("$.conteudo[0].preco").value(2890))
@@ -121,6 +123,40 @@ class BuscaApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.conteudo[*].nome", contains("Pizza Calabresa", "Pizza Margherita")))
                 .andExpect(jsonPath("$.totalElementos").value(2));
+    }
+
+    @Test
+    void buscaPelaDescricaoEFiltraEntregaGratis() throws Exception {
+        mockMvc.perform(get("/api/busca/itens").param("nome", "cebola"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.conteudo[*].nome", contains("Pizza Calabresa")));
+        mockMvc.perform(get("/api/busca/restaurantes").param("nome", "gelados"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.conteudo[*].restauranteNome", contains("Açaí Exemplo")));
+        mockMvc.perform(get("/api/busca/restaurantes").param("entregaGratis", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.conteudo[*].restauranteNome", contains("Pizzaria Exemplo")));
+    }
+
+    @Test
+    void filtraItensPelosDadosDoRestaurante() throws Exception {
+        mockMvc.perform(get("/api/busca/itens")
+                        .param("categoriaRestaurante", "acai")
+                        .param("abertoAgora", "false")
+                        .param("entregaGratis", "false"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.conteudo[*].nome", contains("Açaí 500 ml")));
+        mockMvc.perform(get("/api/busca/itens").param("abertoAgora", "true").param("entregaGratis", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElementos").value(3));
+    }
+
+    @Test
+    void filtroDoRestauranteComRestaurantesForaDoArRetorna503() throws Exception {
+        restaurantes.responder(500, "");
+        mockMvc.perform(get("/api/busca/itens").param("abertoAgora", "true"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.mensagem", containsString("Restaurantes está indisponível")));
     }
 
     @Test
@@ -201,9 +237,9 @@ class BuscaApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/api/busca/itens'].get.parameters[*].name",
                         contains("nome", "categoria", "precoMin", "precoMax", "disponivel", "restauranteId",
-                                "page", "size", "sort")))
+                                "categoriaRestaurante", "abertoAgora", "entregaGratis", "page", "size", "sort")))
                 .andExpect(jsonPath("$.paths['/api/busca/restaurantes'].get.parameters[*].name",
-                        contains("nome", "categoria", "status", "abertoAgora", "page", "size", "sort")))
+                        contains("nome", "categoria", "status", "abertoAgora", "entregaGratis", "page", "size", "sort")))
                 .andExpect(jsonPath("$.paths['/api/busca/itens'].get.responses['503']").exists());
     }
 

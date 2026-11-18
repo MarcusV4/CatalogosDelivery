@@ -36,7 +36,7 @@ public class BuscaController {
             @ApiResponse(responseCode = "503", description = "Serviço de Restaurantes indisponível")
     })
     public ResponseEntity<PaginaDTO<RestauranteDTO>> buscarRestaurantes(
-            @Parameter(description = "Parte do nome", example = "pizzaria")
+            @Parameter(description = "Parte do nome ou da descrição", example = "pizzaria")
             @RequestParam(required = false) String nome,
             @Parameter(description = "Categoria do restaurante", example = "PIZZARIA")
             @RequestParam(required = false) String categoria,
@@ -44,30 +44,35 @@ public class BuscaController {
             @RequestParam(required = false) String status,
             @Parameter(description = "true: só os abertos agora (status ABERTO e dentro do horário); false: só os fechados agora")
             @RequestParam(required = false) Boolean abertoAgora,
+            @Parameter(description = "true: só com taxa de entrega zero; false: só com taxa maior que zero")
+            @RequestParam(required = false) Boolean entregaGratis,
             @Parameter(description = "Página, começando em 0", example = "0")
             @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Itens por página (1 a " + BuscaService.TAMANHO_MAXIMO + ")", example = "20")
-            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "" + BuscaService.TAMANHO_PADRAO) int size,
             @Parameter(description = "campo[,asc|desc]; campos: nome, categoria, taxaEntrega, tempoEstimado",
                     example = "taxaEntrega,asc")
             @RequestParam(required = false) String sort) {
         return ResponseEntity.ok(buscaService.buscarRestaurantes(
-                new FiltroRestaurantes(nome, categoria, status, abertoAgora), page, size, sort));
+                new FiltroRestaurantes(nome, categoria, status, abertoAgora, entregaGratis), page, size, sort));
     }
 
     @GetMapping("/itens")
     @Operation(summary = "Buscar itens (\"Buscar Prato\")",
             description = "Filtros combináveis; textos ignoram maiúsculas e acentos e preços são em centavos. "
                     + "Cada item vem com o restaurante, o preço e a disponibilidade. Se Restaurantes estiver fora "
-                    + "do ar, os itens voltam sem os dados do restaurante. Resultado paginado e ordenado "
+                    + "do ar, os itens voltam sem os dados do restaurante, a menos que a busca use um filtro do "
+                    + "restaurante (categoriaRestaurante, abertoAgora, entregaGratis): aí responde 503. "
+                    + "Resultado paginado e ordenado "
                     + "(padrão: nome crescente).")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Página de itens encontrados"),
             @ApiResponse(responseCode = "400", description = "Faixa de preço, paginação ou ordenação inválida"),
-            @ApiResponse(responseCode = "503", description = "Serviço de Cardápio indisponível")
+            @ApiResponse(responseCode = "503",
+                    description = "Cardápio indisponível, ou Restaurantes indisponível com filtro do restaurante")
     })
     public ResponseEntity<PaginaDTO<ItemBuscaDTO>> buscarItens(
-            @Parameter(description = "Parte do nome do prato", example = "pizza")
+            @Parameter(description = "Parte do nome ou da descrição do prato", example = "pizza")
             @RequestParam(required = false) String nome,
             @Parameter(description = "Categoria do produto", example = "PIZZA")
             @RequestParam(required = false) String categoria,
@@ -79,13 +84,20 @@ public class BuscaController {
             @RequestParam(required = false) Boolean disponivel,
             @Parameter(description = "Só itens deste restaurante", example = "1")
             @RequestParam(required = false) Long restauranteId,
+            @Parameter(description = "Categoria do restaurante do item", example = "PIZZARIA")
+            @RequestParam(required = false) String categoriaRestaurante,
+            @Parameter(description = "true: só itens de restaurantes abertos agora; false: só de restaurantes fechados agora")
+            @RequestParam(required = false) Boolean abertoAgora,
+            @Parameter(description = "true: só itens de restaurantes com entrega grátis; false: só com taxa maior que zero")
+            @RequestParam(required = false) Boolean entregaGratis,
             @Parameter(description = "Página, começando em 0", example = "0")
             @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Itens por página (1 a " + BuscaService.TAMANHO_MAXIMO + ")", example = "20")
-            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "" + BuscaService.TAMANHO_PADRAO) int size,
             @Parameter(description = "campo[,asc|desc]; campos: nome, preco, categoria", example = "preco,desc")
             @RequestParam(required = false) String sort) {
         return ResponseEntity.ok(buscaService.buscarItens(
-                new FiltroItens(nome, categoria, precoMin, precoMax, disponivel, restauranteId), page, size, sort));
+                new FiltroItens(nome, categoria, precoMin, precoMax, disponivel, restauranteId,
+                        categoriaRestaurante, abertoAgora, entregaGratis), page, size, sort));
     }
 }

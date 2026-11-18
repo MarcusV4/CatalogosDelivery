@@ -60,7 +60,7 @@ Se um serviço cair, quem depende dele **continua no ar** e responde com o forma
 | Outro serviço fora do ar, em timeout (3 s) ou com erro 5xx | `503 {"erro": true, "mensagem": "O serviço de Restaurantes está indisponível no momento. ..."}` |
 | Resposta inesperada do outro serviço | `502` |
 
-A busca de itens continua funcionando sem o serviço de Restaurantes: os itens voltam apenas sem `restauranteNome`/`restauranteStatus`/`restauranteAbertoAgora`. Com o serviço no ar, itens de restaurantes que não existem mais são descartados.
+A busca de itens continua funcionando sem o serviço de Restaurantes: os itens voltam apenas sem `restauranteNome`/`restauranteStatus`/`restauranteAbertoAgora`. Com o serviço no ar, itens de restaurantes que não existem mais são descartados. A exceção são os filtros que dependem do restaurante (`categoriaRestaurante`, `abertoAgora` e `entregaGratis` em `/api/busca/itens`): sem o serviço não há como aplicá-los, e a busca responde `503`.
 
 ## Executando
 
@@ -103,6 +103,8 @@ curl "http://localhost:8006/api/busca/itens?nome=acai"          # ignora acentos
 curl "http://localhost:8006/api/busca/itens?disponivel=false"
 curl "http://localhost:8006/api/busca/itens?nome=pizza&precoMin=2000&precoMax=3000&sort=preco,desc"
 curl "http://localhost:8006/api/busca/restaurantes?abertoAgora=true&page=0&size=10"
+curl "http://localhost:8006/api/busca/restaurantes?entregaGratis=true"
+curl "http://localhost:8006/api/busca/itens?nome=calabresa&abertoAgora=true&categoriaRestaurante=PIZZARIA"
 ```
 
 Para desativar a seed, defina `SEED_ENABLED=false` no `.env`. Se algum serviço
@@ -185,16 +187,20 @@ centavos) e não há como separá-los: recrie os bancos locais com
 | Cardápio | `PATCH /api/produtos/{produtoId}/adicionais/{adicionalId}/disponibilidade` | Altera a disponibilidade de um extra |
 | Cardápio | `POST /api/produtos/{restauranteId}` | Rota antiga de cadastro, obsoleta; use `POST /api/restaurantes/{id}/cardapio` |
 | Cardápio | `POST /api/produtos/validacao` | Valida existência, disponibilidade, preço e restaurante dos itens para Checkout |
-| Busca | `GET /api/busca/restaurantes?nome=&categoria=&status=&abertoAgora=&page=&size=&sort=` | Busca de restaurantes |
-| Busca | `GET /api/busca/itens?nome=&categoria=&precoMin=&precoMax=&disponivel=&restauranteId=&page=&size=&sort=` | Busca de pratos ("Buscar Prato") |
+| Busca | `GET /api/busca/restaurantes?nome=&categoria=&status=&abertoAgora=&entregaGratis=&page=&size=&sort=` | Busca de restaurantes |
+| Busca | `GET /api/busca/itens?nome=&categoria=&precoMin=&precoMax=&disponivel=&restauranteId=&categoriaRestaurante=&abertoAgora=&entregaGratis=&page=&size=&sort=` | Busca de pratos ("Buscar Prato") |
 
 As respostas de restaurantes incluem endereço, telefone, taxa em centavos, tempo estimado, `ownerUserId` e `abertoAgora`. Este último só é `true` quando o status é `ABERTO` e o horário local de `America/Recife` está dentro do intervalo cadastrado. Os intervalos não podem cruzar a meia-noite.
 
 Para atualização, status, horários e exclusão lógica, o contrato temporário recebe `ownerUserId` e compara com o proprietário cadastrado. Atualização, status e horários o recebem no JSON; `DELETE` recebe `?ownerUserId=...`. A identidade autenticada ainda depende da integração JWT da #31; esse valor informado pelo cliente não deve ser tratado como prova de identidade em produção.
 
 A busca ignora maiúsculas/minúsculas e acentos (`acai` encontra `Açaí`).
-Todos os filtros são opcionais e combináveis; `precoMin`/`precoMax` são em
-centavos e inclusivos. Cada item volta com o restaurante (`restauranteId`,
+O parâmetro `nome` procura no nome **e na descrição** (do prato ou do
+restaurante). Todos os filtros são opcionais e combináveis; `precoMin`/`precoMax`
+são em centavos e inclusivos. `entregaGratis=true` traz só restaurantes com
+`taxaEntrega` igual a `0` (`false`, só os com taxa). Em `/api/busca/itens`,
+`categoriaRestaurante`, `abertoAgora` e `entregaGratis` filtram pelo restaurante
+do item, e `categoria` continua sendo a categoria do produto. Cada item volta com o restaurante (`restauranteId`,
 `restauranteNome`, `restauranteStatus`, `restauranteAbertoAgora`), o preço e a
 disponibilidade.
 

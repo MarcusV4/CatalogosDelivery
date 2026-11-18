@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.text.Normalizer;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +33,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class BuscaService {
 
+    public static final int TAMANHO_PADRAO = 20;
     public static final int TAMANHO_MAXIMO = 100;
 
     private static final Logger log = LoggerFactory.getLogger(BuscaService.class);
@@ -60,11 +62,10 @@ public class BuscaService {
         Comparator<RestauranteDTO> ordem = ORDENACAO_RESTAURANTES.comparador(sort);
 
         List<RestauranteDTO> resultado = restauranteClient.listarRestaurantes().stream()
-                .filter(r -> contem(r.restauranteNome(), filtro.nome()))
-                .filter(r -> igual(r.categoriaRestaurante(), filtro.categoria()))
+                .filter(r -> contemEmAlgum(filtro.nome(), r.restauranteNome(), r.restauranteDesc()))
                 .filter(r -> igual(r.statusRestaurante(), filtro.status()))
-                .filter(r -> filtro.abertoAgora() == null
-                        || filtro.abertoAgora() == Boolean.TRUE.equals(r.abertoAgora()))
+                .filter(r -> atendeFiltrosDeRestaurante(r, filtro.categoria(), filtro.abertoAgora(),
+                        filtro.entregaGratis()))
                 .sorted(ordem)
                 .toList();
         return PaginaDTO.de(resultado, pagina, tamanho);
@@ -76,7 +77,7 @@ public class BuscaService {
         Comparator<ItemBuscaDTO> ordem = ORDENACAO_ITENS.comparador(sort);
 
         List<ProdutoDTO> produtos = cardapioClient.listarProdutos().stream()
-                .filter(p -> contem(p.nome(), filtro.nome()))
+                .filter(p -> contemEmAlgum(filtro.nome(), p.nome(), p.descricao()))
                 .filter(p -> igual(p.categoria(), filtro.categoria()))
                 .filter(p -> filtro.restauranteId() == null || filtro.restauranteId().equals(p.restauranteId()))
                 .filter(p -> filtro.disponivel() == null || filtro.disponivel() == p.disponivel())
@@ -84,12 +85,13 @@ public class BuscaService {
                 .filter(p -> filtro.precoMax() == null || p.preco() != null && p.preco() <= filtro.precoMax())
                 .toList();
 
-        Optional<Map<Long, RestauranteDTO>> restaurantes = restaurantesPorId(produtos);
+        Optional<Map<Long, RestauranteDTO>> restaurantes = restaurantesPorId(produtos, filtro.filtraPeloRestaurante());
 
         List<ItemBuscaDTO> resultado = produtos.stream()
                 // Item de restaurante que não existe mais (ou foi desativado) não aparece. Se Restaurantes
                 // estiver fora do ar não dá para saber, então o item aparece sem os dados do restaurante.
-                .filter(p -> restaurantes.isEmpty() || restaurantes.get().containsKey(p.restauranteId()))
+                .filter(p -> restaurantes.isEmpty()
+                        || restauranteDoItemAtende(restaurantes.get().get(p.restauranteId()), filtro))
                 .map(p -> paraItem(p, restaurantes.map(m -> m.get(p.restauranteId())).orElse(null)))
                 .sorted(ordem)
                 .toList();
@@ -104,11 +106,30 @@ public class BuscaService {
                 r == null ? null : Boolean.TRUE.equals(r.abertoAgora()));
     }
 
+    private static boolean restauranteDoItemAtende(RestauranteDTO r, FiltroItens filtro) {
+        return r != null && atendeFiltrosDeRestaurante(r, filtro.categoriaRestaurante(), filtro.abertoAgora(),
+                filtro.entregaGratis());
+    }
+
+    /** Filtros comuns às duas rotas que olham o restaurante; parâmetros nulos não filtram. */
+    private static boolean atendeFiltrosDeRestaurante(RestauranteDTO r, String categoria, Boolean abertoAgora,
+                                                      Boolean entregaGratis) {
+        return igual(r.categoriaRestaurante(), categoria)
+                && (abertoAgora == null || abertoAgora == Boolean.TRUE.equals(r.abertoAgora()))
+                && (entregaGratis == null || entregaGratis == temEntregaGratis(r));
+    }
+
+    private static boolean temEntregaGratis(RestauranteDTO r) {
+        return r.taxaEntrega() != null && r.taxaEntrega() == 0;
+    }
+
     /**
      * Restaurantes existentes por id, ou vazio se o serviço de Restaurantes estiver fora do ar
-     * (nesse caso a busca de itens continua, só sem os dados do restaurante).
+     * (nesse caso a busca de itens continua, só sem os dados do restaurante). Se a busca usa
+     * filtros do restaurante, não há como aplicá-los e a indisponibilidade é propagada (503).
      */
-    private Optional<Map<Long, RestauranteDTO>> restaurantesPorId(List<ProdutoDTO> produtos) {
+    private Optional<Map<Long, RestauranteDTO>> restaurantesPorId(List<ProdutoDTO> produtos,
+                                                                  boolean filtraPeloRestaurante) {
         if (produtos.isEmpty()) {
             return Optional.of(Map.of());
         }
@@ -116,6 +137,9 @@ public class BuscaService {
             return Optional.of(restauranteClient.listarRestaurantes().stream()
                     .collect(Collectors.toMap(RestauranteDTO::restauranteId, Function.identity(), (a, b) -> a)));
         } catch (ServicoIndisponivelException e) {
+            if (filtraPeloRestaurante) {
+                throw e;
+            }
             log.warn("[Busca] Restaurantes indisponível: retornando itens sem os dados do restaurante");
             return Optional.empty();
         }
@@ -142,11 +166,14 @@ public class BuscaService {
         }
     }
 
-    private static boolean contem(String valor, String termo) {
+    /** Se o termo aparece em algum dos textos (nome, descrição...); termo vazio não filtra. */
+    private static boolean contemEmAlgum(String termo, String... valores) {
         if (termo == null || termo.isBlank()) {
             return true;
         }
-        return valor != null && normalizar(valor).contains(normalizar(termo));
+        String termoNormalizado = normalizar(termo);
+        return Arrays.stream(valores)
+                .anyMatch(valor -> valor != null && normalizar(valor).contains(termoNormalizado));
     }
 
     private static boolean igual(String valor, String filtro) {
