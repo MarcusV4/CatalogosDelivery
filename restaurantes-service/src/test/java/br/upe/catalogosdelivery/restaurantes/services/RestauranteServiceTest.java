@@ -4,6 +4,7 @@ import br.upe.catalogosdelivery.restaurantes.entities.DTOs.AtualizarRestauranteD
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.AtualizarStatusRestauranteDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.HorarioFuncionamentoDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.RestauranteDTO;
+import br.upe.catalogosdelivery.restaurantes.entities.DTOs.RestauranteResponseDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.SubstituirHorariosDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.Enums.CategoriaRestaurante;
 import br.upe.catalogosdelivery.restaurantes.entities.Enums.DiaSemana;
@@ -155,6 +156,56 @@ class RestauranteServiceTest {
         restauranteService.deletarRestaurante(1L, 10L);
         assertEquals(StatusRestaurante.INDISPONIVEL, restaurante.getStatusRestaurante());
         verify(restauranteRepo).save(restaurante);
+    }
+
+    @Test
+    void cadastroSemNomeRetorna400SemSalvar() {
+        for (String nome : new String[]{null, "  "}) {
+            RestauranteDTO dto = new RestauranteDTO(nome, null, null, null, null, null, "Recife", "PE",
+                    null, null, 500L, null, null, null, 10L, StatusRestaurante.ABERTO, CategoriaRestaurante.PIZZARIA);
+            assertEquals(HttpStatus.BAD_REQUEST, assertThrows(ResponseStatusException.class,
+                    () -> restauranteService.cadastrarRestaurante(dto)).getStatusCode());
+        }
+        verify(restauranteRepo, never()).save(any());
+    }
+
+    @Test
+    void atualizarSemNomeRetorna400SemSalvar() {
+        when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante(1L, 10L, StatusRestaurante.ABERTO)));
+        AtualizarRestauranteDTO dto = new AtualizarRestauranteDTO(" ", null, null, null, null, null, "Recife", "PE",
+                null, null, 0L, null, null, null, 10L, CategoriaRestaurante.PIZZARIA);
+        assertEquals(HttpStatus.BAD_REQUEST, assertThrows(ResponseStatusException.class,
+                () -> restauranteService.atualizarRestaurante(1L, dto)).getStatusCode());
+        verify(restauranteRepo, never()).save(any());
+    }
+
+    @Test
+    void listarIgnoraDesativadosEBuscaHorariosNumaUnicaConsulta() {
+        Restaurante aberto = restaurante(1L, 10L, StatusRestaurante.ABERTO);
+        Restaurante fechado = restaurante(2L, 10L, StatusRestaurante.FECHADO);
+        when(restauranteRepo.findAllByStatusRestauranteIsNullOrStatusRestauranteNot(StatusRestaurante.INDISPONIVEL))
+                .thenReturn(List.of(aberto, fechado));
+        Clock fixed = Clock.fixed(Instant.parse("2026-11-16T15:00:00Z"), ZoneOffset.UTC);
+        when(clock.withZone(any())).thenReturn(fixed);
+        when(horarioFuncRepo.findAllByIdRestauranteRestauranteIdIn(List.of(1L, 2L))).thenReturn(List.of(
+                horario(DiaSemana.SEGUNDA, "09:00", "18:00", aberto),
+                horario(DiaSemana.SEGUNDA, "09:00", "18:00", fechado)));
+
+        List<RestauranteResponseDTO> resultado = restauranteService.listarRestaurante();
+
+        assertEquals(List.of(1L, 2L), resultado.stream().map(RestauranteResponseDTO::restauranteId).toList());
+        assertTrue(resultado.get(0).abertoAgora());
+        assertFalse(resultado.get(1).abertoAgora());
+        verify(restauranteRepo, never()).findAll();
+        verify(horarioFuncRepo, never()).findAllByIdRestauranteRestauranteIdOrderByDiaSemana(any());
+    }
+
+    @Test
+    void listarSemRestaurantesNaoConsultaHorarios() {
+        when(restauranteRepo.findAllByStatusRestauranteIsNullOrStatusRestauranteNot(StatusRestaurante.INDISPONIVEL))
+                .thenReturn(List.of());
+        assertEquals(List.of(), restauranteService.listarRestaurante());
+        verifyNoInteractions(horarioFuncRepo);
     }
 
     @Test

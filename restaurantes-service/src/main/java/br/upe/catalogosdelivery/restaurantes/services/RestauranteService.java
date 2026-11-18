@@ -26,7 +26,9 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class RestauranteService {
@@ -51,12 +53,25 @@ public class RestauranteService {
         if (dto.ownerUserId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe ownerUserId.");
         }
-        validarDados(dto.taxaEntrega(), dto.tempoEstimadoMin(), dto.tempoEstimadoMax());
+        validarDados(dto.restauranteNome(), dto.taxaEntrega(), dto.tempoEstimadoMin(), dto.tempoEstimadoMax());
         return restauranteRepo.save(restauranteMapper.toEntity(dto));
     }
 
+    /** Lista os restaurantes ativos; os desativados (INDISPONIVEL) seguem acessíveis só por ID. */
     public List<RestauranteResponseDTO> listarRestaurante() {
-        return restauranteRepo.findAll().stream().map(this::toResponse).toList();
+        List<Restaurante> restaurantes = restauranteRepo
+                .findAllByStatusRestauranteIsNullOrStatusRestauranteNot(StatusRestaurante.INDISPONIVEL);
+        if (restaurantes.isEmpty()) {
+            return List.of();
+        }
+        // Uma única consulta de horários para a lista inteira, em vez de uma por restaurante.
+        Map<Long, List<HorarioFuncionamento>> horariosPorRestaurante = horarioFuncRepo
+                .findAllByIdRestauranteRestauranteIdIn(restaurantes.stream().map(Restaurante::getRestauranteId).toList())
+                .stream()
+                .collect(Collectors.groupingBy(h -> h.getIdRestaurante().getRestauranteId()));
+        return restaurantes.stream()
+                .map(r -> toResponse(r, horariosPorRestaurante.getOrDefault(r.getRestauranteId(), List.of())))
+                .toList();
     }
 
     public RestauranteResponseDTO buscarRestaurante(Long idRestaurante) {
@@ -67,7 +82,7 @@ public class RestauranteService {
     public RestauranteResponseDTO atualizarRestaurante(Long id, AtualizarRestauranteDTO dto) {
         Restaurante restaurante = buscarEntidade(id);
         validarProprietario(restaurante, dto.ownerUserId());
-        validarDados(dto.taxaEntrega(), dto.tempoEstimadoMin(), dto.tempoEstimadoMax());
+        validarDados(dto.restauranteNome(), dto.taxaEntrega(), dto.tempoEstimadoMin(), dto.tempoEstimadoMax());
         restaurante.setRestauranteNome(dto.restauranteNome());
         restaurante.setRestauranteDesc(dto.restauranteDesc());
         restaurante.setLogradouro(dto.logradouro());
@@ -152,7 +167,10 @@ public class RestauranteService {
         }
     }
 
-    private void validarDados(Long taxa, Integer tempoMin, Integer tempoMax) {
+    private void validarDados(String nome, Long taxa, Integer tempoMin, Integer tempoMax) {
+        if (nome == null || nome.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe restauranteNome.");
+        }
         if (taxa == null || taxa < 0 || tempoMin != null && tempoMin < 0 || tempoMax != null && tempoMax < 0
                 || tempoMin != null && tempoMax != null && tempoMin > tempoMax) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Taxa ou tempo estimado inválido.");
@@ -160,9 +178,12 @@ public class RestauranteService {
     }
 
     private RestauranteResponseDTO toResponse(Restaurante restaurante) {
+        return toResponse(restaurante, horarioFuncRepo
+                .findAllByIdRestauranteRestauranteIdOrderByDiaSemana(restaurante.getRestauranteId()));
+    }
+
+    private RestauranteResponseDTO toResponse(Restaurante restaurante, List<HorarioFuncionamento> horarios) {
         RestauranteResponseDTO dto = restauranteMapper.toResponseDTO(restaurante);
-        List<HorarioFuncionamento> horarios = horarioFuncRepo
-                .findAllByIdRestauranteRestauranteIdOrderByDiaSemana(restaurante.getRestauranteId());
         ZoneId zone = ZoneId.of(zoneId == null ? "America/Recife" : zoneId);
         LocalDate hoje = LocalDate.now(clock.withZone(zone));
         LocalTime agora = LocalTime.now(clock.withZone(zone));

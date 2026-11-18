@@ -120,6 +120,25 @@ class RestauranteApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.statusRestaurante").value("INDISPONIVEL"))
                 .andExpect(jsonPath("$.abertoAgora").value(false));
+
+        mockMvc.perform(get("/api/restaurantes"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.restauranteId == " + id + ")]").isEmpty());
+    }
+
+    @Test
+    @Transactional
+    void listagemCalculaAbertoAgoraECadastroSemNomeRetorna400() throws Exception {
+        long id = criarRestaurante();
+        mockMvc.perform(get("/api/restaurantes"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.restauranteId == " + id + ")].abertoAgora").value(false));
+
+        mockMvc.perform(post("/api/restaurantes")
+                        .contentType("application/json")
+                        .content("{\"cidade\":\"Recife\",\"taxaEntrega\":0,\"ownerUserId\":42}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensagem").value("Informe restauranteNome."));
     }
 
     @Test

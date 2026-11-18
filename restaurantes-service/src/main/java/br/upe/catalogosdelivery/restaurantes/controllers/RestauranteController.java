@@ -41,7 +41,7 @@ public class RestauranteController {
     }
 
     @GetMapping
-    @Operation(summary = "Listar restaurantes")
+    @Operation(summary = "Listar restaurantes", description = "Não inclui restaurantes desativados (INDISPONIVEL), que continuam acessíveis por ID.")
     @ApiResponse(responseCode = "200", description = "Restaurantes encontrados")
     public ResponseEntity<List<RestauranteResponseDTO>> listarRestaurante() {
         return ResponseEntity.ok(restauranteService.listarRestaurante());
@@ -58,6 +58,7 @@ public class RestauranteController {
     @PutMapping("/{idRestaurante}")
     @Operation(summary = "Atualizar dados do restaurante", description = "Substitui os dados cadastrais. ownerUserId identifica o proprietário nesta etapa de integração.")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "Restaurante atualizado"),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos"),
             @ApiResponse(responseCode = "403", description = "Usuário não é proprietário"),
             @ApiResponse(responseCode = "404", description = "Restaurante inexistente")})
     public ResponseEntity<RestauranteResponseDTO> atualizarRestaurante(@PathVariable Long idRestaurante,
@@ -77,6 +78,8 @@ public class RestauranteController {
 
     @GetMapping("/{idRestaurante}/horarios")
     @Operation(summary = "Consultar horários de funcionamento")
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "Horários da semana; dias ausentes estão fechados"),
+            @ApiResponse(responseCode = "404", description = "Restaurante inexistente")})
     public ResponseEntity<List<HorarioFuncionamentoDTO>> listarHorarios(@PathVariable Long idRestaurante) {
         return ResponseEntity.ok(restauranteService.listarHorarios(idRestaurante));
     }
@@ -85,14 +88,15 @@ public class RestauranteController {
     @Operation(summary = "Substituir horários de funcionamento", description = "Substitui a semana completa. Dias omitidos ficam fechados; não são aceitos intervalos que cruzam a meia-noite.")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "Horários atualizados"),
             @ApiResponse(responseCode = "400", description = "Horários inválidos"),
-            @ApiResponse(responseCode = "403", description = "Usuário não é proprietário")})
+            @ApiResponse(responseCode = "403", description = "Usuário não é proprietário"),
+            @ApiResponse(responseCode = "404", description = "Restaurante inexistente")})
     public ResponseEntity<List<HorarioFuncionamentoDTO>> substituirHorarios(@PathVariable Long idRestaurante,
                                                                             @RequestBody SubstituirHorariosDTO dto) {
         return ResponseEntity.ok(restauranteService.substituirHorarios(idRestaurante, dto));
     }
 
     @DeleteMapping("/{idRestaurante}")
-    @Operation(summary = "Desativar restaurante", description = "Exclusão lógica: altera o status para INDISPONIVEL.")
+    @Operation(summary = "Desativar restaurante", description = "Exclusão lógica: altera o status para INDISPONIVEL. O restaurante sai da listagem, segue acessível por ID e pode ser reativado com PATCH /status.")
     @ApiResponses({@ApiResponse(responseCode = "204", description = "Restaurante desativado"),
             @ApiResponse(responseCode = "403", description = "Usuário não é proprietário"),
             @ApiResponse(responseCode = "404", description = "Restaurante inexistente")})
