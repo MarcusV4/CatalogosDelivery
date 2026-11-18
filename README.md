@@ -85,9 +85,14 @@ os filtros da Busca:
 | Pizzaria Exemplo | Recife | `ABERTO` | `PIZZARIA` | Pizza Margherita (R$ 25,90), Pizza Calabresa (R$ 28,90), Pizza Quatro Queijos (R$ 32,90, **indisponível**), Refrigerante Lata (R$ 6,00) |
 | Açaí Exemplo | Olinda | `FECHADO` | `AÇAÍ` | Açaí 500 ml (R$ 18,00), Água Mineral (R$ 3,50) |
 
-A seed termina após o cadastro e não duplica registros: o que já existe (mesmo
-nome) é mantido e só o que falta é cadastrado. Os dados ficam nos volumes dos
-bancos. Os dados e o dono de exemplo (`ownerUserId` 1) estão em `scripts/seed.py`.
+As pizzas Margherita e Calabresa recebem **Queijo extra** (R$ 3,50) e
+**Borda recheada** (R$ 6,00). O Açaí recebe **Leite em pó** (R$ 2,50)
+e **Granola extra** (R$ 1,50, indisponível).
+
+A seed termina após o cadastro e não duplica registros: restaurantes, produtos
+e adicionais que já existem (mesmo nome no respectivo contexto) são mantidos;
+só o que falta é cadastrado. Os dados ficam nos volumes dos bancos. Os dados
+e o dono de exemplo (`ownerUserId` 1) estão em `scripts/seed.py`.
 
 ```bash
 docker compose logs seed                  # confere o resultado da seed
@@ -100,8 +105,8 @@ curl "http://localhost:8006/api/busca/itens?disponivel=false"
 
 Para desativar a seed, defina `SEED_ENABLED=false` no `.env`. Se algum serviço
 apontar para um banco externo, ela é ignorada; `SEED_ALLOW_EXTERNAL=true` no
-`.env` permite executar a seed nesse banco explicitamente. Para rodá-la
-novamente após apagar os exemplos, execute `docker compose run --rm seed`.
+`.env` permite executar a seed nesse banco explicitamente. Para adicionar os
+novos exemplos a volumes já existentes, execute `docker compose run --rm seed`.
 
 ### Swagger e especificação OpenAPI
 

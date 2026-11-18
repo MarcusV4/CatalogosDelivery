@@ -1,7 +1,8 @@
 """Dados de exemplo para o Compose local, cadastrados pelas APIs dos serviços.
 
-Pode ser executada várias vezes: restaurantes e produtos que já existem
-(mesmo nome) são mantidos, e só o que falta é cadastrado.
+Pode ser executada várias vezes: restaurantes, produtos e adicionais que já
+existem (mesmo nome dentro do respectivo restaurante ou produto) são mantidos,
+e só o que falta é cadastrado.
 """
 
 import json
@@ -55,6 +56,10 @@ RESTAURANTES = [
                 "preco": 2590,
                 "disponivel": True,
                 "categoria": "PIZZA",
+                "adicionais": [
+                    {"nome": "Queijo extra", "preco": 350, "disponivel": True},
+                    {"nome": "Borda recheada", "preco": 600, "disponivel": True},
+                ],
             },
             {
                 "nome": "Pizza Calabresa",
@@ -62,6 +67,10 @@ RESTAURANTES = [
                 "preco": 2890,
                 "disponivel": True,
                 "categoria": "PIZZA",
+                "adicionais": [
+                    {"nome": "Queijo extra", "preco": 350, "disponivel": True},
+                    {"nome": "Borda recheada", "preco": 600, "disponivel": True},
+                ],
             },
             {
                 "nome": "Pizza Quatro Queijos",
@@ -104,6 +113,10 @@ RESTAURANTES = [
                 "preco": 1800,
                 "disponivel": True,
                 "categoria": "SOBREMESA",
+                "adicionais": [
+                    {"nome": "Leite em pó", "preco": 250, "disponivel": True},
+                    {"nome": "Granola extra", "preco": 150, "disponivel": False},
+                ],
             },
             {
                 "nome": "Água Mineral",
@@ -146,15 +159,35 @@ def obter_ou_criar_restaurante(dados, existentes):
     return restaurante
 
 
+def cadastrar_adicionais_faltantes(produto_id, adicionais):
+    if not adicionais:
+        return
+
+    path = f"/api/produtos/{produto_id}/adicionais"
+    nomes_existentes = {item["nome"] for item in api_json(CARDAPIO_URL, path)}
+    for adicional in adicionais:
+        if adicional["nome"] in nomes_existentes:
+            print(f"    Adicional já existe: {adicional['nome']}")
+            continue
+        api_json(CARDAPIO_URL, path, "POST", adicional)
+        nomes_existentes.add(adicional["nome"])
+        print(f"    Adicional criado: {adicional['nome']}")
+
+
 def cadastrar_produtos_faltantes(restaurante_id, produtos):
     path = f"/api/restaurantes/{restaurante_id}/cardapio"
-    nomes_existentes = {produto["nome"] for produto in api_json(CARDAPIO_URL, path)}
-    for produto in produtos:
-        if produto["nome"] in nomes_existentes:
-            print(f"  Produto já existe: {produto['nome']}")
-            continue
-        api_json(CARDAPIO_URL, path, "POST", produto)
-        print(f"  Produto criado: {produto['nome']}")
+    existentes = {produto["nome"]: produto for produto in api_json(CARDAPIO_URL, path)}
+    for exemplo in produtos:
+        produto = existentes.get(exemplo["nome"])
+        if produto is None:
+            dados_produto = {chave: valor for chave, valor in exemplo.items() if chave != "adicionais"}
+            produto = api_json(CARDAPIO_URL, path, "POST", dados_produto)
+            existentes[exemplo["nome"]] = produto
+            print(f"  Produto criado: {exemplo['nome']}")
+        else:
+            print(f"  Produto já existe: {exemplo['nome']}")
+
+        cadastrar_adicionais_faltantes(produto["id"], exemplo.get("adicionais", []))
 
 
 def main():
