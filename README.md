@@ -171,7 +171,7 @@ centavos) e não há como separá-los: recrie os bancos locais com
 |---|---|---|
 | Restaurantes | `POST/GET /api/restaurantes`, `GET/DELETE /api/restaurantes/{id}` | CRUD de restaurantes |
 | Cardápio | `GET /api/produtos` | Todos os itens (usado pela Busca) |
-| Cardápio | `DELETE /api/cardapios/restaurante/{restauranteId}` | Exclui o cardápio de um restaurante (usado pelo Restaurantes) |
+| Cardápio | `DELETE /api/cardapios/restaurante/{restauranteId}` | Exclui logicamente o cardápio de um restaurante (rota administrativa; o Restaurantes não a chama) |
 | Cardápio | `GET/POST /api/restaurantes/{restauranteId}/cardapio` | Consulta ou cadastra itens do cardápio |
 | Cardápio | `GET/PUT/PATCH/DELETE /api/produtos/{id}` | Consulta, altera ou exclui um produto |
 | Cardápio | `PATCH /api/produtos/{id}/disponibilidade` | Altera a disponibilidade de um produto |
@@ -199,6 +199,12 @@ excluídos. Cardápios logicamente excluídos não podem receber escritas e seus
 produtos e adicionais não aparecem nas consultas (404 por ID). As categorias
 são os valores fixos de `CategoriaProduto`; acrescentar uma categoria exige
 alterar o enum e publicar uma nova versão.
+
+Restaurante desativado (`INDISPONIVEL`, exclusão lógica do serviço de
+Restaurantes) não recebe novos produtos: o cadastro responde `409`. Ele também
+sai de `GET /api/restaurantes` e, por consequência, da Busca, junto com seus
+itens. O cardápio é preservado, então o restaurante pode ser reativado com
+`PATCH /api/restaurantes/{id}/status`.
 
 **PENDENTE (#31): as escritas do Cardápio estão sem controle de propriedade.**
 Não há autenticação neste repositório, então qualquer chamador pode criar,

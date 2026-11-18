@@ -1,6 +1,7 @@
 package br.upe.catalogosdelivery.cardapio.services;
 
 import br.upe.catalogosdelivery.cardapio.clients.RestauranteClient;
+import br.upe.catalogosdelivery.cardapio.clients.RestauranteResumoDTO;
 import br.upe.catalogosdelivery.cardapio.entities.Cardapio;
 import br.upe.catalogosdelivery.cardapio.entities.Produto;
 import br.upe.catalogosdelivery.cardapio.repositories.CardapioRepo;
@@ -86,6 +87,32 @@ class ProdutoServiceCardapioTest {
 
         verify(cardapioRepo, never()).saveAndFlush(any());
         verify(produtoRepo, never()).save(any());
+    }
+
+    @Test
+    void naoCadastraProdutoEmRestauranteDesativado() {
+        when(restauranteClient.buscarRestaurante(10L))
+                .thenReturn(new RestauranteResumoDTO(10L, "Pizzaria", "INDISPONIVEL", 0L));
+
+        ResponseStatusException erro = assertThrows(ResponseStatusException.class,
+                () -> produtoService.cadastrarProduto(produtoComPreco(2590L), 10L));
+
+        assertEquals(HttpStatus.CONFLICT, erro.getStatusCode());
+        verifyNoInteractions(cardapioRepo, produtoRepo, autorizacaoRestauranteService);
+    }
+
+    @Test
+    void cadastraProdutoEmRestauranteFechado() {
+        when(restauranteClient.buscarRestaurante(10L))
+                .thenReturn(new RestauranteResumoDTO(10L, "Pizzaria", "FECHADO", 0L));
+        Cardapio existente = cardapio(10L);
+        when(cardapioRepo.findByRestauranteId(10L)).thenReturn(Optional.of(existente));
+        when(produtoRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        Produto produto = produtoComPreco(2590L);
+
+        produtoService.cadastrarProduto(produto, 10L);
+
+        assertSame(existente, produto.getCardapio());
     }
 
     @Test

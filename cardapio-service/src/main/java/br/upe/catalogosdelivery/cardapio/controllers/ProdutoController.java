@@ -60,6 +60,7 @@ public class ProdutoController {
             @ApiResponse(responseCode = "201", description = "Produto cadastrado"),
             @ApiResponse(responseCode = "400", description = "Dados inválidos"),
             @ApiResponse(responseCode = "404", description = "Restaurante inexistente ou cardápio excluído"),
+            @ApiResponse(responseCode = "409", description = "Restaurante desativado (INDISPONIVEL)"),
             @ApiResponse(responseCode = "503", description = "Serviço de Restaurantes indisponível")
     })
     public ResponseEntity<ProdutoResponseDTO> cadastrarProduto(

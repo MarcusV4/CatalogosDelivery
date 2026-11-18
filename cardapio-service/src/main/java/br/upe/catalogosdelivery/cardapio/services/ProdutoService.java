@@ -1,6 +1,7 @@
 package br.upe.catalogosdelivery.cardapio.services;
 
 import br.upe.catalogosdelivery.cardapio.clients.RestauranteClient;
+import br.upe.catalogosdelivery.cardapio.clients.RestauranteResumoDTO;
 import br.upe.catalogosdelivery.cardapio.entities.Cardapio;
 import br.upe.catalogosdelivery.cardapio.entities.DTOs.ProdutoResponseDTO;
 import br.upe.catalogosdelivery.cardapio.entities.DTOs.ItemValidacaoRequestDTO;
@@ -25,6 +26,9 @@ import java.util.List;
 @Service
 public class ProdutoService {
 
+    /** Status que o serviço de Restaurantes usa para a exclusão lógica. */
+    private static final String STATUS_DESATIVADO = "INDISPONIVEL";
+
     @Autowired
     ProdutoRepo produtoRepo;
 
@@ -46,7 +50,12 @@ public class ProdutoService {
         }
 
         // Valida no serviço de Restaurantes (404 se não existir, 503 se estiver fora do ar)
-        restauranteClient.buscarRestaurante(restauranteId);
+        RestauranteResumoDTO restaurante = restauranteClient.buscarRestaurante(restauranteId);
+        // Restaurante desativado (exclusão lógica) não recebe novos produtos.
+        if (restaurante != null && STATUS_DESATIVADO.equals(restaurante.statusRestaurante())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Restaurante " + restauranteId + " está desativado e não aceita novos produtos.");
+        }
 
         Cardapio cardapio = obterOuCriarCardapio(restauranteId);
         if (cardapio.getExcluidoEm() != null) {

@@ -45,6 +45,7 @@ public class CardapioController {
             @ApiResponse(responseCode = "201", description = "Produto cadastrado"),
             @ApiResponse(responseCode = "400", description = "Dados inválidos"),
             @ApiResponse(responseCode = "404", description = "Restaurante inexistente ou cardápio excluído"),
+            @ApiResponse(responseCode = "409", description = "Restaurante desativado (INDISPONIVEL)"),
             @ApiResponse(responseCode = "503", description = "Serviço de Restaurantes indisponível")
     })
     public ResponseEntity<ProdutoResponseDTO> cadastrarProduto(
@@ -53,9 +54,12 @@ public class CardapioController {
                 .body(produtoService.cadastrarProduto(produtoMapper.toEntity(request), restauranteId));
     }
 
-    /** Usado pelo serviço de Restaurantes ao excluir um restaurante. */
+    /**
+     * Rota administrativa: o serviço de Restaurantes não a chama mais, porque o DELETE de
+     * restaurante é uma exclusão lógica (status INDISPONIVEL) e o restaurante pode ser reativado.
+     */
     @DeleteMapping("/cardapios/restaurante/{restauranteId}")
-    @Operation(summary = "Excluir logicamente o cardápio de um restaurante", description = "Rota usada pelo serviço de Restaurantes durante a exclusão.")
+    @Operation(summary = "Excluir logicamente o cardápio de um restaurante", description = "Rota administrativa. Não é chamada pelo serviço de Restaurantes: a exclusão de restaurante é lógica e preserva o cardápio.")
     @ApiResponse(responseCode = "204", description = "Cardápio excluído ou inexistente")
     public ResponseEntity<Void> excluirCardapioDoRestaurante(@PathVariable Long restauranteId) {
         cardapioService.excluirCardapioDoRestaurante(restauranteId);
