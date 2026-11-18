@@ -83,6 +83,42 @@ img {
   font-size: var(--fonte-pequena);
 }
 
+.aviso {
+  background: var(--aviso-fundo);
+  color: var(--aviso-texto);
+  border-radius: var(--raio);
+  padding: 10px 14px;
+  margin: 0;
+}
+
+/* Campo de formulário: rótulo, controle e dica/erro opcional */
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-1);
+  min-width: 0;
+}
+
+.campo label {
+  font-weight: var(--peso-forte);
+  font-size: var(--fonte-pequena);
+}
+
+.campo input,
+.campo select,
+.campo textarea {
+  width: 100%;
+  padding: var(--esp-4) 14px;
+  border: 1px solid var(--borda-campo);
+  border-radius: var(--raio-campo);
+  background: var(--papel);
+}
+
+.campo small {
+  color: var(--mudo);
+  font-size: var(--fonte-mini);
+}
+
 .cartao {
   background: var(--papel);
   border: 1px solid var(--linha);

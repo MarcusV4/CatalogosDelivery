@@ -20,6 +20,8 @@
   --borda-campo: #cfc9c6;
   --ok: #178a4c;
   --ok-fundo: #e3f4ea;
+  /* --ok sobre --ok-fundo dá ≈ 3,9:1; texto pequeno (selos) usa este tom (≈ 5,9:1). */
+  --ok-texto: #11693a;
   --erro: #c2121f;
   --erro-fundo: #fdecee;
   --aviso-texto: #8a5a00;

@@ -1,0 +1,74 @@
+.restaurante {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  height: 100%;
+  background: var(--papel);
+  border: 1px solid var(--linha);
+  border-radius: var(--raio);
+  padding: 14px;
+}
+
+.restaurante--fechado .restaurante__logo {
+  opacity: 0.6;
+}
+
+.restaurante__logo {
+  width: 72px;
+  height: 72px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: var(--raio-circulo);
+  background: var(--marca-clara);
+  color: var(--marca-escura);
+  font-size: 32px;
+  font-weight: var(--peso-extra);
+}
+
+.restaurante__info {
+  min-width: 0;
+}
+
+.restaurante__info p {
+  margin: 0;
+}
+
+.restaurante__nome {
+  font-size: var(--fonte-destaque);
+  font-weight: var(--peso-extra);
+  margin: 0 0 2px;
+}
+
+.restaurante__info .restaurante__rodape {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--esp-3);
+  margin-top: var(--esp-2);
+}
+
+.selo {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--fonte-mini);
+  font-weight: var(--peso-extra);
+  padding: 3px 10px;
+  border-radius: var(--raio-pilula);
+  white-space: nowrap;
+}
+
+.selo--aberto {
+  background: var(--ok-fundo);
+  color: var(--ok-texto);
+}
+
+.selo--fechado {
+  background: var(--erro-fundo);
+  color: var(--erro);
+}
+
+.selo--indisponivel {
+  background: var(--aviso-fundo);
+  color: var(--aviso-texto);
+}
