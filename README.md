@@ -67,7 +67,7 @@ A busca de itens continua funcionando sem o serviço de Restaurantes: os itens v
 Pré-requisito: apenas Docker. Não é preciso instalar Java, Maven nem Postgres.
 
 ```bash
-docker compose up -d --build      # sobe os 3 serviços, os 2 bancos e a seed de exemplo
+docker compose up -d --build      # sobe os 3 serviços, os 2 bancos, a seed e o front (http://localhost:3000)
 docker compose logs -f cardapio busca   # acompanha as integrações
 docker compose down               # para tudo (adicione -v para apagar os dados)
 ```
@@ -138,6 +138,88 @@ Suba só os bancos com `docker compose up -d db-restaurantes db-cardapio` e rode
 ./mvnw verify                          # todos os módulos
 ./mvnw -pl cardapio-service -am package  # um serviço (e o que ele usa)
 ```
+
+## Frontend
+
+O front em `frontend/` é **complementar**: a avaliação continua sendo feita pelas
+APIs (Postman/Swagger). Nesta etapa ele é só a base, com rotas, tema, client HTTP
+e tratamento de erro, e a Home lista os restaurantes. O login é apenas visual e
+depende da integração com a Identidade (#31).
+
+**Stack:** Vite + React + TypeScript (estrito), React Router, TanStack Query para
+dados e cache, `fetch` nativo, CSS puro com variáveis (cores, fontes e espaçamentos
+do protótipo), Vitest, ESLint e Prettier. Requer Node 22.12 ou mais novo.
+
+```
+frontend/src/
+├── assets/       # imagens, fontes e arquivos estáticos
+├── components/   # componentes compartilhados (Layout, Navbar, Botao, EstadoMensagem, Carregando...)
+├── context/      # estado global: notificações (toasts) e provedor do TanStack Query
+├── hooks/        # hooks reutilizáveis (useNotificacao, useTituloPagina)
+├── pages/        # uma pasta por rota: Home (/), Login (/login) e NaoEncontrada (404)
+├── services/     # http.ts (wrapper do fetch), consultas.ts (QueryClient) e um arquivo por API
+├── styles/       # tema.css (variáveis) e global.css
+└── utils/        # formatação de preço (centavos), datas e rótulos
+```
+
+### Variáveis de ambiente
+
+| Variável | Padrão local | Uso |
+|---|---|---|
+| `VITE_API_RESTAURANTES_URL` | `http://localhost:8004` | Serviço de Restaurantes |
+| `VITE_API_CARDAPIO_URL` | `http://localhost:8005` | Serviço de Cardápio |
+| `VITE_API_BUSCA_URL` | `http://localhost:8006` | Serviço de Busca |
+| `VITE_API_IDENTIDADE_URL` | vazio | Reservada para o login (#31); ainda não é usada |
+
+> As `VITE_*` são **gravadas no JavaScript durante o build** e quem chama as APIs
+> é o **navegador**. Por isso elas apontam para `localhost` com as portas
+> publicadas, e não para os nomes internos do Docker (`restaurantes:8004`). Mudou
+> uma URL? Gere o build de novo (`docker compose up -d --build frontend`). No
+> Compose, os valores vêm das portas do `.env` (`RESTAURANTES_PORT` etc.).
+
+### Rodando localmente
+
+```bash
+docker compose up -d restaurantes cardapio busca   # back-end (ou tudo, com a seed)
+cd frontend
+cp .env.example .env
+npm install
+npm run dev            # http://localhost:5173
+```
+
+| Comando (em `frontend/`) | O que faz |
+|---|---|
+| `npm run test` | Testes unitários (Vitest) dos utilitários, do client HTTP e do QueryClient |
+| `npm run lint` | ESLint |
+| `npm run format` / `npm run format:check` | Prettier |
+| `npm run build` | Checagem de tipos e build de produção em `dist/` |
+
+### Com Docker Compose
+
+`docker compose up -d --build` também gera a imagem do front (Node para o build e
+nginx para servir os arquivos, com fallback para `index.html` nas rotas do React).
+O contêiner `frontend` só sobe depois que Restaurantes, Cardápio e Busca ficam
+saudáveis e responde em <http://localhost:3000>. A porta pode ser trocada com
+`FRONTEND_PORT` no `.env`.
+
+### Erros e convenções
+
+- Todo acesso às APIs passa por `services/http.ts`, que converte o erro padrão
+  `{"erro": true, "mensagem": "..."}`, respostas 5xx, falhas de rede e timeout
+  (10 s) em `ApiError` (`status` e `message` em português; status `0` sem resposta).
+- O `QueryClient` mostra esses erros num toast automaticamente. Uma tela que trata
+  o erro por conta própria passa `meta: { silenciarErro: true }` na consulta.
+  Erros 4xx não são repetidos; falhas de rede e 5xx são tentadas mais duas vezes.
+- Preços chegam em centavos: use `formatarPreco(2590)` → `R$ 25,90`. Datas e horas
+  usam `formatarDataHora` / `formatarHorario` (fuso `America/Recife`).
+
+### CORS
+
+Os três serviços aceitam chamadas do navegador vindas das origens em
+`catalogo.cors.origens-permitidas` (variável `CATALOGO_CORS_ORIGENS_PERMITIDAS`,
+lista separada por vírgula). O padrão é `http://localhost:5173,http://localhost:3000`.
+A configuração fica no `catalogo-common` e vale para as rotas `/api/**`, com os
+métodos `GET`, `POST`, `PUT`, `PATCH` e `DELETE`, sem credenciais (cookies).
 
 ## Endpoints
 
