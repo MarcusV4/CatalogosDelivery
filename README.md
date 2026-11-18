@@ -60,7 +60,7 @@ Se um serviço cair, quem depende dele **continua no ar** e responde com o forma
 | Outro serviço fora do ar, em timeout (3 s) ou com erro 5xx | `503 {"erro": true, "mensagem": "O serviço de Restaurantes está indisponível no momento. ..."}` |
 | Resposta inesperada do outro serviço | `502` |
 
-A busca de itens continua funcionando sem o serviço de Restaurantes: os itens voltam apenas sem `restauranteNome`/`restauranteStatus`. Com o serviço no ar, itens de restaurantes que não existem mais são descartados.
+A busca de itens continua funcionando sem o serviço de Restaurantes: os itens voltam apenas sem `restauranteNome`/`restauranteStatus`/`restauranteAbertoAgora`. Com o serviço no ar, itens de restaurantes que não existem mais são descartados.
 
 ## Executando
 
@@ -101,6 +101,8 @@ curl http://localhost:8005/api/produtos
 curl "http://localhost:8006/api/busca/restaurantes?status=ABERTO"
 curl "http://localhost:8006/api/busca/itens?nome=acai"          # ignora acentos
 curl "http://localhost:8006/api/busca/itens?disponivel=false"
+curl "http://localhost:8006/api/busca/itens?nome=pizza&precoMin=2000&precoMax=3000&sort=preco,desc"
+curl "http://localhost:8006/api/busca/restaurantes?abertoAgora=true&page=0&size=10"
 ```
 
 Para desativar a seed, defina `SEED_ENABLED=false` no `.env`. Se algum serviço
@@ -183,14 +185,34 @@ centavos) e não há como separá-los: recrie os bancos locais com
 | Cardápio | `PATCH /api/produtos/{produtoId}/adicionais/{adicionalId}/disponibilidade` | Altera a disponibilidade de um extra |
 | Cardápio | `POST /api/produtos/{restauranteId}` | Rota antiga de cadastro, obsoleta; use `POST /api/restaurantes/{id}/cardapio` |
 | Cardápio | `POST /api/produtos/validacao` | Valida existência, disponibilidade, preço e restaurante dos itens para Checkout |
-| Busca | `GET /api/busca/restaurantes?nome=&categoria=&status=` | Busca de restaurantes |
-| Busca | `GET /api/busca/itens?nome=&categoria=&restauranteId=&disponivel=` | Busca de pratos ("Buscar Prato") |
+| Busca | `GET /api/busca/restaurantes?nome=&categoria=&status=&abertoAgora=&page=&size=&sort=` | Busca de restaurantes |
+| Busca | `GET /api/busca/itens?nome=&categoria=&precoMin=&precoMax=&disponivel=&restauranteId=&page=&size=&sort=` | Busca de pratos ("Buscar Prato") |
 
 As respostas de restaurantes incluem endereço, telefone, taxa em centavos, tempo estimado, `ownerUserId` e `abertoAgora`. Este último só é `true` quando o status é `ABERTO` e o horário local de `America/Recife` está dentro do intervalo cadastrado. Os intervalos não podem cruzar a meia-noite.
 
 Para atualização, status, horários e exclusão lógica, o contrato temporário recebe `ownerUserId` e compara com o proprietário cadastrado. Atualização, status e horários o recebem no JSON; `DELETE` recebe `?ownerUserId=...`. A identidade autenticada ainda depende da integração JWT da #31; esse valor informado pelo cliente não deve ser tratado como prova de identidade em produção.
 
 A busca ignora maiúsculas/minúsculas e acentos (`acai` encontra `Açaí`).
+Todos os filtros são opcionais e combináveis; `precoMin`/`precoMax` são em
+centavos e inclusivos. Cada item volta com o restaurante (`restauranteId`,
+`restauranteNome`, `restauranteStatus`, `restauranteAbertoAgora`), o preço e a
+disponibilidade.
+
+As duas rotas são paginadas e ordenadas:
+
+- `page` (começa em 0, padrão `0`) e `size` (1 a 100, padrão `20`);
+- `sort=campo` ou `sort=campo,asc|desc` (padrão `nome,asc`). Campos de
+  restaurantes: `nome`, `categoria`, `taxaEntrega`, `tempoEstimado`; de itens:
+  `nome`, `preco`, `categoria`. Valores nulos ficam sempre no fim.
+
+A resposta é uma página:
+
+```json
+{"conteudo": [ ... ], "pagina": 0, "tamanho": 20, "totalElementos": 42, "totalPaginas": 3}
+```
+
+Paginação, faixa de preço ou ordenação inválidas retornam `400` sem consultar
+os outros serviços.
 
 `GET /api/produtos/{id}` agora consulta um **produto**. A antiga listagem
 `GET /api/produtos/{restauranteId}` foi removida, pois teria o mesmo caminho;
