@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
  * Item encontrado na busca, já com os dados do restaurante.
- * {@code restauranteNome} e {@code restauranteStatus} ficam nulos se o serviço de
+ * Os campos {@code restaurante*} (exceto o id) ficam nulos se o serviço de
  * Restaurantes estiver fora do ar: a busca de itens continua funcionando.
  */
 public record ItemBuscaDTO(
@@ -14,8 +14,10 @@ public record ItemBuscaDTO(
         @Schema(description = "Preço em centavos", example = "2590", minimum = "0") Long preco,
         boolean disponivel,
         String categoria,
+        String urlImagem,
         Long restauranteId,
-        String restauranteNome,
-        String restauranteStatus
+        @Schema(description = "Nulo se o serviço de Restaurantes estiver fora do ar") String restauranteNome,
+        @Schema(description = "Nulo se o serviço de Restaurantes estiver fora do ar") String restauranteStatus,
+        @Schema(description = "Nulo se o serviço de Restaurantes estiver fora do ar") Boolean restauranteAbertoAgora
 ) {
 }
