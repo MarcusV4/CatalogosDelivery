@@ -49,6 +49,23 @@ class CategoriaRestauranteMigrationTest {
     }
 
     @Test
+    void removeCheckDoEnumAntigoAoNormalizarNomesComAcentos() throws SQLException {
+        // Reproduz a tabela criada pelo Hibernate (ddl-auto) com @Enumerated(STRING) e o enum antigo.
+        executar("create table restaurante (restaurante_id bigint primary key, categoria_restaurante varchar(255) "
+                        + "check (categoria_restaurante in ('HAMBURGUERIA','PIZZARIA','COMIDA_BRASILEIRA',"
+                        + "'COMIDA_REGIONAL','COMIDA_JAPONESA','COMIDA_CHINESA','COMIDA_ITALIANA','COMIDA_MEXICANA',"
+                        + "'COMIDA_ÁRABE','LANCHONETE','MARMITARIA','CHURRASCARIA','COMIDA_SAUDÁVEL',"
+                        + "'COMIDA_VEGETARIANA_E_VEGANA','PADARIA','DOCERIA','SORVETERIA','AÇAÍ','OUTROS')))",
+                "insert into restaurante (restaurante_id, categoria_restaurante) values "
+                        + "(1, 'COMIDA_ÁRABE'), (2, 'COMIDA_SAUDÁVEL'), (3, 'AÇAÍ'), (4, 'PIZZARIA')");
+        flyway().migrate();
+        assertEquals(Map.of(1L, "COMIDA_ARABE", 2L, "COMIDA_SAUDAVEL", 3L, "ACAI", 4L, "PIZZARIA"), categorias());
+
+        executar("insert into restaurante (restaurante_id, categoria_restaurante) values (5, 'ACAI')");
+        assertEquals("ACAI", categorias().get(5L));
+    }
+
+    @Test
     void executaEmBancoVazio() throws SQLException {
         flyway().migrate();
         try (Connection connection = conectar();

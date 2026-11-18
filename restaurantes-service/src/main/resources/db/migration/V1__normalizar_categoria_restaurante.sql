@@ -11,6 +11,13 @@ BEGIN
           AND table_name = 'restaurante'
           AND column_name = 'categoria_restaurante';
 
+        IF categoria_data_type IS NOT NULL
+                AND categoria_data_type NOT IN ('smallint', 'integer', 'bigint', 'character varying', 'text') THEN
+            RAISE EXCEPTION 'Tipo inesperado para restaurante.categoria_restaurante: %', categoria_data_type;
+        END IF;
+
+        -- IFs aninhados de propósito: a comparação numérica só pode ser preparada
+        -- quando a coluna é numérica.
         IF categoria_data_type IN ('smallint', 'integer', 'bigint') THEN
             IF EXISTS (
                 SELECT 1 FROM public.restaurante
@@ -19,7 +26,14 @@ BEGIN
             ) THEN
                 RAISE EXCEPTION 'Restaurante possui ordinal de categoria sem mapeamento.';
             END IF;
+        END IF;
 
+        -- O Hibernate cria a coluna com um CHECK que lista os valores do enum da época:
+        -- "categoria_restaurante between 0 and 18" (ordinal) ou
+        -- "categoria_restaurante in ('COMIDA_ÁRABE', ..., 'AÇAÍ', ...)" (texto).
+        -- Nos dois casos o CHECK antigo recusaria os novos nomes sem acento, e o
+        -- ddl-auto=update não recria restrições existentes, então elas são removidas aqui.
+        IF categoria_data_type IS NOT NULL THEN
             FOR restricao IN
                 SELECT c.conname
                 FROM pg_constraint c
@@ -30,7 +44,9 @@ BEGIN
             LOOP
                 EXECUTE format('ALTER TABLE public.restaurante DROP CONSTRAINT %I', restricao.conname);
             END LOOP;
+        END IF;
 
+        IF categoria_data_type IN ('smallint', 'integer', 'bigint') THEN
             ALTER TABLE public.restaurante
                 ALTER COLUMN categoria_restaurante TYPE varchar(255)
                 USING CASE categoria_restaurante
@@ -61,9 +77,8 @@ BEGIN
                 WHEN 'COMIDA_SAUDÁVEL' THEN 'COMIDA_SAUDAVEL'
                 WHEN 'AÇAÍ' THEN 'ACAI'
                 ELSE categoria_restaurante
-            END;
-        ELSIF categoria_data_type IS NOT NULL THEN
-            RAISE EXCEPTION 'Tipo inesperado para restaurante.categoria_restaurante: %', categoria_data_type;
+            END
+            WHERE categoria_restaurante IN ('COMIDA_ÁRABE', 'COMIDA_SAUDÁVEL', 'AÇAÍ');
         END IF;
     END IF;
 END $$;
