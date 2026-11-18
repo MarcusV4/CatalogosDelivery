@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.json.JsonTest;
 import tools.jackson.databind.exc.MismatchedInputException;
 import tools.jackson.databind.json.JsonMapper;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -20,7 +21,7 @@ class PrecoCentavosJsonTest {
     @Test
     void serializaPrecoComoInteiroEmCentavos() throws Exception {
         String json = jsonMapper.writeValueAsString(
-                new ProdutoResponseDTO(1L, "Pizza", null, 2590L, true, null, 10L));
+                new ProdutoResponseDTO(1L, "Pizza", null, 2590L, true, null, 10L, null, List.of()));
 
         assertTrue(json.contains("\"preco\":2590"));
         Produto produto = jsonMapper.readValue("{\"preco\":2590,\"disponivel\":true}", Produto.class);

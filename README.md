@@ -85,9 +85,14 @@ os filtros da Busca:
 | Pizzaria Exemplo | Recife | `ABERTO` | `PIZZARIA` | Pizza Margherita (R$ 25,90), Pizza Calabresa (R$ 28,90), Pizza Quatro Queijos (R$ 32,90, **indisponível**), Refrigerante Lata (R$ 6,00) |
 | Açaí Exemplo | Olinda | `FECHADO` | `ACAI` | Açaí 500 ml (R$ 18,00), Água Mineral (R$ 3,50) |
 
-A seed termina após o cadastro e não duplica registros: o que já existe (mesmo
-nome) é mantido e só o que falta é cadastrado. Os dados ficam nos volumes dos
-bancos. Os dados e o dono de exemplo (`ownerUserId` 1) estão em `scripts/seed.py`.
+As pizzas Margherita e Calabresa recebem **Queijo extra** (R$ 3,50) e
+**Borda recheada** (R$ 6,00). O Açaí recebe **Leite em pó** (R$ 2,50)
+e **Granola extra** (R$ 1,50, indisponível).
+
+A seed termina após o cadastro e não duplica registros: restaurantes, produtos
+e adicionais que já existem (mesmo nome no respectivo contexto) são mantidos;
+só o que falta é cadastrado. Os dados ficam nos volumes dos bancos. Os dados
+e o dono de exemplo (`ownerUserId` 1) estão em `scripts/seed.py`.
 
 ```bash
 docker compose logs seed                  # confere o resultado da seed
@@ -100,8 +105,8 @@ curl "http://localhost:8006/api/busca/itens?disponivel=false"
 
 Para desativar a seed, defina `SEED_ENABLED=false` no `.env`. Se algum serviço
 apontar para um banco externo, ela é ignorada; `SEED_ALLOW_EXTERNAL=true` no
-`.env` permite executar a seed nesse banco explicitamente. Para rodá-la
-novamente após apagar os exemplos, execute `docker compose run --rm seed`.
+`.env` permite executar a seed nesse banco explicitamente. Para adicionar os
+novos exemplos a volumes já existentes, execute `docker compose run --rm seed`.
 
 ### Swagger e especificação OpenAPI
 
@@ -168,8 +173,15 @@ centavos) e não há como separá-los: recrie os bancos locais com
 | Restaurantes | `PATCH /api/restaurantes/{id}/status` | Altera o status do restaurante |
 | Restaurantes | `GET/PUT /api/restaurantes/{id}/horarios` | Consulta ou substitui os horários da semana; dias omitidos ficam fechados |
 | Cardápio | `GET /api/produtos` | Todos os itens (usado pela Busca) |
-| Cardápio | `DELETE /api/cardapios/restaurante/{restauranteId}` | Exclui o cardápio de um restaurante (usado pelo Restaurantes) |
-| Cardápio | `GET/POST /api/produtos/{restauranteId}` | Itens do cardápio de um restaurante |
+| Cardápio | `DELETE /api/cardapios/restaurante/{restauranteId}` | Exclui logicamente o cardápio de um restaurante (rota administrativa; o Restaurantes não a chama) |
+| Cardápio | `GET/POST /api/restaurantes/{restauranteId}/cardapio` | Consulta ou cadastra itens do cardápio |
+| Cardápio | `GET/PUT/PATCH/DELETE /api/produtos/{id}` | Consulta, altera ou exclui um produto |
+| Cardápio | `PATCH /api/produtos/{id}/disponibilidade` | Altera a disponibilidade de um produto |
+| Cardápio | `GET /api/categorias` | Enum de categorias de produtos |
+| Cardápio | `GET/POST /api/produtos/{produtoId}/adicionais` | Lista ou cria extras de um produto |
+| Cardápio | `PUT/PATCH/DELETE /api/produtos/{produtoId}/adicionais/{adicionalId}` | Altera ou exclui um extra |
+| Cardápio | `PATCH /api/produtos/{produtoId}/adicionais/{adicionalId}/disponibilidade` | Altera a disponibilidade de um extra |
+| Cardápio | `POST /api/produtos/{restauranteId}` | Rota antiga de cadastro, obsoleta; use `POST /api/restaurantes/{id}/cardapio` |
 | Cardápio | `POST /api/produtos/validacao` | Valida existência, disponibilidade, preço e restaurante dos itens para Checkout |
 | Busca | `GET /api/busca/restaurantes?nome=&categoria=&status=` | Busca de restaurantes |
 | Busca | `GET /api/busca/itens?nome=&categoria=&restauranteId=&disponivel=` | Busca de pratos ("Buscar Prato") |
@@ -179,6 +191,64 @@ As respostas de restaurantes incluem endereço, telefone, taxa em centavos, temp
 Para atualização, status, horários e exclusão lógica, o contrato temporário recebe `ownerUserId` e compara com o proprietário cadastrado. Atualização, status e horários o recebem no JSON; `DELETE` recebe `?ownerUserId=...`. A identidade autenticada ainda depende da integração JWT da #31; esse valor informado pelo cliente não deve ser tratado como prova de identidade em produção.
 
 A busca ignora maiúsculas/minúsculas e acentos (`acai` encontra `Açaí`).
+
+`GET /api/produtos/{id}` agora consulta um **produto**. A antiga listagem
+`GET /api/produtos/{restauranteId}` foi removida, pois teria o mesmo caminho;
+use `GET /api/restaurantes/{restauranteId}/cardapio`. Busca continua usando
+`GET /api/produtos`, e a seed usa a nova rota do cardápio.
+
+O produto retornado inclui `restauranteId`, `urlImagem` e `adicionais`.
+Cada adicional tem `id`, `nome`, `preco` em centavos e `disponivel`;
+seu restaurante é determinado pelo produto, sem campo duplicado. Nomes iguais
+são permitidos no mesmo produto. Ao excluir o produto, os adicionais são
+excluídos. Cardápios logicamente excluídos não podem receber escritas e seus
+produtos e adicionais não aparecem nas consultas (404 por ID). As categorias
+são os valores fixos de `CategoriaProduto`; acrescentar uma categoria exige
+alterar o enum e publicar uma nova versão.
+
+Restaurante desativado (`INDISPONIVEL`, exclusão lógica do serviço de
+Restaurantes) não recebe novos produtos: o cadastro responde `409`. Ele também
+sai de `GET /api/restaurantes` e, por consequência, da Busca, junto com seus
+itens. O cardápio é preservado, então o restaurante pode ser reativado com
+`PATCH /api/restaurantes/{id}/status`.
+
+**PENDENTE (#31): as escritas do Cardápio estão sem controle de propriedade.**
+Não há autenticação neste repositório, então qualquer chamador pode criar,
+alterar ou excluir produtos e adicionais. Isso afeta:
+
+- `POST /api/restaurantes/{id}/cardapio` e o antigo `POST /api/produtos/{restauranteId}`;
+- `PUT/PATCH/DELETE /api/produtos/{id}` e `PATCH /api/produtos/{id}/disponibilidade`;
+- `POST /api/produtos/{produtoId}/adicionais`;
+- `PUT/PATCH/DELETE /api/produtos/{produtoId}/adicionais/{adicionalId}`;
+- `PATCH /api/produtos/{produtoId}/adicionais/{adicionalId}/disponibilidade`.
+Todas essas operações chamam `AutorizacaoRestauranteService.validarPermissao`,
+atualmente vazio. A #31 deverá implementar ali a checagem do usuário
+autenticado contra o dono mantido em Restaurantes.
+
+Exemplos para validar o fluxo local:
+
+```bash
+curl http://localhost:8005/api/categorias
+curl http://localhost:8005/api/restaurantes/1/cardapio
+curl -X POST http://localhost:8005/api/restaurantes/1/cardapio \
+  -H 'Content-Type: application/json' \
+  -d '{"nome":"Pizza exemplo","descricao":"Massa fina","preco":2590,"disponivel":true,"categoria":"PIZZA"}'
+curl http://localhost:8005/api/produtos/7
+curl -X PUT http://localhost:8005/api/produtos/7 \
+  -H 'Content-Type: application/json' \
+  -d '{"nome":"Pizza exemplo","descricao":"Massa fina","preco":2790,"disponivel":true,"categoria":"PIZZA"}'
+curl -X PATCH http://localhost:8005/api/produtos/7/disponibilidade \
+  -H 'Content-Type: application/json' -d '{"disponivel":false}'
+curl -X POST http://localhost:8005/api/produtos/7/adicionais \
+  -H 'Content-Type: application/json' \
+  -d '{"nome":"Queijo extra","preco":350,"disponivel":true}'
+curl http://localhost:8005/api/produtos/7/adicionais
+curl -X PATCH http://localhost:8005/api/produtos/7/adicionais/3/disponibilidade \
+  -H 'Content-Type: application/json' -d '{"disponivel":false}'
+curl -X DELETE http://localhost:8005/api/produtos/7/adicionais/3
+```
+
+Substitua os IDs `7` e `3` pelos IDs retornados no seu banco.
 
 ---
 
