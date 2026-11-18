@@ -6,6 +6,8 @@ import br.upe.catalogosdelivery.cardapio.entities.DTOs.ProdutoResponseDTO;
 import br.upe.catalogosdelivery.cardapio.entities.DTOs.ItemValidacaoRequestDTO;
 import br.upe.catalogosdelivery.cardapio.entities.DTOs.ValidacaoItensRequestDTO;
 import br.upe.catalogosdelivery.cardapio.entities.DTOs.ValidacaoItemResponseDTO;
+import br.upe.catalogosdelivery.cardapio.entities.DTOs.ProdutoRequestDTO;
+import br.upe.catalogosdelivery.cardapio.entities.DTOs.ProdutoPatchDTO;
 import br.upe.catalogosdelivery.cardapio.entities.Produto;
 import br.upe.catalogosdelivery.cardapio.mappers.ProdutoMapper;
 import br.upe.catalogosdelivery.cardapio.repositories.CardapioRepo;
@@ -14,7 +16,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import br.upe.catalogosdelivery.common.excecoes.RecursoNaoEncontradoException;
 
 import java.util.List;
 
@@ -30,6 +34,9 @@ public class ProdutoService {
     @Autowired
     RestauranteClient restauranteClient;
 
+    @Autowired
+    AutorizacaoRestauranteService autorizacaoRestauranteService;
+
     private final ProdutoMapper produtoMapper = new ProdutoMapper();
 
     public ProdutoResponseDTO cadastrarProduto(Produto produto, Long restauranteId){
@@ -42,6 +49,10 @@ public class ProdutoService {
         restauranteClient.buscarRestaurante(restauranteId);
 
         Cardapio cardapio = obterOuCriarCardapio(restauranteId);
+        if (cardapio.getExcluidoEm() != null) {
+            throw new RecursoNaoEncontradoException("Cardápio do restaurante " + restauranteId + " não encontrado.");
+        }
+        autorizacaoRestauranteService.validarPermissao(cardapio.getRestauranteId());
 
         produto.setCardapio(cardapio);
 
@@ -51,6 +62,7 @@ public class ProdutoService {
         return produtoMapper.toDTO(produtoSalvo);
     }
 
+    @Transactional(readOnly = true)
     public List<ProdutoResponseDTO> listarProdutosPorRestaurante(Long restauranteId) {
 
         return produtoRepo
@@ -58,8 +70,69 @@ public class ProdutoService {
                 .stream().map(produtoMapper::toDTO).toList();
     }
 
+    @Transactional(readOnly = true)
     public List<ProdutoResponseDTO> listarProdutos() {
         return produtoRepo.findByCardapio_ExcluidoEmIsNull().stream().map(produtoMapper::toDTO).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public ProdutoResponseDTO buscarProduto(Long id) {
+        return produtoMapper.toDTO(obterProdutoAtivo(id));
+    }
+
+    @Transactional
+    public ProdutoResponseDTO atualizarProduto(Long id, ProdutoRequestDTO request) {
+        Produto produto = obterProdutoAtivo(id);
+        validarEscrita(produto);
+        produto.setNome(request.nome());
+        produto.setDescricao(request.descricao());
+        produto.setPreco(request.preco());
+        produto.setDisponivel(request.disponivel());
+        produto.setUrlImagem(request.urlImagem());
+        produto.setCategoria(request.categoria());
+        return produtoMapper.toDTO(produtoRepo.save(produto));
+    }
+
+    @Transactional
+    public ProdutoResponseDTO atualizarParcialmenteProduto(Long id, ProdutoPatchDTO request) {
+        Produto produto = obterProdutoAtivo(id);
+        validarEscrita(produto);
+        if (request.nome() == null && request.descricao() == null && request.preco() == null
+                && request.disponivel() == null && request.urlImagem() == null && request.categoria() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe ao menos um campo para atualizar.");
+        }
+        if (request.nome() != null) produto.setNome(request.nome());
+        if (request.descricao() != null) produto.setDescricao(request.descricao());
+        if (request.preco() != null) produto.setPreco(request.preco());
+        if (request.disponivel() != null) produto.setDisponivel(request.disponivel());
+        if (request.urlImagem() != null) produto.setUrlImagem(request.urlImagem());
+        if (request.categoria() != null) produto.setCategoria(request.categoria());
+        return produtoMapper.toDTO(produtoRepo.save(produto));
+    }
+
+    @Transactional
+    public ProdutoResponseDTO alterarDisponibilidade(Long id, boolean disponivel) {
+        Produto produto = obterProdutoAtivo(id);
+        validarEscrita(produto);
+        produto.setDisponivel(disponivel);
+        return produtoMapper.toDTO(produtoRepo.save(produto));
+    }
+
+    @Transactional
+    public void excluirProduto(Long id) {
+        Produto produto = obterProdutoAtivo(id);
+        validarEscrita(produto);
+        produtoRepo.delete(produto);
+    }
+
+    Produto obterProdutoAtivo(Long id) {
+        return produtoRepo.findById(id)
+                .filter(p -> p.getCardapio().getExcluidoEm() == null)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Produto " + id + " não encontrado."));
+    }
+
+    void validarEscrita(Produto produto) {
+        autorizacaoRestauranteService.validarPermissao(produto.getCardapio().getRestauranteId());
     }
 
     /** O cardápio é criado no primeiro produto do restaurante. */

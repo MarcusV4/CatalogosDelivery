@@ -147,7 +147,7 @@ def obter_ou_criar_restaurante(dados, existentes):
 
 
 def cadastrar_produtos_faltantes(restaurante_id, produtos):
-    path = f"/api/produtos/{restaurante_id}"
+    path = f"/api/restaurantes/{restaurante_id}/cardapio"
     nomes_existentes = {produto["nome"] for produto in api_json(CARDAPIO_URL, path)}
     for produto in produtos:
         if produto["nome"] in nomes_existentes:

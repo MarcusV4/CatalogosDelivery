@@ -39,6 +39,9 @@ class ProdutoServiceCardapioTest {
     @Mock
     RestauranteClient restauranteClient;
 
+    @Mock
+    AutorizacaoRestauranteService autorizacaoRestauranteService;
+
     @InjectMocks
     ProdutoService produtoService;
 
