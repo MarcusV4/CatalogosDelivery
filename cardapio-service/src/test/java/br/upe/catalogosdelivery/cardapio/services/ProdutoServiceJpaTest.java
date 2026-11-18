@@ -4,8 +4,11 @@ import br.upe.catalogosdelivery.cardapio.entities.Cardapio;
 import br.upe.catalogosdelivery.cardapio.entities.DTOs.ProdutoResponseDTO;
 import br.upe.catalogosdelivery.cardapio.entities.Enums.CategoriaProduto;
 import br.upe.catalogosdelivery.cardapio.entities.Produto;
+import br.upe.catalogosdelivery.cardapio.entities.Adicional;
 import br.upe.catalogosdelivery.cardapio.repositories.CardapioRepo;
 import br.upe.catalogosdelivery.cardapio.repositories.ProdutoRepo;
+import br.upe.catalogosdelivery.cardapio.repositories.AdicionalRepo;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -34,6 +37,12 @@ class ProdutoServiceJpaTest {
 
     @Autowired
     private CardapioRepo cardapioRepo;
+
+    @Autowired
+    private AdicionalRepo adicionalRepo;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -79,6 +88,30 @@ class ProdutoServiceJpaTest {
         assertEquals("ORIENTAL", categoriaPersistida);
     }
 
+    @Test
+    void permiteNomesRepetidosERemoveAdicionaisComProduto() {
+        Cardapio cardapio = cardapio(10L);
+        Produto produto = produto("Hambúrguer", cardapio, CategoriaProduto.LANCHE);
+        adicional("Queijo", produto);
+        adicional("Queijo", produto);
+        assertEquals(2, adicionalRepo.findByProduto_IdOrderById(produto.getId()).size());
+
+        entityManager.clear(); // simula outra requisição, com a coleção carregada do banco
+        produtoRepo.delete(produtoRepo.findById(produto.getId()).orElseThrow());
+        produtoRepo.flush();
+
+        assertEquals(0, adicionalRepo.findByProduto_IdOrderById(produto.getId()).size());
+    }
+
+    @Test
+    void bancoNovoTemChaveEstrangeiraDeAdicional() {
+        Integer quantidade = jdbcTemplate.queryForObject("""
+                select count(*) from pg_constraint
+                where conrelid = 'adicional'::regclass and contype = 'f'
+                """, Integer.class);
+        assertEquals(1, quantidade);
+    }
+
     private Cardapio cardapio(Long restauranteId) {
         Cardapio cardapio = new Cardapio();
         cardapio.setRestauranteId(restauranteId);
@@ -93,5 +126,14 @@ class ProdutoServiceJpaTest {
         produto.setCategoria(categoria);
         produto.setCardapio(cardapio);
         return produtoRepo.saveAndFlush(produto);
+    }
+
+    private Adicional adicional(String nome, Produto produto) {
+        Adicional adicional = new Adicional();
+        adicional.setNome(nome);
+        adicional.setPreco(350L);
+        adicional.setDisponivel(true);
+        adicional.setProduto(produto);
+        return adicionalRepo.saveAndFlush(adicional);
     }
 }

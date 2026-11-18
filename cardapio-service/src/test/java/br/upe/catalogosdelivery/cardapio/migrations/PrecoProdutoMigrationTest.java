@@ -69,6 +69,23 @@ class PrecoProdutoMigrationTest {
         }
     }
 
+    @Test
+    void criaAdicionalComChaveEstrangeiraEmBancoExistente() throws SQLException {
+        executar("create table produto (id bigint primary key, preco bigint)");
+
+        flyway().migrate();
+
+        try (Connection connection = conectar();
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(
+                     "select confdeltype from pg_constraint "
+                             + "where conrelid = 'adicional'::regclass "
+                             + "and conname = 'fk_adicional_produto'")) {
+            assertEquals(true, resultSet.next());
+            assertEquals("c", resultSet.getString(1)); // ON DELETE CASCADE
+        }
+    }
+
     private String tipoDoPreco() throws SQLException {
         try (Connection connection = conectar();
              Statement statement = connection.createStatement();
