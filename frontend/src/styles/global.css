@@ -1,0 +1,100 @@
+@import './tema.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--fundo);
+  color: var(--texto);
+  font-family: var(--fonte);
+  font-size: var(--fonte-base);
+  line-height: var(--altura-linha);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2 {
+  line-height: 1.2;
+  margin: 0 0 var(--esp-4);
+  text-wrap: balance;
+}
+
+h1 {
+  font-size: var(--fonte-h1);
+  font-weight: var(--peso-extra);
+}
+
+h2 {
+  font-size: var(--fonte-h2);
+  font-weight: var(--peso-extra);
+}
+
+p {
+  margin: 0 0 var(--esp-3);
+}
+
+a {
+  color: var(--marca-escura);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+:focus-visible {
+  outline: 3px solid var(--foco);
+  outline-offset: 2px;
+}
+
+/* Texto só para leitores de tela */
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.mudo {
+  color: var(--mudo);
+}
+
+.pequeno {
+  font-size: var(--fonte-pequena);
+}
+
+.cartao {
+  background: var(--papel);
+  border: 1px solid var(--linha);
+  border-radius: var(--raio);
+  padding: var(--esp-6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

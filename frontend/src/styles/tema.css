@@ -1,0 +1,73 @@
+/* Tokens extraídos do protótipo "Zeppel - Protótipo do Catálogo". Use só estas variáveis nos componentes. */
+:root {
+  color-scheme: light;
+
+  /* Cores */
+  --marca: #e8202f;
+  /*
+   * Contraste: branco sobre --marca dá ≈ 4,49:1, abaixo dos 4,5:1 exigidos para texto normal.
+   * Botões mantêm --marca (texto 16px/800) como no protótipo; hover e texto pequeno sobre
+   * vermelho usam --marca-escura (≈ 6,2:1).
+   */
+  --marca-escura: #c2121f;
+  --marca-clara: #fdecee;
+  --fundo: #f7f6f5;
+  --papel: #ffffff;
+  --texto: #1f1b1b;
+  --texto-invertido: #ffffff;
+  --mudo: #6f6866;
+  --linha: #e8e4e2;
+  --borda-campo: #cfc9c6;
+  --ok: #178a4c;
+  --ok-fundo: #e3f4ea;
+  --erro: #c2121f;
+  --erro-fundo: #fdecee;
+  --aviso-texto: #8a5a00;
+  --aviso-fundo: #fff4d6;
+  --foco: #1d6ef2;
+
+  /* Tipografia */
+  --fonte: 'Nunito Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --fonte-base: 16px;
+  --fonte-pequena: 14px;
+  --fonte-mini: 13px;
+  --fonte-h1: 26px;
+  --fonte-h2: 19px;
+  --fonte-destaque: 17px;
+  --fonte-marca: 28px;
+  --peso-normal: 400;
+  --peso-medio: 600;
+  --peso-forte: 700;
+  --peso-extra: 800;
+  --altura-linha: 1.5;
+
+  /* Espaçamentos */
+  --esp-1: 4px;
+  --esp-2: 6px;
+  --esp-3: 8px;
+  --esp-4: 12px;
+  --esp-5: 16px;
+  --esp-6: 20px;
+  --esp-7: 24px;
+  --esp-8: 32px;
+
+  /* Raios */
+  --raio-pequeno: 8px;
+  --raio-campo: 10px;
+  --raio: 14px;
+  --raio-pilula: 999px;
+  --raio-circulo: 50%;
+
+  /* Sombras */
+  --sombra-leve: 0 1px 2px #00000040;
+  --sombra-flutuante: 0 6px 20px #00000038;
+  --sombra-modal: 0 10px 30px #0000002e;
+
+  /* Layout */
+  --largura-conteudo: 1080px;
+  --margem-lateral: max(16px, env(safe-area-inset-left, 0px));
+  --largura-cartao-grade: 300px;
+  --largura-formulario: 440px;
+  --camada-topo: 10;
+  --camada-toast: 40;
+}
