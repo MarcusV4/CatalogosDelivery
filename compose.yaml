@@ -1,6 +1,6 @@
 # Catálogo (Equipe 2): 3 serviços independentes, cada um na sua porta.
 # Restaurantes e Cardápio têm cada um o seu banco (database per service); a Busca não tem banco.
-# Subir tudo: docker compose up -d --build
+# Subir tudo (inclusive o front): docker compose up -d --build
 name: catalogo
 
 x-app: &app
@@ -13,6 +13,10 @@ x-app: &app
     timeout: 5s
     retries: 5
     start_period: 40s
+
+# Origens que podem chamar as APIs pelo navegador (CORS): front local (npm run dev) e o contêiner do front.
+x-cors-env: &cors-env
+  CATALOGO_CORS_ORIGENS_PERMITIDAS: ${CATALOGO_CORS_ORIGENS_PERMITIDAS:-http://localhost:5173,http://localhost:${FRONTEND_PORT:-3000}}
 
 x-db-healthcheck: &db-healthcheck
   interval: 5s
@@ -55,6 +59,7 @@ services:
       args:
         SERVICE: restaurantes-service
     environment:
+      <<: *cors-env
       SERVER_PORT: 8004
       RESTAURANTES_DB_URL: ${RESTAURANTES_DB_URL:-jdbc:postgresql://db-restaurantes:5432/restaurantes}
       RESTAURANTES_DB_USERNAME: ${RESTAURANTES_DB_USERNAME:-catalogo}
@@ -76,6 +81,7 @@ services:
       args:
         SERVICE: cardapio-service
     environment:
+      <<: *cors-env
       SERVER_PORT: 8005
       CARDAPIO_DB_URL: ${CARDAPIO_DB_URL:-jdbc:postgresql://db-cardapio:5432/cardapio}
       CARDAPIO_DB_USERNAME: ${CARDAPIO_DB_USERNAME:-catalogo}
@@ -98,6 +104,7 @@ services:
       args:
         SERVICE: busca-service
     environment:
+      <<: *cors-env
       SERVER_PORT: 8006
       RESTAURANTES_URL: http://restaurantes:8004
       CARDAPIO_URL: http://cardapio:8005
@@ -106,6 +113,32 @@ services:
     healthcheck:
       <<: *app-healthcheck
       test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost:8006/actuator/health"]
+
+  frontend:
+    build:
+      context: ./frontend
+      # As VITE_* são gravadas no build e usadas pelo NAVEGADOR: por isso apontam para
+      # localhost com as portas publicadas, e não para os nomes internos (restaurantes:8004).
+      args:
+        VITE_API_RESTAURANTES_URL: http://localhost:${RESTAURANTES_PORT:-8004}
+        VITE_API_CARDAPIO_URL: http://localhost:${CARDAPIO_PORT:-8005}
+        VITE_API_BUSCA_URL: http://localhost:${BUSCA_PORT:-8006}
+        VITE_API_IDENTIDADE_URL: ${VITE_API_IDENTIDADE_URL:-}
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      restaurantes:
+        condition: service_healthy
+      cardapio:
+        condition: service_healthy
+      busca:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
   seed:
     image: python:3.13-alpine

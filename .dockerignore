@@ -7,3 +7,6 @@ docs
 .env
 .env.*
 *.md
+
+# Front-end: tem build próprio em frontend/Dockerfile
+frontend/
