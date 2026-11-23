@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,7 +36,7 @@ public class RestauranteController {
     @Operation(summary = "Cadastrar restaurante")
     @ApiResponses({@ApiResponse(responseCode = "201", description = "Restaurante cadastrado"),
             @ApiResponse(responseCode = "400", description = "Dados inválidos")})
-    public ResponseEntity<RestauranteResponseDTO> cadastrarRestaurante(@RequestBody RestauranteDTO dto) {
+    public ResponseEntity<RestauranteResponseDTO> cadastrarRestaurante(@Valid @RequestBody RestauranteDTO dto) {
         Restaurante restaurante = restauranteService.cadastrarRestaurante(dto);
         return ResponseEntity.status(201).body(restauranteMapper.toResponseDTO(restaurante));
     }
@@ -62,7 +63,7 @@ public class RestauranteController {
             @ApiResponse(responseCode = "403", description = "Usuário não é proprietário"),
             @ApiResponse(responseCode = "404", description = "Restaurante inexistente")})
     public ResponseEntity<RestauranteResponseDTO> atualizarRestaurante(@PathVariable Long idRestaurante,
-                                                                        @RequestBody AtualizarRestauranteDTO dto) {
+                                                                        @Valid @RequestBody AtualizarRestauranteDTO dto) {
         return ResponseEntity.ok(restauranteService.atualizarRestaurante(idRestaurante, dto));
     }
 
@@ -91,7 +92,7 @@ public class RestauranteController {
             @ApiResponse(responseCode = "403", description = "Usuário não é proprietário"),
             @ApiResponse(responseCode = "404", description = "Restaurante inexistente")})
     public ResponseEntity<List<HorarioFuncionamentoDTO>> substituirHorarios(@PathVariable Long idRestaurante,
-                                                                            @RequestBody SubstituirHorariosDTO dto) {
+                                                                            @Valid @RequestBody SubstituirHorariosDTO dto) {
         return ResponseEntity.ok(restauranteService.substituirHorarios(idRestaurante, dto));
     }
 
