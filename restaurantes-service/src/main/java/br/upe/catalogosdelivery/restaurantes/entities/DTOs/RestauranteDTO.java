@@ -30,6 +30,7 @@ public record RestauranteDTO(
         String cidade,
 
         @NotBlank(message = "O Estado do endereço do restaurante não pode ser vazio.")
+        @Pattern(regexp = "^[A-Z]{2}$", message = "Informe uma sigla de estado válida, como PE.")
         String estado,
 
         @Pattern(
