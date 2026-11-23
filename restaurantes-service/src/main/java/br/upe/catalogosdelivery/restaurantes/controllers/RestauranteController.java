@@ -73,7 +73,7 @@ public class RestauranteController {
             @ApiResponse(responseCode = "403", description = "Usuário não é proprietário"),
             @ApiResponse(responseCode = "404", description = "Restaurante inexistente")})
     public ResponseEntity<RestauranteResponseDTO> atualizarStatus(@PathVariable Long idRestaurante,
-                                                                   @RequestBody AtualizarStatusRestauranteDTO dto) {
+                                                                   @Valid @RequestBody AtualizarStatusRestauranteDTO dto) {
         return ResponseEntity.ok(restauranteService.atualizarStatus(idRestaurante, dto));
     }
 
