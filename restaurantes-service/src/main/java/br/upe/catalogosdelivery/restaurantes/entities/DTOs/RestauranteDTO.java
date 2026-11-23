@@ -61,6 +61,6 @@ public record RestauranteDTO(
         @NotNull(message = "O ID do proprietário deve ser informado.")
         Long ownerUserId,
 
-        StatusRestaurante statusRestaurante,
+        @NotNull(message = "A categoria do restaurante deve ser informada.")
         CategoriaRestaurante categoriaRestaurante
 ) {}
