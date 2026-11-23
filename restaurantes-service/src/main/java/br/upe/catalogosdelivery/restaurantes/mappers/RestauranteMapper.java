@@ -26,7 +26,7 @@ public class RestauranteMapper {
         restaurante.setTempoEstimadoMax(dto.tempoEstimadoMax());
         restaurante.setUrlImagem(dto.urlImagem());
         restaurante.setOwnerUserId(dto.ownerUserId());
-        restaurante.setStatusRestaurante(dto.statusRestaurante());
+//        restaurante.setStatusRestaurante(dto.statusRestaurante());
         restaurante.setCategoriaRestaurante(dto.categoriaRestaurante());
 
         return restaurante;
