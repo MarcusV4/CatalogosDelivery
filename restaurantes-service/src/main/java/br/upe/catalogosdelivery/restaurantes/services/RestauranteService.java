@@ -1,11 +1,6 @@
 package br.upe.catalogosdelivery.restaurantes.services;
 
-import br.upe.catalogosdelivery.restaurantes.entities.DTOs.AtualizarRestauranteDTO;
-import br.upe.catalogosdelivery.restaurantes.entities.DTOs.AtualizarStatusRestauranteDTO;
-import br.upe.catalogosdelivery.restaurantes.entities.DTOs.HorarioFuncionamentoDTO;
-import br.upe.catalogosdelivery.restaurantes.entities.DTOs.RestauranteDTO;
-import br.upe.catalogosdelivery.restaurantes.entities.DTOs.RestauranteResponseDTO;
-import br.upe.catalogosdelivery.restaurantes.entities.DTOs.SubstituirHorariosDTO;
+import br.upe.catalogosdelivery.restaurantes.entities.DTOs.*;
 import br.upe.catalogosdelivery.restaurantes.entities.Enums.DiaSemana;
 import br.upe.catalogosdelivery.restaurantes.entities.Enums.StatusRestaurante;
 import br.upe.catalogosdelivery.restaurantes.entities.HorarioFuncionamento;
@@ -125,6 +120,45 @@ public class RestauranteService {
         return horarioFuncRepo.findAllByIdRestauranteRestauranteIdOrderByDiaSemana(id).stream()
                 .map(h -> new HorarioFuncionamentoDTO(h.getDiaSemana(), h.getHoraAbertura(), h.getHoraFechamento()))
                 .toList();
+    }
+
+    public FuncionamentoRestauranteDTO buscarFuncionamento(Long idRestaurante) {
+        Restaurante restaurante = buscarEntidade(idRestaurante);
+
+        List<HorarioFuncionamento> horarios = horarioFuncRepo
+                .findAllByIdRestauranteRestauranteIdOrderByDiaSemana(idRestaurante);
+
+        // Reaproveita o cálculo de status e abertoAgora que já existe.
+        RestauranteResponseDTO restauranteDTO = toResponse(restaurante, horarios);
+
+        ZoneId zone = ZoneId.of(zoneId == null ? "America/Recife" : zoneId);
+        LocalDate hoje = LocalDate.now(clock.withZone(zone));
+
+        DiaSemana diaHoje = switch (hoje.getDayOfWeek()) {
+            case SUNDAY -> DiaSemana.DOMINGO;
+            case MONDAY -> DiaSemana.SEGUNDA;
+            case TUESDAY -> DiaSemana.TERCA;
+            case WEDNESDAY -> DiaSemana.QUARTA;
+            case THURSDAY -> DiaSemana.QUINTA;
+            case FRIDAY -> DiaSemana.SEXTA;
+            case SATURDAY -> DiaSemana.SABADO;
+        };
+
+        List<HorarioFuncionamentoDTO> horariosHoje = horarios.stream()
+                .filter(h -> h.getDiaSemana() == diaHoje)
+                .map(h -> new HorarioFuncionamentoDTO(
+                        h.getDiaSemana(),
+                        h.getHoraAbertura(),
+                        h.getHoraFechamento()
+                ))
+                .toList();
+
+        return new FuncionamentoRestauranteDTO(
+                restauranteDTO.statusRestaurante(),
+                restauranteDTO.abertoAgora(),
+                diaHoje,
+                horariosHoje
+        );
     }
 
     @Transactional
