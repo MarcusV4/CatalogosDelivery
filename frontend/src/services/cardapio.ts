@@ -32,8 +32,19 @@ export interface Produto {
   adicionais: Adicional[];
 }
 
+/** Campos completos aceitos ao cadastrar ou editar um produto. Preço em centavos. */
+export interface ProdutoCadastro {
+  nome: string;
+  descricao: string | null;
+  preco: number;
+  disponivel: boolean;
+  urlImagem: string | null;
+  categoria: CategoriaProduto;
+}
+
 export const chavesCardapio = {
   doRestaurante: (restauranteId: number) => ['cardapio', 'restaurante', restauranteId] as const,
+  categorias: ['cardapio', 'categorias'] as const,
 };
 
 /**
@@ -44,4 +55,38 @@ export function listarCardapio(restauranteId: number, signal?: AbortSignal): Pro
   return requisitar<Produto[]>('cardapio', `/api/restaurantes/${restauranteId}/cardapio`, {
     signal,
   });
+}
+
+/** Categorias fixas aceitas pelo serviço de Cardápio. */
+export function listarCategorias(signal?: AbortSignal): Promise<CategoriaProduto[]> {
+  return requisitar<CategoriaProduto[]>('cardapio', '/api/categorias', { signal });
+}
+
+/** Cadastra um produto no cardápio ativo do restaurante selecionado. */
+export function criarProduto(restauranteId: number, produto: ProdutoCadastro): Promise<Produto> {
+  return requisitar<Produto>('cardapio', `/api/restaurantes/${restauranteId}/cardapio`, {
+    metodo: 'POST',
+    corpo: produto,
+  });
+}
+
+/** Substitui todos os campos editáveis de um produto. */
+export function atualizarProduto(id: number, produto: ProdutoCadastro): Promise<Produto> {
+  return requisitar<Produto>('cardapio', `/api/produtos/${id}`, {
+    metodo: 'PUT',
+    corpo: produto,
+  });
+}
+
+/** Altera somente a disponibilidade de um produto. */
+export function alterarDisponibilidadeProduto(id: number, disponivel: boolean): Promise<Produto> {
+  return requisitar<Produto>('cardapio', `/api/produtos/${id}/disponibilidade`, {
+    metodo: 'PATCH',
+    corpo: { disponivel },
+  });
+}
+
+/** Exclui um produto; o endpoint responde sem corpo (204). */
+export function excluirProduto(id: number): Promise<void> {
+  return requisitar<void>('cardapio', `/api/produtos/${id}`, { metodo: 'DELETE' });
 }
