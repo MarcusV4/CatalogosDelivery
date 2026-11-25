@@ -45,6 +45,8 @@ export function Home() {
     [aplicar, filtros],
   );
 
+  const limpar = () => aplicar(limparFiltros(filtros));
+
   const buscarPorNome = (nome: string) => {
     if (nome !== filtros.nome) {
       aplicar(comFiltro(filtros, { nome }), { substituir: true });
@@ -72,7 +74,7 @@ export function Home() {
             aoAlternarAbertoAgora={() =>
               aplicar(comFiltro(filtros, { abertoAgora: !filtros.abertoAgora }))
             }
-            aoLimpar={() => aplicar(limparFiltros(filtros))}
+            aoLimpar={limpar}
           />
           {filtros.aba === 'pratos' ? (
             <FaixaPreco
@@ -84,9 +86,9 @@ export function Home() {
         </div>
 
         {filtros.aba === 'restaurantes' ? (
-          <ResultadosRestaurantes filtros={filtros} aoMudarPagina={mudarPagina} />
+          <ResultadosRestaurantes filtros={filtros} aoMudarPagina={mudarPagina} aoLimpar={limpar} />
         ) : (
-          <ResultadosPratos filtros={filtros} aoMudarPagina={mudarPagina} />
+          <ResultadosPratos filtros={filtros} aoMudarPagina={mudarPagina} aoLimpar={limpar} />
         )}
       </AbasBusca>
     </section>

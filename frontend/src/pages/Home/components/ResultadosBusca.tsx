@@ -1,9 +1,10 @@
 import type { UseQueryResult } from '@tanstack/react-query';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { Carregando } from '../../../components/Carregando';
+import { Botao } from '../../../components/Botao';
 import { EstadoMensagem } from '../../../components/EstadoMensagem';
 import type { Pagina } from '../../../services/busca';
-import { mensagemDoErro } from '../../../services/consultas';
+import { mensagemDeErroDaBusca, mensagemDeVazio } from '../../../utils/mensagensBusca';
 import { corrigirPagina, textoTotal } from '../../../utils/paginacao';
 import { Paginacao } from './Paginacao';
 
@@ -22,6 +23,11 @@ interface ResultadosBuscaProps<T> {
   aoMudarPagina: (pagina: number, opcoes?: OpcoesNavegacao) => void;
   chave: (item: T) => number;
   renderizar: (item: T) => ReactNode;
+  /** Se há filtros aplicados: muda o texto do vazio e mostra "Limpar filtros". */
+  comFiltros: boolean;
+  aoLimpar: () => void;
+  /** Aviso acima da lista (ex.: dados parciais). */
+  aviso?: string | null;
 }
 
 /**
@@ -37,6 +43,9 @@ export function ResultadosBusca<T>({
   aoMudarPagina,
   chave,
   renderizar,
+  comFiltros,
+  aoLimpar,
+  aviso,
 }: ResultadosBuscaProps<T>) {
   const tituloRef = useRef<HTMLHeadingElement>(null);
   const { data, error, isPending, isError, isPlaceholderData, refetch } = consulta;
@@ -62,23 +71,35 @@ export function ResultadosBusca<T>({
         ? textoTotal(data.totalElementos, singular, plural)
         : '';
 
+  const botaoLimpar = comFiltros ? (
+    <Botao variante="contorno" onClick={aoLimpar}>
+      Limpar filtros
+    </Botao>
+  ) : null;
+
   let conteudo: ReactNode;
   if (isPending || paginaCorrigida !== null) {
     conteudo = <Carregando mensagem={`Buscando ${plural}…`} />;
   } else if (isError) {
+    const { titulo: tituloErro, descricao } = mensagemDeErroDaBusca(error);
     conteudo = (
       <EstadoMensagem
         tipo="erro"
-        titulo="Não foi possível fazer a busca."
-        descricao={mensagemDoErro(error)}
+        titulo={tituloErro}
+        descricao={descricao}
         onTentarDeNovo={() => void refetch()}
+        acoes={botaoLimpar}
       />
     );
   } else if (data.conteudo.length === 0) {
-    conteudo = <EstadoMensagem tipo="vazio" titulo={`Nenhum ${singular} encontrado.`} />;
+    const { titulo: tituloVazio, descricao } = mensagemDeVazio(singular, comFiltros);
+    conteudo = (
+      <EstadoMensagem tipo="vazio" titulo={tituloVazio} descricao={descricao} acoes={botaoLimpar} />
+    );
   } else {
     conteudo = (
       <>
+        {aviso ? <p className="aviso">{aviso}</p> : null}
         <ul className={`resultados__grade${atualizando ? ' resultados__grade--atualizando' : ''}`}>
           {data.conteudo.map((item) => (
             <li key={chave(item)}>{renderizar(item)}</li>

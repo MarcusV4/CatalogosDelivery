@@ -27,6 +27,13 @@ export class ApiError extends Error {
     );
   }
 
+  /** Sem resposta (rede, timeout) ou 5xx: o serviço, ou algum de que ele depende, está fora do ar. */
+  get ehIndisponivel(): boolean {
+    return (
+      this.status === STATUS_SEM_RESPOSTA || this.status >= PRIMEIRO_STATUS_DE_ERRO_DO_SERVIDOR
+    );
+  }
+
   /** 404: o recurso não existe (a tela mostra "não encontrado" em vez de erro). */
   get ehNaoEncontrado(): boolean {
     return this.status === STATUS_NAO_ENCONTRADO;
