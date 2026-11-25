@@ -41,14 +41,14 @@ RESTAURANTES = [
             "cidade": "Recife",
             "estado": "PE",
             "cep": "51011-000",
-            "restauranteTelefone": "(81) 3333-0001",
+            "restauranteTelefone": "8133330001",
             "taxaEntrega": 500,
             "tempoEstimadoMin": 30,
             "tempoEstimadoMax": 45,
             "ownerUserId": OWNER_USER_ID,
-            "statusRestaurante": "ABERTO",
             "categoriaRestaurante": "PIZZARIA",
         },
+        "status": "ABERTO",
         "produtos": [
             {
                 "nome": "Pizza Margherita",
@@ -98,14 +98,14 @@ RESTAURANTES = [
             "cidade": "Olinda",
             "estado": "PE",
             "cep": "53020-190",
-            "restauranteTelefone": "(81) 3333-0002",
+            "restauranteTelefone": "8133330002",
             "taxaEntrega": 300,
             "tempoEstimadoMin": 20,
             "tempoEstimadoMax": 30,
             "ownerUserId": OWNER_USER_ID,
-            "statusRestaurante": "FECHADO",
             "categoriaRestaurante": "ACAI",
         },
+        "status": "FECHADO",
         "produtos": [
             {
                 "nome": "Açaí 500 ml",
@@ -148,7 +148,7 @@ def api_json(base_url, path, method="GET", data=None):
         raise RuntimeError(f"{method} {base_url}{path}: {error.reason}") from error
 
 
-def obter_ou_criar_restaurante(dados, existentes):
+def obter_ou_criar_restaurante(dados, status, existentes):
     nome = dados[CAMPO_NOME]
     restaurante = next((item for item in existentes if item.get(CAMPO_NOME) == nome), None)
     if restaurante is not None:
@@ -156,6 +156,15 @@ def obter_ou_criar_restaurante(dados, existentes):
         return restaurante
     restaurante = api_json(RESTAURANTES_URL, "/api/restaurantes", "POST", dados)
     print(f"Restaurante criado: {nome}")
+    # O cadastro não recebe status (todo restaurante nasce ABERTO); outro status vai pelo PATCH.
+    if restaurante.get("statusRestaurante") != status:
+        restaurante = api_json(
+            RESTAURANTES_URL,
+            f"/api/restaurantes/{restaurante[CAMPO_ID]}/status",
+            "PATCH",
+            {"ownerUserId": dados["ownerUserId"], "statusRestaurante": status},
+        )
+        print(f"  Status alterado para {status}")
     return restaurante
 
 
@@ -204,7 +213,7 @@ def main():
 
     existentes = api_json(RESTAURANTES_URL, "/api/restaurantes")
     for exemplo in RESTAURANTES:
-        restaurante = obter_ou_criar_restaurante(exemplo["dados"], existentes)
+        restaurante = obter_ou_criar_restaurante(exemplo["dados"], exemplo["status"], existentes)
         cadastrar_produtos_faltantes(restaurante[CAMPO_ID], exemplo["produtos"])
 
     print("Seed concluída.")
