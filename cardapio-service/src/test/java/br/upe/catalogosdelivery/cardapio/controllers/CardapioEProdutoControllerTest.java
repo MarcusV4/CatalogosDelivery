@@ -31,7 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest({CardapioController.class, ProdutoController.class})
 @Import(ProdutoMapper.class)
-class CardapioControllerTest {
+class CardapioEProdutoControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
