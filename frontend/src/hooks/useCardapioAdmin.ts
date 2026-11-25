@@ -6,10 +6,10 @@ import {
   chavesCardapio,
   criarProduto,
   excluirProduto,
+  listarCardapio,
   listarCategorias,
   type ProdutoCadastro,
 } from '../services/cardapio';
-import { listarCardapio } from '../services/cardapio';
 
 /** Consultas e gravações do painel; gravações atualizam o cardápio selecionado. */
 export function useCardapioAdmin(restauranteId: number) {
