@@ -65,7 +65,7 @@ class CardapioControllerTest {
     void listaProdutosDoRestauranteInformado() throws Exception {
         when(produtoService.listarProdutosPorRestaurante(10L)).thenReturn(List.of(produtoDTO()));
 
-        mockMvc.perform(get("/api/produtos/10"))
+        mockMvc.perform(get("/api/restaurantes/10/cardapio"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].restauranteId").value(10));
 
