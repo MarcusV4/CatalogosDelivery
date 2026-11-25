@@ -105,6 +105,6 @@ class CardapioControllerTest {
 
     private static ProdutoResponseDTO produtoDTO() {
         return new ProdutoResponseDTO(101L, "Pizza Recife", "Mussarela", 2590L, true,
-                CategoriaProduto.PIZZA, 10L);
+                CategoriaProduto.PIZZA, 10L, null, List.of());
     }
 }
