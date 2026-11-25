@@ -16,6 +16,7 @@ public record AtualizarRestauranteDTO(
         @NotBlank(message = "O número do endereço não pode ser vazio.")
         String numero,
 
+        // Opcional
         String complemento,
 
         @NotBlank(message = "O bairro não pode ser vazio.")
@@ -24,8 +25,8 @@ public record AtualizarRestauranteDTO(
         @NotBlank(message = "A cidade não pode ser vazia.")
         String cidade,
 
-        @NotBlank(message = "O Estado não pode ser vazio.")
-        @Pattern(regexp = "^[A-Z]{2}$", message = "Informe uma sigla de estado válida, como PE.")
+        @NotBlank(message = "O estado não pode ser vazio.")
+        @Pattern(regexp = "^[A-Za-z]{2}$", message = "Informe uma sigla de estado válida, como PE.")
         String estado,
 
         @NotBlank(message = "O CEP não pode ser vazio.")
@@ -33,7 +34,7 @@ public record AtualizarRestauranteDTO(
         String cep,
 
         @NotBlank(message = "O telefone não pode ser vazio.")
-        @Pattern(regexp = "^\\d{10,11}$", message = "Telefone inválido.")
+        @Pattern(regexp = "^\\d{10,11}$", message = "Telefone inválido. Informe DDD e número, só dígitos, como 81999990000.")
         String restauranteTelefone,
 
         @NotNull(message = "A taxa de entrega deve ser informada.")
@@ -41,11 +42,11 @@ public record AtualizarRestauranteDTO(
         Long taxaEntrega,
 
         @NotNull(message = "O tempo mínimo estimado deve ser informado.")
-        @Positive(message = "O tempo mínimo não pode ser negativo.")
+        @Positive(message = "O tempo mínimo estimado deve ser maior que zero.")
         Integer tempoEstimadoMin,
 
         @NotNull(message = "O tempo máximo estimado deve ser informado.")
-        @Positive(message = "O tempo máximo não pode ser negativo.")
+        @Positive(message = "O tempo máximo estimado deve ser maior que zero.")
         Integer tempoEstimadoMax,
 
         String urlImagem,
@@ -53,6 +54,6 @@ public record AtualizarRestauranteDTO(
         @NotNull(message = "O ID do proprietário deve ser informado.")
         Long ownerUserId,
 
-        @NotNull(message = "A categoria deve ser informada.")
+        @NotNull(message = "A categoria do restaurante deve ser informada.")
         CategoriaRestaurante categoriaRestaurante
 ) {}

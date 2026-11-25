@@ -13,6 +13,6 @@ public record HorarioFuncionamentoDTO(
         @NotNull(message = "A hora de abertura deve ser informada.")
         LocalTime horaAbertura,
 
-        @NotNull(message = "A hora de fechamento deve ser informado.")
+        @NotNull(message = "A hora de fechamento deve ser informada.")
         LocalTime horaFechamento
 ) {}
