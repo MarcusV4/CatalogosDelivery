@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lerIdDaRota } from './identificador';
+import { lerIdDaRota, lerInteiroNaoNegativo } from './identificador';
 
 describe('lerIdDaRota', () => {
   it('converte um inteiro positivo', () => {
@@ -11,6 +11,20 @@ describe('lerIdDaRota', () => {
     'recusa %j',
     (valor) => {
       expect(lerIdDaRota(valor)).toBeNull();
+    },
+  );
+});
+
+describe('lerInteiroNaoNegativo', () => {
+  it('aceita zero e inteiros positivos', () => {
+    expect(lerInteiroNaoNegativo('0')).toBe(0);
+    expect(lerInteiroNaoNegativo('2590')).toBe(2590);
+  });
+
+  it.each([null, undefined, '', '-1', '00', '1.5', 'abc', '9007199254740993'])(
+    'recusa %j',
+    (valor) => {
+      expect(lerInteiroNaoNegativo(valor)).toBeNull();
     },
   );
 });
