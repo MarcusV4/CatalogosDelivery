@@ -1,20 +1,11 @@
+import { SeloSituacao } from '../../../components/SeloSituacao';
 import type { Restaurante } from '../../../services/restaurantes';
 import { formatarPreco } from '../../../utils/preco';
-import { ROTULOS_CATEGORIA_RESTAURANTE, ROTULOS_STATUS_RESTAURANTE } from '../../../utils/rotulos';
+import { ROTULOS_CATEGORIA_RESTAURANTE } from '../../../utils/rotulos';
 import './CartaoRestaurante.css';
 
 interface CartaoRestauranteProps {
   restaurante: Restaurante;
-}
-
-function situacao({ abertoAgora, statusRestaurante }: Restaurante) {
-  if (abertoAgora) {
-    return { classe: 'aberto', rotulo: 'Aberto agora' };
-  }
-  if (statusRestaurante === 'INDISPONIVEL') {
-    return { classe: 'indisponivel', rotulo: ROTULOS_STATUS_RESTAURANTE.INDISPONIVEL };
-  }
-  return { classe: 'fechado', rotulo: 'Fechado agora' };
 }
 
 function textoEntrega({ taxaEntrega }: Restaurante): string {
@@ -29,7 +20,6 @@ function textoTempo({ tempoEstimadoMin, tempoEstimadoMax }: Restaurante): string
 }
 
 export function CartaoRestaurante({ restaurante }: CartaoRestauranteProps) {
-  const { classe, rotulo } = situacao(restaurante);
   const tempo = textoTempo(restaurante);
 
   return (
@@ -44,7 +34,7 @@ export function CartaoRestaurante({ restaurante }: CartaoRestauranteProps) {
           {tempo ? ` · ${tempo}` : null}
         </p>
         <p className="restaurante__rodape">
-          <span className={`selo selo--${classe}`}>{rotulo}</span>
+          <SeloSituacao restaurante={restaurante} />
           <span className="pequeno">{textoEntrega(restaurante)}</span>
         </p>
       </div>

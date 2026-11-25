@@ -47,28 +47,3 @@
   gap: var(--esp-3);
   margin-top: var(--esp-2);
 }
-
-.selo {
-  display: inline-flex;
-  align-items: center;
-  font-size: var(--fonte-mini);
-  font-weight: var(--peso-extra);
-  padding: 3px 10px;
-  border-radius: var(--raio-pilula);
-  white-space: nowrap;
-}
-
-.selo--aberto {
-  background: var(--ok-fundo);
-  color: var(--ok-texto);
-}
-
-.selo--fechado {
-  background: var(--erro-fundo);
-  color: var(--erro);
-}
-
-.selo--indisponivel {
-  background: var(--aviso-fundo);
-  color: var(--aviso-texto);
-}
