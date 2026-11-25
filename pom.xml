@@ -65,13 +65,25 @@
 						</goals>
 					</execution>
 					<execution>
-						<id>check-service-line-coverage</id>
+						<id>check-line-coverage</id>
 						<phase>verify</phase>
 						<goals>
 							<goal>check</goal>
 						</goals>
 						<configuration>
 							<rules>
+								<!-- Critério da #33: cada módulo (serviço) com pelo menos 75% das linhas cobertas. -->
+								<rule>
+									<element>BUNDLE</element>
+									<limits>
+										<limit>
+											<counter>LINE</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>0.75</minimum>
+										</limit>
+									</limits>
+								</rule>
+								<!-- E nenhuma classe de service, onde fica a regra de negócio, abaixo de 75%. -->
 								<rule>
 									<element>CLASS</element>
 									<includes>

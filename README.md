@@ -149,8 +149,8 @@ Abra o `index.html` do módulo que deseja consultar:
 - `cardapio-service/target/site/jacoco/index.html`
 - `busca-service/target/site/jacoco/index.html`
 
-O `verify` falha se qualquer classe de service ficar abaixo de 75% de cobertura
-de linhas.
+O `verify` falha se algum módulo, ou qualquer classe de service, ficar abaixo de
+75% de cobertura de linhas.
 
 ## Frontend
 
