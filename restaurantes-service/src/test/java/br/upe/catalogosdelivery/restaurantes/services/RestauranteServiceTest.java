@@ -233,6 +233,20 @@ class RestauranteServiceTest {
         assertEquals("Restaurante 99 não encontrado.", e.getMessage());
     }
 
+    @Test
+    void verificarExistenciaLanca404ComOIdQuandoNaoExiste() {
+        when(restauranteRepo.existsById(99L)).thenReturn(false);
+        RestauranteNaoEncontradoException e = assertThrows(RestauranteNaoEncontradoException.class,
+                () -> restauranteService.verificarExistencia(99L));
+        assertEquals("Restaurante 99 não encontrado.", e.getMessage());
+    }
+
+    @Test
+    void verificarExistenciaAceitaRestauranteExistente() {
+        when(restauranteRepo.existsById(1L)).thenReturn(true);
+        assertDoesNotThrow(() -> restauranteService.verificarExistencia(1L));
+    }
+
     /** Toda operação por id responde 404 antes de checar o proprietário (nunca 403) e não grava nada. */
     @ParameterizedTest(name = "{0}")
     @MethodSource("operacoesPorId")

@@ -48,6 +48,7 @@ class RestauranteControllerTest {
         mockMvc = MockMvcBuilders.standaloneSetup(new RestauranteController(restauranteService,
                         new RestauranteMapper()))
                 .setControllerAdvice(new GlobalExceptionHandler())
+                .addInterceptors(new RestauranteExistenteInterceptor(restauranteService))
                 .build();
     }
 
@@ -92,6 +93,42 @@ class RestauranteControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.erro").value(true))
                 .andExpect(jsonPath("$.mensagem").value("Restaurante 99999 não encontrado."));
+    }
+
+    /** Requisições inválidas (corpo ou parâmetro) para um id inexistente: o 404 vem antes do 400. */
+    private static Stream<Arguments> requisicoesInvalidasComIdInexistente() {
+        String url = "/api/restaurantes/" + ID_INEXISTENTE;
+        return Stream.of(
+                Arguments.of("PUT /{id} com corpo inválido", put(url).contentType("application/json")
+                        .content("{\"restauranteNome\":\" \",\"estado\":\"Pernambuco\"}")),
+                Arguments.of("DELETE /{id} sem ownerUserId", delete(url)),
+                Arguments.of("PATCH /{id}/status sem status", patch(url + "/status")
+                        .contentType("application/json").content("{\"ownerUserId\":10}")),
+                Arguments.of("PUT /{id}/horarios sem horarios", put(url + "/horarios")
+                        .contentType("application/json").content("{\"ownerUserId\":10}")));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("requisicoesInvalidasComIdInexistente")
+    void restauranteInexistenteRetorna404AntesDeValidarARequisicao(String endpoint,
+            MockHttpServletRequestBuilder requisicao) throws Exception {
+        doThrow(new RestauranteNaoEncontradoException(ID_INEXISTENTE))
+                .when(restauranteService).verificarExistencia(ID_INEXISTENTE);
+
+        mockMvc.perform(requisicao)
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.erro").value(true))
+                .andExpect(jsonPath("$.mensagem").value("Restaurante 99999 não encontrado."));
+        verify(restauranteService, never()).atualizarRestaurante(any(), any());
+        verify(restauranteService, never()).atualizarStatus(any(), any());
+        verify(restauranteService, never()).substituirHorarios(any(), any());
+        verify(restauranteService, never()).deletarRestaurante(any(), any());
+    }
+
+    @Test
+    void idNaoNumericoContinuaRetornando400SemConsultarORestaurante() throws Exception {
+        mockMvc.perform(get("/api/restaurantes/abc")).andExpect(status().isBadRequest());
+        verify(restauranteService, never()).verificarExistencia(any());
     }
 
     @Test

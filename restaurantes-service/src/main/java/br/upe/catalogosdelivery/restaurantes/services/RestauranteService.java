@@ -75,6 +75,13 @@ public class RestauranteService {
                 .toList();
     }
 
+    /** Lança 404 se o restaurante não existir. Usado antes de ler e validar o corpo da requisição. */
+    public void verificarExistencia(Long id) {
+        if (!restauranteRepo.existsById(id)) {
+            throw new RestauranteNaoEncontradoException(id);
+        }
+    }
+
     public RestauranteResponseDTO buscarRestaurante(Long idRestaurante) {
         return toResponse(buscarEntidade(idRestaurante));
     }

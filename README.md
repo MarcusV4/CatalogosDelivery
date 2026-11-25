@@ -278,6 +278,11 @@ No cadastro (`POST`) e na atualização (`PUT`) de restaurante, só `complemento
 
 Para atualização, status, horários e exclusão lógica, o contrato temporário recebe `ownerUserId` e compara com o proprietário cadastrado. Atualização, status e horários o recebem no JSON; `DELETE` recebe `?ownerUserId=...`. A identidade autenticada ainda depende da integração JWT da #31; esse valor informado pelo cliente não deve ser tratado como prova de identidade em produção.
 
+Nas rotas por id (`/api/restaurantes/{id}`, `/{id}/status` e `/{id}/horarios`), um restaurante
+inexistente responde `404 {"erro": true, "mensagem": "Restaurante {id} não encontrado."}` antes
+de qualquer outra verificação: corpo inválido, `ownerUserId` ausente ou de outro proprietário
+não viram `400` nem `403`. Um id não numérico (ex.: `/api/restaurantes/abc`) responde `400`.
+
 A busca ignora maiúsculas/minúsculas e acentos (`acai` encontra `Açaí`).
 O parâmetro `nome` procura no nome **e na descrição** (do prato ou do
 restaurante). Todos os filtros são opcionais e combináveis; `precoMin`/`precoMax`
