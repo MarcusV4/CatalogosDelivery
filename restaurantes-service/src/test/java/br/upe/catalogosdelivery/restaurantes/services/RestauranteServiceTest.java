@@ -2,7 +2,9 @@ package br.upe.catalogosdelivery.restaurantes.services;
 
 import br.upe.catalogosdelivery.common.excecoes.ServicoIndisponivelException;
 import br.upe.catalogosdelivery.restaurantes.clients.CardapioClient;
+import br.upe.catalogosdelivery.restaurantes.entities.Restaurante;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.RestauranteDTO;
+import br.upe.catalogosdelivery.restaurantes.entities.DTOs.RestauranteResponseDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.Enums.CategoriaRestaurante;
 import br.upe.catalogosdelivery.restaurantes.entities.Enums.StatusRestaurante;
 import br.upe.catalogosdelivery.restaurantes.exceptions.RestauranteNaoEncontradoException;
@@ -16,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -39,6 +42,43 @@ class RestauranteServiceTest {
 
     @InjectMocks
     RestauranteService restauranteService;
+
+    @Test
+    void cadastraRestauranteValidoComOsDadosDoDono() {
+        RestauranteDTO dto = restauranteValido();
+        when(restauranteRepo.save(any(Restaurante.class))).thenAnswer(invocacao -> invocacao.getArgument(0));
+
+        Restaurante resultado = restauranteService.cadastrarRestaurante(dto);
+
+        assertEquals("Pizzaria", resultado.getRestauranteNome());
+        assertEquals(7L, resultado.getOwnerUserId());
+        assertEquals(550L, resultado.getTaxaEntrega());
+        verify(restauranteRepo).save(any(Restaurante.class));
+    }
+
+    @Test
+    void listaRestaurantesConvertidosParaResponseDTO() {
+        Restaurante restaurante = restaurantePersistido();
+        when(restauranteRepo.findAll()).thenReturn(List.of(restaurante));
+
+        List<RestauranteResponseDTO> resultado = restauranteService.listarRestaurante();
+
+        assertEquals(1, resultado.size());
+        assertEquals(10L, resultado.get(0).restauranteId());
+        assertEquals("Pizzaria", resultado.get(0).restauranteNome());
+        assertEquals(7L, resultado.get(0).ownerUserId());
+    }
+
+    @Test
+    void buscaRestauranteExistenteConvertidoParaResponseDTO() {
+        when(restauranteRepo.findById(10L)).thenReturn(Optional.of(restaurantePersistido()));
+
+        RestauranteResponseDTO resultado = restauranteService.buscarRestaurante(10L);
+
+        assertEquals(10L, resultado.restauranteId());
+        assertEquals("Pizzaria", resultado.restauranteNome());
+        assertEquals(550L, resultado.taxaEntrega());
+    }
 
     @Test
     void cadastroSemOwnerUserIdRetorna400SemSalvar() {
@@ -100,5 +140,25 @@ class RestauranteServiceTest {
         assertThrows(RestauranteNaoEncontradoException.class, () -> restauranteService.deletarRestaurante(99L));
 
         verifyNoInteractions(cardapioClient);
+    }
+
+    private static RestauranteDTO restauranteValido() {
+        return new RestauranteDTO("Pizzaria", "Pizza artesanal", "Rua A", "10", null, "Centro",
+                "Recife", "PE", "50000-000", "81999999999", 550L, 30, 45, null, 7L,
+                StatusRestaurante.ABERTO, CategoriaRestaurante.PIZZARIA);
+    }
+
+    private static Restaurante restaurantePersistido() {
+        Restaurante restaurante = new Restaurante();
+        restaurante.setRestauranteId(10L);
+        restaurante.setRestauranteNome("Pizzaria");
+        restaurante.setRestauranteDesc("Pizza artesanal");
+        restaurante.setCidade("Recife");
+        restaurante.setEstado("PE");
+        restaurante.setOwnerUserId(7L);
+        restaurante.setStatusRestaurante(StatusRestaurante.ABERTO);
+        restaurante.setCategoriaRestaurante(CategoriaRestaurante.PIZZARIA);
+        restaurante.setTaxaEntrega(550L);
+        return restaurante;
     }
 }
