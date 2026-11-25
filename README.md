@@ -130,6 +130,19 @@ Suba só os bancos com `docker compose up -d db-restaurantes db-cardapio` e rode
 ./mvnw -pl cardapio-service -am package  # um serviço (e o que ele usa)
 ```
 
+### Relatórios de cobertura
+
+O comando `./mvnw verify` também gera um relatório HTML do JaCoCo em cada módulo.
+Abra o `index.html` do módulo que deseja consultar:
+
+- `catalogo-common/target/site/jacoco/index.html`
+- `restaurantes-service/target/site/jacoco/index.html`
+- `cardapio-service/target/site/jacoco/index.html`
+- `busca-service/target/site/jacoco/index.html`
+
+O `verify` falha se qualquer classe de service ficar abaixo de 75% de cobertura
+de linhas.
+
 ## Endpoints
 
 ### Valores monetários
