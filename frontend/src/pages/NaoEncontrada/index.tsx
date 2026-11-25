@@ -3,13 +3,22 @@ import { useTituloPagina } from '../../hooks/useTituloPagina';
 import '../../components/Botao/styles.css';
 import './styles.css';
 
-export function NaoEncontrada() {
-  useTituloPagina('Página não encontrada');
+interface NaoEncontradaProps {
+  titulo?: string;
+  descricao?: string;
+}
+
+/** 404 do front; outras telas reaproveitam com o próprio texto (ex.: restaurante inexistente). */
+export function NaoEncontrada({
+  titulo = 'Página não encontrada',
+  descricao = 'O endereço pode ter mudado ou não existe.',
+}: NaoEncontradaProps) {
+  useTituloPagina(titulo);
 
   return (
     <section className="cartao nao-encontrada" aria-labelledby="nao-encontrada-titulo">
-      <h1 id="nao-encontrada-titulo">Página não encontrada</h1>
-      <p className="mudo">O endereço pode ter mudado ou não existe.</p>
+      <h1 id="nao-encontrada-titulo">{titulo}</h1>
+      <p className="mudo">{descricao}</p>
       <Link to="/" className="botao botao--principal">
         Voltar ao início
       </Link>

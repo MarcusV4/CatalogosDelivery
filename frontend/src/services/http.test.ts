@@ -149,3 +149,25 @@ describe('requisitar', () => {
     );
   });
 });
+
+describe('ApiError.ehNaoEncontrado', () => {
+  it('é verdadeiro só para 404', () => {
+    expect(new ApiError(404, 'x').ehNaoEncontrado).toBe(true);
+    expect(new ApiError(400, 'x').ehNaoEncontrado).toBe(false);
+    expect(new ApiError(503, 'x').ehNaoEncontrado).toBe(false);
+    expect(new ApiError(STATUS_SEM_RESPOSTA, 'x').ehNaoEncontrado).toBe(false);
+  });
+});
+
+describe('ApiError.ehIndisponivel', () => {
+  it('é verdadeiro sem resposta e para 5xx', () => {
+    expect(new ApiError(STATUS_SEM_RESPOSTA, 'x').ehIndisponivel).toBe(true);
+    expect(new ApiError(502, 'x').ehIndisponivel).toBe(true);
+    expect(new ApiError(503, 'x').ehIndisponivel).toBe(true);
+  });
+
+  it('é falso para 4xx', () => {
+    expect(new ApiError(400, 'x').ehIndisponivel).toBe(false);
+    expect(new ApiError(404, 'x').ehIndisponivel).toBe(false);
+  });
+});

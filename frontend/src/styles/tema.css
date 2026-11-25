@@ -70,6 +70,8 @@
   --margem-lateral: max(16px, env(safe-area-inset-left, 0px));
   --largura-cartao-grade: 300px;
   --largura-formulario: 440px;
+  /* Folga para âncoras (#secao) não ficarem sob a Navbar fixa. */
+  --margem-ancora: 90px;
   --camada-topo: 10;
   --camada-toast: 40;
 }

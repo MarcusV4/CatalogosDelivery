@@ -23,7 +23,7 @@ export type CategoriaRestaurante =
   | 'ACAI'
   | 'OUTROS';
 
-/** Resposta de `GET /api/restaurantes`. Valores monetários em centavos. */
+/** Resposta de `GET /api/restaurantes/{id}`. Valores monetários em centavos. */
 export interface Restaurante {
   restauranteId: number;
   restauranteNome: string;
@@ -47,11 +47,30 @@ export interface Restaurante {
   abertoAgora: boolean;
 }
 
+export type DiaSemana = 'DOMINGO' | 'SEGUNDA' | 'TERCA' | 'QUARTA' | 'QUINTA' | 'SEXTA' | 'SABADO';
+
+/** Item de `GET /api/restaurantes/{id}/horarios`: um intervalo por dia, em `HH:mm:ss` (America/Recife). */
+export interface HorarioFuncionamento {
+  diaSemana: DiaSemana;
+  horaAbertura: string;
+  horaFechamento: string;
+}
+
+/** Chaves de cache. Invalidar `todos` invalida o detalhe e os horários de todos os restaurantes. */
 export const chavesRestaurantes = {
   todos: ['restaurantes'] as const,
+  detalhe: (id: number) => [...chavesRestaurantes.todos, id] as const,
+  horarios: (id: number) => [...chavesRestaurantes.detalhe(id), 'horarios'] as const,
 };
 
-/** Restaurantes ativos (os desativados não aparecem). */
-export function listarRestaurantes(signal?: AbortSignal): Promise<Restaurante[]> {
-  return requisitar<Restaurante[]>('restaurantes', '/api/restaurantes', { signal });
+/** Um restaurante pelo id, inclusive desativado (INDISPONIVEL). Responde 404 se não existir. */
+export function buscarRestaurante(id: number, signal?: AbortSignal): Promise<Restaurante> {
+  return requisitar<Restaurante>('restaurantes', `/api/restaurantes/${id}`, { signal });
+}
+
+/** Horários da semana; dias ausentes estão fechados. A ordem da resposta não é a da semana. */
+export function listarHorarios(id: number, signal?: AbortSignal): Promise<HorarioFuncionamento[]> {
+  return requisitar<HorarioFuncionamento[]>('restaurantes', `/api/restaurantes/${id}/horarios`, {
+    signal,
+  });
 }

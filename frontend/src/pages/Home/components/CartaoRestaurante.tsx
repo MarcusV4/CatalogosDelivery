@@ -1,53 +1,60 @@
-import type { Restaurante } from '../../../services/restaurantes';
-import { formatarPreco } from '../../../utils/preco';
-import { ROTULOS_CATEGORIA_RESTAURANTE, ROTULOS_STATUS_RESTAURANTE } from '../../../utils/rotulos';
+import { Link } from 'react-router-dom';
+import { ImagemComFallback } from '../../../components/ImagemComFallback';
+import { SeloSituacao } from '../../../components/SeloSituacao';
+import type { RestauranteBusca } from '../../../services/busca';
+import { caminhos } from '../../../utils/caminhos';
+import { textoEntrega, textoTempo } from '../../../utils/restaurante';
+import { ROTULOS_CATEGORIA_RESTAURANTE } from '../../../utils/rotulos';
 import './CartaoRestaurante.css';
 
+/** Só os campos que o cartão mostra (servem o restaurante da Busca e o de Restaurantes). */
+export type ResumoRestaurante = Pick<
+  RestauranteBusca,
+  | 'restauranteId'
+  | 'restauranteNome'
+  | 'urlImagem'
+  | 'categoriaRestaurante'
+  | 'statusRestaurante'
+  | 'abertoAgora'
+  | 'taxaEntrega'
+  | 'tempoEstimadoMin'
+  | 'tempoEstimadoMax'
+>;
+
 interface CartaoRestauranteProps {
-  restaurante: Restaurante;
-}
-
-function situacao({ abertoAgora, statusRestaurante }: Restaurante) {
-  if (abertoAgora) {
-    return { classe: 'aberto', rotulo: 'Aberto agora' };
-  }
-  if (statusRestaurante === 'INDISPONIVEL') {
-    return { classe: 'indisponivel', rotulo: ROTULOS_STATUS_RESTAURANTE.INDISPONIVEL };
-  }
-  return { classe: 'fechado', rotulo: 'Fechado agora' };
-}
-
-function textoEntrega({ taxaEntrega }: Restaurante): string {
-  return taxaEntrega === 0 ? 'Entrega grátis' : `Entrega ${formatarPreco(taxaEntrega)}`;
-}
-
-function textoTempo({ tempoEstimadoMin, tempoEstimadoMax }: Restaurante): string | null {
-  if (tempoEstimadoMin == null || tempoEstimadoMax == null) {
-    return null;
-  }
-  return `${tempoEstimadoMin}–${tempoEstimadoMax} min`;
+  restaurante: ResumoRestaurante;
 }
 
 export function CartaoRestaurante({ restaurante }: CartaoRestauranteProps) {
-  const { classe, rotulo } = situacao(restaurante);
   const tempo = textoTempo(restaurante);
+  const inicial = restaurante.restauranteNome.charAt(0).toUpperCase();
 
   return (
-    <article className={`restaurante${restaurante.abertoAgora ? '' : ' restaurante--fechado'}`}>
-      <span className="restaurante__logo" aria-hidden="true">
-        {restaurante.restauranteNome.charAt(0).toUpperCase()}
-      </span>
-      <div className="restaurante__info">
-        <h2 className="restaurante__nome">{restaurante.restauranteNome}</h2>
-        <p className="mudo pequeno">
-          {ROTULOS_CATEGORIA_RESTAURANTE[restaurante.categoriaRestaurante]}
-          {tempo ? ` · ${tempo}` : null}
-        </p>
-        <p className="restaurante__rodape">
-          <span className={`selo selo--${classe}`}>{rotulo}</span>
-          <span className="pequeno">{textoEntrega(restaurante)}</span>
-        </p>
-      </div>
-    </article>
+    <Link to={caminhos.restaurante(restaurante.restauranteId)} className="restaurante__link">
+      <article className={`restaurante${restaurante.abertoAgora ? '' : ' restaurante--fechado'}`}>
+        {/* O nome já está no link: a imagem é decorativa (alt vazio). */}
+        <ImagemComFallback
+          src={restaurante.urlImagem}
+          alt=""
+          className="restaurante__logo"
+          fallback={
+            <span className="restaurante__logo" aria-hidden="true">
+              {inicial}
+            </span>
+          }
+        />
+        <div className="restaurante__info">
+          <h3 className="restaurante__nome">{restaurante.restauranteNome}</h3>
+          <p className="mudo pequeno">
+            {ROTULOS_CATEGORIA_RESTAURANTE[restaurante.categoriaRestaurante]}
+            {tempo ? ` · ${tempo}` : null}
+          </p>
+          <p className="restaurante__rodape">
+            <SeloSituacao restaurante={restaurante} />
+            <span className="pequeno">{textoEntrega(restaurante)}</span>
+          </p>
+        </div>
+      </article>
+    </Link>
   );
 }

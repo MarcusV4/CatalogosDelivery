@@ -1,4 +1,4 @@
-/** Tipos do serviço de Cardápio. As chamadas entram nas issues das telas de cardápio. */
+import { requisitar } from './http';
 
 export type CategoriaProduto =
   | 'LANCHE'
@@ -19,7 +19,7 @@ export interface Adicional {
   disponivel: boolean;
 }
 
-/** Produto de um cardápio ativo (`GET /api/produtos/{id}`). Preço em centavos. */
+/** Produto de um cardápio ativo (`GET /api/produtos/{id}` e cardápio do restaurante). Preço em centavos. */
 export interface Produto {
   id: number;
   nome: string;
@@ -30,4 +30,18 @@ export interface Produto {
   restauranteId: number;
   urlImagem: string | null;
   adicionais: Adicional[];
+}
+
+export const chavesCardapio = {
+  doRestaurante: (restauranteId: number) => ['cardapio', 'restaurante', restauranteId] as const,
+};
+
+/**
+ * Produtos do cardápio ativo de um restaurante, sem ordem garantida. Nunca responde 404:
+ * restaurante inexistente, sem itens ou com cardápio excluído devolve `[]`.
+ */
+export function listarCardapio(restauranteId: number, signal?: AbortSignal): Promise<Produto[]> {
+  return requisitar<Produto[]>('cardapio', `/api/restaurantes/${restauranteId}/cardapio`, {
+    signal,
+  });
 }

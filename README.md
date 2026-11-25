@@ -142,9 +142,9 @@ Suba só os bancos com `docker compose up -d db-restaurantes db-cardapio` e rode
 ## Frontend
 
 O front em `frontend/` é **complementar**: a avaliação continua sendo feita pelas
-APIs (Postman/Swagger). Nesta etapa ele é só a base, com rotas, tema, client HTTP
-e tratamento de erro, e a Home lista os restaurantes. O login é apenas visual e
-depende da integração com a Identidade (#31).
+APIs (Postman/Swagger). Ele tem a base (rotas, tema, client HTTP e tratamento de
+erro), a Home com a busca de restaurantes e pratos e a página de cada restaurante com o cardápio,
+somente leitura. O login é apenas visual e depende da integração com a Identidade (#31).
 
 **Stack:** Vite + React + TypeScript (estrito), React Router, TanStack Query para
 dados e cache, `fetch` nativo, CSS puro com variáveis (cores, fontes e espaçamentos
@@ -155,11 +155,11 @@ frontend/src/
 ├── assets/       # imagens, fontes e arquivos estáticos
 ├── components/   # componentes compartilhados (Layout, Navbar, Botao, EstadoMensagem, Carregando...)
 ├── context/      # estado global: notificações (toasts) e provedor do TanStack Query
-├── hooks/        # hooks reutilizáveis (useNotificacao, useTituloPagina)
-├── pages/        # uma pasta por rota: Home (/), Login (/login) e NaoEncontrada (404)
+├── hooks/        # hooks reutilizáveis (useNotificacao, useTituloPagina, useDebounce) e de consulta (useRestaurante, useBuscaRestaurantes...)
+├── pages/        # uma pasta por rota: Home (/), Restaurante (/restaurante/:id), Login (/login) e NaoEncontrada (404)
 ├── services/     # http.ts (wrapper do fetch), consultas.ts (QueryClient) e um arquivo por API
 ├── styles/       # tema.css (variáveis) e global.css
-└── utils/        # formatação de preço (centavos), datas e rótulos
+└── utils/        # preço (centavos e digitado em reais), datas, rótulos, cardápio, horários, filtros da busca e paginação
 ```
 
 ### Variáveis de ambiente
@@ -189,7 +189,7 @@ npm run dev            # http://localhost:5173
 
 | Comando (em `frontend/`) | O que faz |
 |---|---|
-| `npm run test` | Testes unitários (Vitest) dos utilitários, do client HTTP e do QueryClient |
+| `npm run test` | Testes unitários (Vitest) dos utilitários, dos serviços, do client HTTP e do QueryClient |
 | `npm run lint` | ESLint |
 | `npm run format` / `npm run format:check` | Prettier |
 | `npm run build` | Checagem de tipos e build de produção em `dist/` |
@@ -201,6 +201,75 @@ nginx para servir os arquivos, com fallback para `index.html` nas rotas do React
 O contêiner `frontend` só sobe depois que Restaurantes, Cardápio e Busca ficam
 saudáveis e responde em <http://localhost:3000>. A porta pode ser trocada com
 `FRONTEND_PORT` no `.env`.
+
+### Páginas
+
+| Rota | Página | Dados |
+|---|---|---|
+| `/` | Home: busca de restaurantes e de pratos (somente leitura) | `GET /api/busca/restaurantes` e `GET /api/busca/itens` |
+| `/restaurante/:id` | Restaurante e cardápio (somente leitura) | `GET /api/restaurantes/{id}`, `GET /api/restaurantes/{id}/horarios` e `GET /api/restaurantes/{id}/cardapio` |
+| `/login` | Login, apenas visual (#31) | — |
+| qualquer outra | Página não encontrada | — |
+
+**Tela inicial (busca).** Usa só o serviço de Busca, numa consulta por vez: a aba
+**Restaurantes** chama `/api/busca/restaurantes` e a aba **Pratos**, `/api/busca/itens`.
+Cada cartão (restaurante ou prato) abre a página do restaurante.
+
+| Na tela | Na URL do front | `/api/busca/restaurantes` | `/api/busca/itens` |
+|---|---|---|---|
+| Campo de busca (nome) | `nome` | `nome` | `nome` |
+| Chip de categoria do restaurante | `categoria` | `categoria` | `categoriaRestaurante` |
+| "Abertos agora" | `abertoAgora=true` | `abertoAgora=true` | `abertoAgora=true` |
+| Preço "De" / "Até" (em reais), só na aba Pratos | `precoMin` / `precoMax` (centavos) | — | `precoMin` / `precoMax` |
+| Aba Pratos | `tipo=pratos` | — | — |
+| Página | `pagina` (começa em 1) | `page = pagina − 1`, `size=12` | igual |
+
+- **Filtros na URL:** o link pode ser compartilhado e o "voltar" do navegador funciona.
+  Valores inválidos na URL são ignorados, para não gerar `400`. "Abertos agora" desligado
+  omite o parâmetro (a API trataria `false` como "só os fechados").
+- **Busca por nome:** aplicada 400 ms depois da última tecla (ou na hora, com Enter), sem
+  criar uma entrada no histórico por tecla. Ignora acentos e maiúsculas, como a API.
+- **Preço:** digitado em reais (`25`, `25,90` ou `25.90`) e convertido para centavos inteiros
+  sem ponto flutuante. Limites incluídos. Valor inválido ou "De" maior que "Até" mostra a
+  mensagem no campo e não chama a API. Ao voltar para a aba Restaurantes, a faixa é
+  limpa; o termo, a categoria e "Abertos agora" continuam.
+- **Paginação:** 12 por página, com "Anterior" e "Próxima". A página anterior continua na
+  tela (esmaecida) enquanto a nova carrega, e o foco vai para o título dos resultados.
+  Uma página além da última (por exemplo, num link antigo) leva para a última.
+- **Estados:** carregando; lista vazia com "Limpar filtros"; Busca fora do ar, ou `503`
+  por Restaurantes/Cardápio fora do ar, mostram "A busca está indisponível no momento."
+  com "Tentar de novo", sem detalhes técnicos. Se a Busca devolver pratos sem
+  `restauranteNome` (Restaurantes fora do ar e nenhum filtro de restaurante), os cartões
+  aparecem sem o restaurante e com um aviso. Pratos indisponíveis aparecem esmaecidos.
+- **Diferenças para o protótipo:** o texto não encontra restaurantes pelos pratos nem pela
+  categoria (a API procura no nome e na descrição); não há ordenação por nota nem
+  "abertos primeiro" (ordem da API: nome); restaurantes sem cardápio também aparecem.
+
+**Página do restaurante.** As três consultas correm em paralelo; só a do restaurante
+bloqueia a tela.
+
+- **Cabeçalho:** nome, categoria, tempo estimado, taxa de entrega e o selo
+  "Aberto agora" / "Fechado agora" / "Indisponível", que vem de `abertoAgora` (calculado
+  pelo back). Fora do horário ou com status `INDISPONIVEL` aparece um aviso, mas o
+  cardápio continua visível (o restaurante desativado segue acessível pelo id).
+- **Informações:** descrição, endereço, telefone e horários. O resumo mostra o dia de
+  hoje em `America/Recife` ("Hoje, 18:00 às 23:00" ou "Fechado hoje") e abre a semana
+  de domingo a sábado; dias sem horário aparecem como "Fechado".
+- **Cardápio:** itens agrupados por categoria numa ordem fixa de exibição (entradas,
+  salgados, lanches, pratos principais, pizzas, orientais, vegetarianos, sobremesas e
+  bebidas, em `utils/cardapio.ts`); categorias desconhecidas vão para o fim, em ordem
+  alfabética. Dentro da categoria, a ordem é a de cadastro (`id`). Preços via
+  `formatarPreco`. Itens indisponíveis aparecem esmaecidos, com `aria-disabled` e o
+  texto "Indisponível no momento". Sem imagem (ou se ela falhar), aparece a inicial do nome.
+  Adicionais e o botão de adicionar à sacola ficam para a issue da sacola.
+- **Estados:** carregando; id inválido (ex.: `/restaurante/abc`, sem chamar o back) ou
+  404 de Restaurantes mostram "Restaurante não encontrado"; falha de Restaurantes mostra
+  erro com "Tentar de novo"; falha do Cardápio ou dos horários afeta só a respectiva
+  parte. O Cardápio responde `[]` (nunca 404) para restaurante sem itens, e a tela mostra
+  "Este restaurante ainda não cadastrou o cardápio."
+
+A seed não cadastra horários; para ver a semana preenchida, use
+`PUT /api/restaurantes/{id}/horarios` (veja o Swagger de Restaurantes).
 
 ### Erros e convenções
 
