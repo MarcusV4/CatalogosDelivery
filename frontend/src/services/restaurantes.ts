@@ -23,7 +23,7 @@ export type CategoriaRestaurante =
   | 'ACAI'
   | 'OUTROS';
 
-/** Resposta de `GET /api/restaurantes`. Valores monetários em centavos. */
+/** Resposta de `GET /api/restaurantes/{id}`. Valores monetários em centavos. */
 export interface Restaurante {
   restauranteId: number;
   restauranteNome: string;
@@ -56,17 +56,12 @@ export interface HorarioFuncionamento {
   horaFechamento: string;
 }
 
-/** Chaves de cache. O detalhe fica sob `todos`: invalidar a listagem também invalida o detalhe. */
+/** Chaves de cache. Invalidar `todos` invalida o detalhe e os horários de todos os restaurantes. */
 export const chavesRestaurantes = {
   todos: ['restaurantes'] as const,
   detalhe: (id: number) => [...chavesRestaurantes.todos, id] as const,
   horarios: (id: number) => [...chavesRestaurantes.detalhe(id), 'horarios'] as const,
 };
-
-/** Restaurantes ativos (os desativados não aparecem). */
-export function listarRestaurantes(signal?: AbortSignal): Promise<Restaurante[]> {
-  return requisitar<Restaurante[]>('restaurantes', '/api/restaurantes', { signal });
-}
 
 /** Um restaurante pelo id, inclusive desativado (INDISPONIVEL). Responde 404 se não existir. */
 export function buscarRestaurante(id: number, signal?: AbortSignal): Promise<Restaurante> {

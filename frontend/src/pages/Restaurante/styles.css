@@ -110,30 +110,6 @@
   gap: var(--esp-7);
 }
 
-.chips {
-  display: flex;
-  gap: var(--esp-3);
-  overflow-x: auto;
-  padding-bottom: 2px;
-}
-
-.chip {
-  border: 1px solid var(--linha);
-  background: var(--papel);
-  border-radius: var(--raio-pilula);
-  padding: var(--esp-3) 14px;
-  font-weight: var(--peso-forte);
-  font-size: var(--fonte-pequena);
-  white-space: nowrap;
-  text-decoration: none;
-  color: var(--texto);
-}
-
-.chip:hover {
-  border-color: var(--marca);
-  color: var(--marca-escura);
-}
-
 .secao-categoria {
   scroll-margin-top: var(--margem-ancora);
 }

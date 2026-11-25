@@ -30,3 +30,34 @@ export function centavosParaReais(centavos: number): string {
     ? reais.toString()
     : `${reais},${resto.toString().padStart(CASAS_DECIMAIS, '0')}`;
 }
+
+export const MENSAGEM_PRECO_INVALIDO = 'Use só números, com até 2 casas (ex.: 25,90).';
+export const MENSAGEM_FAIXA_INVERTIDA = 'O valor "De" não pode ser maior que o "Até".';
+
+export type ResultadoFaixa =
+  | { valida: true; precoMin: number | null; precoMax: number | null }
+  | { valida: false; erroMin: string | null; erroMax: string | null; erroFaixa: string | null };
+
+/** Campo em branco não filtra; preenchido, precisa ser um preço válido. */
+function lerCampo(texto: string): { centavos: number | null; erro: string | null } {
+  if (texto.trim() === '') {
+    return { centavos: null, erro: null };
+  }
+  const centavos = reaisParaCentavos(texto);
+  return centavos === null
+    ? { centavos: null, erro: MENSAGEM_PRECO_INVALIDO }
+    : { centavos, erro: null };
+}
+
+/** Valida os campos "De" e "Até" (em reais) e devolve a faixa em centavos, limites incluídos. */
+export function lerFaixaDigitada(textoMin: string, textoMax: string): ResultadoFaixa {
+  const min = lerCampo(textoMin);
+  const max = lerCampo(textoMax);
+  if (min.erro || max.erro) {
+    return { valida: false, erroMin: min.erro, erroMax: max.erro, erroFaixa: null };
+  }
+  if (min.centavos !== null && max.centavos !== null && min.centavos > max.centavos) {
+    return { valida: false, erroMin: null, erroMax: null, erroFaixa: MENSAGEM_FAIXA_INVERTIDA };
+  }
+  return { valida: true, precoMin: min.centavos, precoMax: max.centavos };
+}
