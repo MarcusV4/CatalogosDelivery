@@ -192,6 +192,8 @@ centavos) e não há como separá-los: recrie os bancos locais com
 
 As respostas de restaurantes incluem endereço, telefone, taxa em centavos, tempo estimado, `ownerUserId` e `abertoAgora`. Este último só é `true` quando o status é `ABERTO` e o horário local de `America/Recife` está dentro do intervalo cadastrado. Os intervalos não podem cruzar a meia-noite.
 
+No cadastro (`POST`) e na atualização (`PUT`) de restaurante, só `complemento` e `urlImagem` são opcionais. `estado` é a sigla de 2 letras (gravada em maiúsculas), `cep` segue `00000-000` ou `00000000`, `restauranteTelefone` tem 10 ou 11 dígitos sem máscara (`81999990000`), `taxaEntrega` é `>= 0` e os tempos estimados são `> 0`. O cadastro não recebe `statusRestaurante`: todo restaurante nasce `ABERTO`, e outro status é definido pelo `PATCH .../status`. Em `PUT .../horarios`, cada item exige `diaSemana`, `horaAbertura` e `horaFechamento`. Campos inválidos retornam 400 com a lista `campo: mensagem` em `mensagem`.
+
 Para atualização, status, horários e exclusão lógica, o contrato temporário recebe `ownerUserId` e compara com o proprietário cadastrado. Atualização, status e horários o recebem no JSON; `DELETE` recebe `?ownerUserId=...`. A identidade autenticada ainda depende da integração JWT da #31; esse valor informado pelo cliente não deve ser tratado como prova de identidade em produção.
 
 A busca ignora maiúsculas/minúsculas e acentos (`acai` encontra `Açaí`).
