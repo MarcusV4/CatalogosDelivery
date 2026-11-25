@@ -46,7 +46,7 @@ class RestauranteServiceTest {
     @Test
     void cadastroSemOwnerUserIdRetorna400SemSalvar() {
         RestauranteDTO dto = new RestauranteDTO("Pizzaria", null, null, null, null, null, "Recife", "PE",
-                null, null, 500L, null, null, null, null, StatusRestaurante.ABERTO, CategoriaRestaurante.PIZZARIA);
+                null, null, 500L, null, null, null, null, CategoriaRestaurante.PIZZARIA);
         ResponseStatusException e = assertThrows(ResponseStatusException.class,
                 () -> restauranteService.cadastrarRestaurante(dto));
         assertEquals(HttpStatus.BAD_REQUEST, e.getStatusCode());
@@ -162,11 +162,23 @@ class RestauranteServiceTest {
     void cadastroSemNomeRetorna400SemSalvar() {
         for (String nome : new String[]{null, "  "}) {
             RestauranteDTO dto = new RestauranteDTO(nome, null, null, null, null, null, "Recife", "PE",
-                    null, null, 500L, null, null, null, 10L, StatusRestaurante.ABERTO, CategoriaRestaurante.PIZZARIA);
+                    null, null, 500L, null, null, null, 10L, CategoriaRestaurante.PIZZARIA);
             assertEquals(HttpStatus.BAD_REQUEST, assertThrows(ResponseStatusException.class,
                     () -> restauranteService.cadastrarRestaurante(dto)).getStatusCode());
         }
         verify(restauranteRepo, never()).save(any());
+    }
+
+    @Test
+    void cadastroComecaComStatusAbertoENormalizaEstado() {
+        RestauranteDTO dto = new RestauranteDTO("Pizzaria", "Desc", "Rua A", "10", null, "Centro", "Recife", "pe",
+                "50000-000", "81999990000", 500L, 20, 40, null, 10L, CategoriaRestaurante.PIZZARIA);
+        when(restauranteRepo.save(any(Restaurante.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Restaurante salvo = restauranteService.cadastrarRestaurante(dto);
+
+        assertEquals(StatusRestaurante.ABERTO, salvo.getStatusRestaurante());
+        assertEquals("PE", salvo.getEstado());
     }
 
     @Test

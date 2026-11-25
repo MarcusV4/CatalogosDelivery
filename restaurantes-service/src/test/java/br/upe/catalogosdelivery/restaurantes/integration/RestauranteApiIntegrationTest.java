@@ -33,6 +33,14 @@ class RestauranteApiIntegrationTest {
     @Container
     private static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:16-alpine");
 
+    /** Cadastro mínimo que passa no Bean Validation (status não é enviado: nasce ABERTO). */
+    private static final String PAYLOAD_VALIDO = """
+            {"restauranteNome":"Teste","restauranteDesc":"Descrição","logradouro":"Rua A","numero":"1",
+             "bairro":"Centro","cidade":"Recife","estado":"PE","cep":"50000-000",
+             "restauranteTelefone":"81999990000","taxaEntrega":0,"tempoEstimadoMin":20,"tempoEstimadoMax":40,
+             "ownerUserId":42,"categoriaRestaurante":"PIZZARIA"}
+            """;
+
     @Autowired private MockMvc mockMvc;
     @DynamicPropertySource
     static void configurarBanco(DynamicPropertyRegistry registry) {
@@ -52,9 +60,10 @@ class RestauranteApiIntegrationTest {
                                  "bairro":"Centro","cidade":"Recife","estado":"PE","cep":"50000-000",
                                  "restauranteTelefone":"81999990000","taxaEntrega":550,
                                  "tempoEstimadoMin":20,"tempoEstimadoMax":35,"urlImagem":"https://example.test/img",
-                                 "ownerUserId":42,"statusRestaurante":"ABERTO","categoriaRestaurante":"ACAI"}
+                                 "ownerUserId":42,"categoriaRestaurante":"ACAI"}
                                 """))
                 .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.statusRestaurante").value("ABERTO"))
                 .andExpect(jsonPath("$.restauranteNome").value("Açaí Recife"))
                 .andExpect(jsonPath("$.logradouro").value("Rua A"))
                 .andExpect(jsonPath("$.restauranteTelefone").value("81999990000"))
@@ -136,9 +145,40 @@ class RestauranteApiIntegrationTest {
 
         mockMvc.perform(post("/api/restaurantes")
                         .contentType("application/json")
-                        .content("{\"cidade\":\"Recife\",\"taxaEntrega\":0,\"ownerUserId\":42}"))
+                        .content(PAYLOAD_VALIDO.replace("\"restauranteNome\":\"Teste\",", "")))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.mensagem").value("Informe restauranteNome."));
+                .andExpect(jsonPath("$.erro").value(true))
+                .andExpect(jsonPath("$.mensagem").value("restauranteNome: O nome do restaurante não pode ser vazio."));
+    }
+
+    @Test
+    @Transactional
+    void cadastroComCamposInvalidosRetorna400ENaoSalva() throws Exception {
+        String invalido = PAYLOAD_VALIDO
+                .replace("\"cep\":\"50000-000\"", "\"cep\":\"123\"")
+                .replace("\"taxaEntrega\":0", "\"taxaEntrega\":-1");
+        mockMvc.perform(post("/api/restaurantes").contentType("application/json").content(invalido))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensagem").value(org.hamcrest.Matchers.allOf(
+                        org.hamcrest.Matchers.containsString("cep: CEP inválido"),
+                        org.hamcrest.Matchers.containsString("taxaEntrega: A taxa de entrega não pode ser negativa."))));
+        mockMvc.perform(get("/api/restaurantes"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.cep == '123')]").isEmpty());
+    }
+
+    @Test
+    @Transactional
+    void horariosComCampoNuloRetorna400() throws Exception {
+        long id = criarRestaurante();
+        mockMvc.perform(put("/api/restaurantes/{id}/horarios", id)
+                        .contentType("application/json")
+                        .content("""
+                                {"ownerUserId":42,"horarios":[{"diaSemana":"SEGUNDA","horaAbertura":"08:00:00"}]}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensagem")
+                        .value("horarios[0].horaFechamento: A hora de fechamento deve ser informada."));
     }
 
     @Test
@@ -170,11 +210,7 @@ class RestauranteApiIntegrationTest {
     private long criarRestaurante() throws Exception {
         String response = mockMvc.perform(post("/api/restaurantes")
                         .contentType("application/json")
-                        .content("""
-                                {"restauranteNome":"Teste","cidade":"Recife","estado":"PE",
-                                 "taxaEntrega":0,"ownerUserId":42,"statusRestaurante":"ABERTO",
-                                 "categoriaRestaurante":"PIZZARIA"}
-                                """))
+                        .content(PAYLOAD_VALIDO))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return new com.fasterxml.jackson.databind.ObjectMapper().readTree(response).get("restauranteId").asLong();

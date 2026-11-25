@@ -26,6 +26,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -90,7 +91,7 @@ public class RestauranteService {
         restaurante.setComplemento(dto.complemento());
         restaurante.setBairro(dto.bairro());
         restaurante.setCidade(dto.cidade());
-        restaurante.setEstado(dto.estado());
+        restaurante.setEstado(dto.estado() == null ? null : dto.estado().toUpperCase(Locale.ROOT));
         restaurante.setCep(dto.cep());
         restaurante.setRestauranteTelefone(dto.restauranteTelefone());
         restaurante.setTaxaEntrega(dto.taxaEntrega());
