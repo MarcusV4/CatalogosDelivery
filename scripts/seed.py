@@ -1,7 +1,8 @@
 """Dados de exemplo para o Compose local, cadastrados pelas APIs dos serviços.
 
-Pode ser executada várias vezes: restaurantes e produtos que já existem
-(mesmo nome) são mantidos, e só o que falta é cadastrado.
+Pode ser executada várias vezes: restaurantes, produtos e adicionais que já
+existem (mesmo nome dentro do respectivo restaurante ou produto) são mantidos,
+e só o que falta é cadastrado.
 """
 
 import json
@@ -40,14 +41,14 @@ RESTAURANTES = [
             "cidade": "Recife",
             "estado": "PE",
             "cep": "51011-000",
-            "restauranteTelefone": "(81) 3333-0001",
+            "restauranteTelefone": "8133330001",
             "taxaEntrega": 500,
             "tempoEstimadoMin": 30,
             "tempoEstimadoMax": 45,
             "ownerUserId": OWNER_USER_ID,
-            "statusRestaurante": "ABERTO",
             "categoriaRestaurante": "PIZZARIA",
         },
+        "status": "ABERTO",
         "produtos": [
             {
                 "nome": "Pizza Margherita",
@@ -55,6 +56,10 @@ RESTAURANTES = [
                 "preco": 2590,
                 "disponivel": True,
                 "categoria": "PIZZA",
+                "adicionais": [
+                    {"nome": "Queijo extra", "preco": 350, "disponivel": True},
+                    {"nome": "Borda recheada", "preco": 600, "disponivel": True},
+                ],
             },
             {
                 "nome": "Pizza Calabresa",
@@ -62,6 +67,10 @@ RESTAURANTES = [
                 "preco": 2890,
                 "disponivel": True,
                 "categoria": "PIZZA",
+                "adicionais": [
+                    {"nome": "Queijo extra", "preco": 350, "disponivel": True},
+                    {"nome": "Borda recheada", "preco": 600, "disponivel": True},
+                ],
             },
             {
                 "nome": "Pizza Quatro Queijos",
@@ -89,14 +98,14 @@ RESTAURANTES = [
             "cidade": "Olinda",
             "estado": "PE",
             "cep": "53020-190",
-            "restauranteTelefone": "(81) 3333-0002",
+            "restauranteTelefone": "8133330002",
             "taxaEntrega": 300,
             "tempoEstimadoMin": 20,
             "tempoEstimadoMax": 30,
             "ownerUserId": OWNER_USER_ID,
-            "statusRestaurante": "FECHADO",
-            "categoriaRestaurante": "AÇAÍ",
+            "categoriaRestaurante": "ACAI",
         },
+        "status": "FECHADO",
         "produtos": [
             {
                 "nome": "Açaí 500 ml",
@@ -104,6 +113,10 @@ RESTAURANTES = [
                 "preco": 1800,
                 "disponivel": True,
                 "categoria": "SOBREMESA",
+                "adicionais": [
+                    {"nome": "Leite em pó", "preco": 250, "disponivel": True},
+                    {"nome": "Granola extra", "preco": 150, "disponivel": False},
+                ],
             },
             {
                 "nome": "Água Mineral",
@@ -135,7 +148,7 @@ def api_json(base_url, path, method="GET", data=None):
         raise RuntimeError(f"{method} {base_url}{path}: {error.reason}") from error
 
 
-def obter_ou_criar_restaurante(dados, existentes):
+def obter_ou_criar_restaurante(dados, status, existentes):
     nome = dados[CAMPO_NOME]
     restaurante = next((item for item in existentes if item.get(CAMPO_NOME) == nome), None)
     if restaurante is not None:
@@ -143,18 +156,47 @@ def obter_ou_criar_restaurante(dados, existentes):
         return restaurante
     restaurante = api_json(RESTAURANTES_URL, "/api/restaurantes", "POST", dados)
     print(f"Restaurante criado: {nome}")
+    # O cadastro não recebe status (todo restaurante nasce ABERTO); outro status vai pelo PATCH.
+    if restaurante.get("statusRestaurante") != status:
+        restaurante = api_json(
+            RESTAURANTES_URL,
+            f"/api/restaurantes/{restaurante[CAMPO_ID]}/status",
+            "PATCH",
+            {"ownerUserId": dados["ownerUserId"], "statusRestaurante": status},
+        )
+        print(f"  Status alterado para {status}")
     return restaurante
 
 
-def cadastrar_produtos_faltantes(restaurante_id, produtos):
-    path = f"/api/produtos/{restaurante_id}"
-    nomes_existentes = {produto["nome"] for produto in api_json(CARDAPIO_URL, path)}
-    for produto in produtos:
-        if produto["nome"] in nomes_existentes:
-            print(f"  Produto já existe: {produto['nome']}")
+def cadastrar_adicionais_faltantes(produto_id, adicionais):
+    if not adicionais:
+        return
+
+    path = f"/api/produtos/{produto_id}/adicionais"
+    nomes_existentes = {item["nome"] for item in api_json(CARDAPIO_URL, path)}
+    for adicional in adicionais:
+        if adicional["nome"] in nomes_existentes:
+            print(f"    Adicional já existe: {adicional['nome']}")
             continue
-        api_json(CARDAPIO_URL, path, "POST", produto)
-        print(f"  Produto criado: {produto['nome']}")
+        api_json(CARDAPIO_URL, path, "POST", adicional)
+        nomes_existentes.add(adicional["nome"])
+        print(f"    Adicional criado: {adicional['nome']}")
+
+
+def cadastrar_produtos_faltantes(restaurante_id, produtos):
+    path = f"/api/restaurantes/{restaurante_id}/cardapio"
+    existentes = {produto["nome"]: produto for produto in api_json(CARDAPIO_URL, path)}
+    for exemplo in produtos:
+        produto = existentes.get(exemplo["nome"])
+        if produto is None:
+            dados_produto = {chave: valor for chave, valor in exemplo.items() if chave != "adicionais"}
+            produto = api_json(CARDAPIO_URL, path, "POST", dados_produto)
+            existentes[exemplo["nome"]] = produto
+            print(f"  Produto criado: {exemplo['nome']}")
+        else:
+            print(f"  Produto já existe: {exemplo['nome']}")
+
+        cadastrar_adicionais_faltantes(produto["id"], exemplo.get("adicionais", []))
 
 
 def main():
@@ -171,7 +213,7 @@ def main():
 
     existentes = api_json(RESTAURANTES_URL, "/api/restaurantes")
     for exemplo in RESTAURANTES:
-        restaurante = obter_ou_criar_restaurante(exemplo["dados"], existentes)
+        restaurante = obter_ou_criar_restaurante(exemplo["dados"], exemplo["status"], existentes)
         cadastrar_produtos_faltantes(restaurante[CAMPO_ID], exemplo["produtos"])
 
     print("Seed concluída.")

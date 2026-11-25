@@ -1,0 +1,54 @@
+.topo {
+  background: var(--marca);
+  color: var(--texto-invertido);
+  position: sticky;
+  top: 0;
+  z-index: var(--camada-topo);
+}
+
+.topo__interno {
+  max-width: var(--largura-conteudo);
+  margin: 0 auto;
+  padding: var(--esp-4) var(--margem-lateral);
+  display: flex;
+  align-items: center;
+  gap: var(--esp-6);
+}
+
+.topo__marca {
+  color: var(--texto-invertido);
+  text-decoration: none;
+  font-weight: var(--peso-extra);
+  font-size: var(--fonte-marca);
+  letter-spacing: -0.04em;
+}
+
+.topo__nav {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--esp-4);
+}
+
+.topo__link {
+  color: var(--texto-invertido);
+  font-weight: var(--peso-forte);
+  text-decoration: none;
+}
+
+.topo__link.active {
+  text-decoration: underline;
+  text-underline-offset: 6px;
+}
+
+/* Texto pequeno sobre vermelho fica no tom escuro para manter o contraste (ver tema.css). */
+.topo__link--destaque {
+  background: var(--papel);
+  color: var(--marca-escura);
+  padding: var(--esp-3) 14px;
+  border-radius: var(--raio-pilula);
+}
+
+.topo__link--destaque.active {
+  text-decoration: none;
+}

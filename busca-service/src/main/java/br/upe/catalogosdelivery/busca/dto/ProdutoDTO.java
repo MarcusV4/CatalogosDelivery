@@ -11,6 +11,7 @@ public record ProdutoDTO(
         Long preco,
         boolean disponivel,
         String categoria,
-        Long restauranteId
+        Long restauranteId,
+        String urlImagem
 ) {
 }

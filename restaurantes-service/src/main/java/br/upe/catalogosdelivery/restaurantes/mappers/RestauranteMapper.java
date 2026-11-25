@@ -2,8 +2,11 @@ package br.upe.catalogosdelivery.restaurantes.mappers;
 
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.RestauranteDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.RestauranteResponseDTO;
+import br.upe.catalogosdelivery.restaurantes.entities.Enums.StatusRestaurante;
 import br.upe.catalogosdelivery.restaurantes.entities.Restaurante;
 import org.springframework.stereotype.Component;
+
+import java.util.Locale;
 
 @Component
 public class RestauranteMapper {
@@ -18,7 +21,7 @@ public class RestauranteMapper {
         restaurante.setComplemento(dto.complemento());
         restaurante.setBairro(dto.bairro());
         restaurante.setCidade(dto.cidade());
-        restaurante.setEstado(dto.estado());
+        restaurante.setEstado(dto.estado() == null ? null : dto.estado().toUpperCase(Locale.ROOT));
         restaurante.setCep(dto.cep());
         restaurante.setRestauranteTelefone(dto.restauranteTelefone());
         restaurante.setTaxaEntrega(dto.taxaEntrega());
@@ -26,7 +29,9 @@ public class RestauranteMapper {
         restaurante.setTempoEstimadoMax(dto.tempoEstimadoMax());
         restaurante.setUrlImagem(dto.urlImagem());
         restaurante.setOwnerUserId(dto.ownerUserId());
-        restaurante.setStatusRestaurante(dto.statusRestaurante());
+        // O status não vem no cadastro: todo restaurante novo começa ABERTO.
+        // "abertoAgora" só fica true depois que houver horário cadastrado para o dia.
+        restaurante.setStatusRestaurante(StatusRestaurante.ABERTO);
         restaurante.setCategoriaRestaurante(dto.categoriaRestaurante());
 
         return restaurante;
@@ -38,13 +43,22 @@ public class RestauranteMapper {
                 restaurante.getRestauranteId(),
                 restaurante.getRestauranteNome(),
                 restaurante.getRestauranteDesc(),
+                restaurante.getLogradouro(),
+                restaurante.getNumero(),
+                restaurante.getComplemento(),
+                restaurante.getBairro(),
                 restaurante.getCidade(),
                 restaurante.getEstado(),
+                restaurante.getCep(),
+                restaurante.getRestauranteTelefone(),
                 restaurante.getUrlImagem(),
                 restaurante.getOwnerUserId(),
                 restaurante.getStatusRestaurante(),
                 restaurante.getCategoriaRestaurante(),
-                restaurante.getTaxaEntrega()
+                restaurante.getTaxaEntrega(),
+                restaurante.getTempoEstimadoMin(),
+                restaurante.getTempoEstimadoMax(),
+                false
         );
     }
 
