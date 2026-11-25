@@ -51,6 +51,11 @@
   margin: 0 0 var(--esp-3);
 }
 
+/* O fundo do selo "fechado" é a mesma cor do cabeçalho (--marca-clara); o branco o destaca. */
+.loja__topo .selo--fechado {
+  background: var(--papel);
+}
+
 /* Informações */
 .info-loja {
   display: grid;
