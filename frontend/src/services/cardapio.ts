@@ -87,6 +87,6 @@ export function alterarDisponibilidadeProduto(id: number, disponivel: boolean): 
 }
 
 /** Exclui um produto; o endpoint responde sem corpo (204). */
-export function excluirProduto(id: number): Promise<void> {
-  return requisitar<void>('cardapio', `/api/produtos/${id}`, { metodo: 'DELETE' });
+export function excluirProduto(id: number): Promise<undefined> {
+  return requisitar<undefined>('cardapio', `/api/produtos/${id}`, { metodo: 'DELETE' });
 }
