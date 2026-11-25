@@ -143,7 +143,7 @@ Suba só os bancos com `docker compose up -d db-restaurantes db-cardapio` e rode
 
 O front em `frontend/` é **complementar**: a avaliação continua sendo feita pelas
 APIs (Postman/Swagger). Ele tem a base (rotas, tema, client HTTP e tratamento de
-erro), a Home com os restaurantes e a página de cada restaurante com o cardápio,
+erro), a Home com a busca de restaurantes e pratos e a página de cada restaurante com o cardápio,
 somente leitura. O login é apenas visual e depende da integração com a Identidade (#31).
 
 **Stack:** Vite + React + TypeScript (estrito), React Router, TanStack Query para
@@ -155,11 +155,11 @@ frontend/src/
 ├── assets/       # imagens, fontes e arquivos estáticos
 ├── components/   # componentes compartilhados (Layout, Navbar, Botao, EstadoMensagem, Carregando...)
 ├── context/      # estado global: notificações (toasts) e provedor do TanStack Query
-├── hooks/        # hooks reutilizáveis (useNotificacao, useTituloPagina) e de consulta (useRestaurante...)
+├── hooks/        # hooks reutilizáveis (useNotificacao, useTituloPagina, useDebounce) e de consulta (useRestaurante, useBuscaRestaurantes...)
 ├── pages/        # uma pasta por rota: Home (/), Restaurante (/restaurante/:id), Login (/login) e NaoEncontrada (404)
 ├── services/     # http.ts (wrapper do fetch), consultas.ts (QueryClient) e um arquivo por API
 ├── styles/       # tema.css (variáveis) e global.css
-└── utils/        # preço (centavos), datas, rótulos, agrupamento do cardápio e horários
+└── utils/        # preço (centavos e digitado em reais), datas, rótulos, cardápio, horários, filtros da busca e paginação
 ```
 
 ### Variáveis de ambiente
@@ -206,10 +206,44 @@ saudáveis e responde em <http://localhost:3000>. A porta pode ser trocada com
 
 | Rota | Página | Dados |
 |---|---|---|
-| `/` | Home: restaurantes ativos; cada cartão abre a página do restaurante | `GET /api/restaurantes` |
+| `/` | Home: busca de restaurantes e de pratos (somente leitura) | `GET /api/busca/restaurantes` e `GET /api/busca/itens` |
 | `/restaurante/:id` | Restaurante e cardápio (somente leitura) | `GET /api/restaurantes/{id}`, `GET /api/restaurantes/{id}/horarios` e `GET /api/restaurantes/{id}/cardapio` |
 | `/login` | Login, apenas visual (#31) | — |
 | qualquer outra | Página não encontrada | — |
+
+**Tela inicial (busca).** Usa só o serviço de Busca, numa consulta por vez: a aba
+**Restaurantes** chama `/api/busca/restaurantes` e a aba **Pratos**, `/api/busca/itens`.
+Cada cartão (restaurante ou prato) abre a página do restaurante.
+
+| Na tela | Na URL do front | `/api/busca/restaurantes` | `/api/busca/itens` |
+|---|---|---|---|
+| Campo de busca (nome) | `nome` | `nome` | `nome` |
+| Chip de categoria do restaurante | `categoria` | `categoria` | `categoriaRestaurante` |
+| "Abertos agora" | `abertoAgora=true` | `abertoAgora=true` | `abertoAgora=true` |
+| Preço "De" / "Até" (em reais), só na aba Pratos | `precoMin` / `precoMax` (centavos) | — | `precoMin` / `precoMax` |
+| Aba Pratos | `tipo=pratos` | — | — |
+| Página | `pagina` (começa em 1) | `page = pagina − 1`, `size=12` | igual |
+
+- **Filtros na URL:** o link pode ser compartilhado e o "voltar" do navegador funciona.
+  Valores inválidos na URL são ignorados, para não gerar `400`. "Abertos agora" desligado
+  omite o parâmetro (a API trataria `false` como "só os fechados").
+- **Busca por nome:** aplicada 400 ms depois da última tecla (ou na hora, com Enter), sem
+  criar uma entrada no histórico por tecla. Ignora acentos e maiúsculas, como a API.
+- **Preço:** digitado em reais (`25`, `25,90` ou `25.90`) e convertido para centavos inteiros
+  sem ponto flutuante. Limites incluídos. Valor inválido ou "De" maior que "Até" mostra a
+  mensagem no campo e não chama a API. Ao voltar para a aba Restaurantes, a faixa é
+  limpa; o termo, a categoria e "Abertos agora" continuam.
+- **Paginação:** 12 por página, com "Anterior" e "Próxima". A página anterior continua na
+  tela (esmaecida) enquanto a nova carrega, e o foco vai para o título dos resultados.
+  Uma página além da última (por exemplo, num link antigo) leva para a última.
+- **Estados:** carregando; lista vazia com "Limpar filtros"; Busca fora do ar, ou `503`
+  por Restaurantes/Cardápio fora do ar, mostram "A busca está indisponível no momento."
+  com "Tentar de novo", sem detalhes técnicos. Se a Busca devolver pratos sem
+  `restauranteNome` (Restaurantes fora do ar e nenhum filtro de restaurante), os cartões
+  aparecem sem o restaurante e com um aviso. Pratos indisponíveis aparecem esmaecidos.
+- **Diferenças para o protótipo:** o texto não encontra restaurantes pelos pratos nem pela
+  categoria (a API procura no nome e na descrição); não há ordenação por nota nem
+  "abertos primeiro" (ordem da API: nome); restaurantes sem cardápio também aparecem.
 
 **Página do restaurante.** As três consultas correm em paralelo; só a do restaurante
 bloqueia a tela.
