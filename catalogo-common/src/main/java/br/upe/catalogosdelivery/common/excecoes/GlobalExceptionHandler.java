@@ -41,6 +41,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErroResponse.de(e.getMessage()));
     }
 
+    /** Token ausente ou inválido nas rotas de escrita. */
+    @ExceptionHandler(NaoAutenticadoException.class)
+    public ResponseEntity<ErroResponse> naoAutenticado(NaoAutenticadoException e) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .header(HttpHeaders.WWW_AUTHENTICATE, "Bearer")
+                .body(ErroResponse.de(e.getMessage()));
+    }
+
     /** Outro serviço fora do ar, em timeout ou com erro 5xx. */
     @ExceptionHandler(ServicoIndisponivelException.class)
     public ResponseEntity<ErroResponse> indisponivel(ServicoIndisponivelException e) {
