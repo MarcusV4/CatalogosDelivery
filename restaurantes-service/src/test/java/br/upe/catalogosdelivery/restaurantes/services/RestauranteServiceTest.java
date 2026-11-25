@@ -49,6 +49,62 @@ class RestauranteServiceTest {
     @InjectMocks RestauranteService restauranteService;
 
     @Test
+    void cadastraRestauranteValidoComOsDadosDoDono() {
+        RestauranteDTO dto = new RestauranteDTO("Pizzaria", "Pizza artesanal", "Rua A", "10", null,
+                "Centro", "Recife", "PE", "50000-000", "81999999999", 550L, 30, 45, null,
+                7L, CategoriaRestaurante.PIZZARIA);
+        when(restauranteRepo.save(any(Restaurante.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Restaurante resultado = restauranteService.cadastrarRestaurante(dto);
+
+        assertEquals("Pizzaria", resultado.getRestauranteNome());
+        assertEquals(7L, resultado.getOwnerUserId());
+        assertEquals(550L, resultado.getTaxaEntrega());
+        verify(restauranteRepo).save(any(Restaurante.class));
+    }
+
+    @Test
+    void listaRestaurantesConvertidosParaResponseDTO() {
+        Restaurante restaurante = restaurante(10L, 7L, StatusRestaurante.ABERTO);
+        restaurante.setRestauranteNome("Pizzaria");
+        restaurante.setRestauranteDesc("Pizza artesanal");
+        restaurante.setCidade("Recife");
+        restaurante.setEstado("PE");
+        restaurante.setCategoriaRestaurante(CategoriaRestaurante.PIZZARIA);
+        restaurante.setTaxaEntrega(550L);
+        when(restauranteRepo.findAllByStatusRestauranteIsNullOrStatusRestauranteNot(StatusRestaurante.INDISPONIVEL))
+                .thenReturn(List.of(restaurante));
+        when(horarioFuncRepo.findAllByIdRestauranteRestauranteIdIn(List.of(10L))).thenReturn(List.of());
+        when(clock.withZone(any())).thenReturn(Clock.fixed(Instant.parse("2026-11-16T15:00:00Z"), ZoneOffset.UTC));
+
+        List<RestauranteResponseDTO> resultado = restauranteService.listarRestaurante();
+
+        assertEquals(1, resultado.size());
+        assertEquals(10L, resultado.get(0).restauranteId());
+        assertEquals("Pizzaria", resultado.get(0).restauranteNome());
+        assertEquals(7L, resultado.get(0).ownerUserId());
+        assertEquals(550L, resultado.get(0).taxaEntrega());
+    }
+
+    @Test
+    void buscaRestauranteExistenteConvertidoParaResponseDTO() {
+        Restaurante restaurante = restaurante(10L, 7L, StatusRestaurante.ABERTO);
+        restaurante.setRestauranteNome("Pizzaria");
+        restaurante.setRestauranteDesc("Pizza artesanal");
+        restaurante.setCategoriaRestaurante(CategoriaRestaurante.PIZZARIA);
+        restaurante.setTaxaEntrega(550L);
+        when(restauranteRepo.findById(10L)).thenReturn(Optional.of(restaurante));
+        when(horarioFuncRepo.findAllByIdRestauranteRestauranteIdOrderByDiaSemana(10L)).thenReturn(List.of());
+        when(clock.withZone(any())).thenReturn(Clock.fixed(Instant.parse("2026-11-16T15:00:00Z"), ZoneOffset.UTC));
+
+        RestauranteResponseDTO resultado = restauranteService.buscarRestaurante(10L);
+
+        assertEquals(10L, resultado.restauranteId());
+        assertEquals("Pizzaria", resultado.restauranteNome());
+        assertEquals(550L, resultado.taxaEntrega());
+    }
+
+    @Test
     void cadastroSemOwnerUserIdRetorna400SemSalvar() {
         RestauranteDTO dto = new RestauranteDTO("Pizzaria", null, null, null, null, null, "Recife", "PE",
                 null, null, 500L, null, null, null, null, CategoriaRestaurante.PIZZARIA);
@@ -178,7 +234,7 @@ class RestauranteServiceTest {
     void cadastroComecaComStatusAbertoENormalizaEstado() {
         RestauranteDTO dto = new RestauranteDTO("Pizzaria", "Desc", "Rua A", "10", null, "Centro", "Recife", "pe",
                 "50000-000", "81999990000", 500L, 20, 40, null, 10L, CategoriaRestaurante.PIZZARIA);
-        when(restauranteRepo.save(any(Restaurante.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(restauranteRepo.save(any(Restaurante.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Restaurante salvo = restauranteService.cadastrarRestaurante(dto);
 
