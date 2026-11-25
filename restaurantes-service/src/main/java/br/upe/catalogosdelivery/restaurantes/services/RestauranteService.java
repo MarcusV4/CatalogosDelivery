@@ -75,6 +75,13 @@ public class RestauranteService {
                 .toList();
     }
 
+    /** Lança 404 se o restaurante não existir. Usado antes de ler e validar o corpo da requisição. */
+    public void verificarExistencia(Long id) {
+        if (!restauranteRepo.existsById(id)) {
+            throw new RestauranteNaoEncontradoException(id);
+        }
+    }
+
     public RestauranteResponseDTO buscarRestaurante(Long idRestaurante) {
         return toResponse(buscarEntidade(idRestaurante));
     }
@@ -159,7 +166,7 @@ public class RestauranteService {
     }
 
     private Restaurante buscarEntidade(Long id) {
-        return restauranteRepo.findById(id).orElseThrow(RestauranteNaoEncontradoException::new);
+        return restauranteRepo.findById(id).orElseThrow(() -> new RestauranteNaoEncontradoException(id));
     }
 
     private void validarProprietario(Restaurante restaurante, Long ownerUserId) {

@@ -18,6 +18,7 @@ import java.time.ZoneId;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -194,6 +195,49 @@ class RestauranteApiIntegrationTest {
         mockMvc.perform(get("/api/restaurantes/{id}", id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.statusRestaurante").value("ABERTO"));
+    }
+
+    @Test
+    void restauranteInexistenteRetorna404MesmoComRequisicaoInvalida() throws Exception {
+        String mensagem = "Restaurante 99999 não encontrado.";
+        mockMvc.perform(put("/api/restaurantes/99999").contentType("application/json")
+                        .content("{\"restauranteNome\":\" \"}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.mensagem").value(mensagem));
+        mockMvc.perform(delete("/api/restaurantes/99999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.mensagem").value(mensagem));
+        mockMvc.perform(patch("/api/restaurantes/99999/status").contentType("application/json")
+                        .content("{\"ownerUserId\":42}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.mensagem").value(mensagem));
+        mockMvc.perform(put("/api/restaurantes/99999/horarios").contentType("application/json")
+                        .content("{\"ownerUserId\":42}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.mensagem").value(mensagem));
+    }
+
+    @Test
+    @Transactional
+    void restauranteExistenteComRequisicaoInvalidaContinuaRetornando400() throws Exception {
+        long id = criarRestaurante();
+        mockMvc.perform(put("/api/restaurantes/{id}", id).contentType("application/json")
+                        .content("{\"restauranteNome\":\" \"}"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(delete("/api/restaurantes/{id}", id)).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void idNaoNumericoContinuaRetornando400() throws Exception {
+        mockMvc.perform(get("/api/restaurantes/abc")).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void preFlightDeCorsNaoConsultaORestaurante() throws Exception {
+        mockMvc.perform(options("/api/restaurantes/99999")
+                        .header("Origin", "http://localhost:5173")
+                        .header("Access-Control-Request-Method", "PUT"))
+                .andExpect(status().isOk());
     }
 
     @Test

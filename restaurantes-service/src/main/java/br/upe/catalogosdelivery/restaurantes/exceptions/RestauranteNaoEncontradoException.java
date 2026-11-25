@@ -2,13 +2,12 @@ package br.upe.catalogosdelivery.restaurantes.exceptions;
 
 import br.upe.catalogosdelivery.common.excecoes.RecursoNaoEncontradoException;
 
-/** Restaurante inexistente: o GlobalExceptionHandler responde 404. */
+/** Restaurante inexistente: o GlobalExceptionHandler responde 404 com "Restaurante {id} não encontrado.". */
 public class RestauranteNaoEncontradoException extends RecursoNaoEncontradoException {
-    public RestauranteNaoEncontradoException(String message) {
-        super(message);
-    }
 
-    public RestauranteNaoEncontradoException() {
-        super("Error: Restaurante não encontrado");
+    private static final String MENSAGEM = "Restaurante %d não encontrado.";
+
+    public RestauranteNaoEncontradoException(Long id) {
+        super(MENSAGEM.formatted(id));
     }
 }
