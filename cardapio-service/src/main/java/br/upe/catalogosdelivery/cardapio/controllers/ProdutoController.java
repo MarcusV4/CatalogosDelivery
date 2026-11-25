@@ -1,5 +1,6 @@
 package br.upe.catalogosdelivery.cardapio.controllers;
 
+import br.upe.catalogosdelivery.common.seguranca.RotaPublica;
 import br.upe.catalogosdelivery.cardapio.entities.DTOs.*;
 import br.upe.catalogosdelivery.cardapio.mappers.ProdutoMapper;
 import br.upe.catalogosdelivery.cardapio.services.ProdutoService;
@@ -24,6 +25,7 @@ public class ProdutoController {
     private final ProdutoService produtoService;
     private final ProdutoMapper produtoMapper;
 
+    @RotaPublica // Consulta do Checkout: não altera dados, então não exige token.
     @PostMapping("/validacao")
     @Operation(summary = "Validar itens para o Checkout", description = "Confere existência, disponibilidade e preço em centavos dos itens de um restaurante.")
     @ApiResponses({

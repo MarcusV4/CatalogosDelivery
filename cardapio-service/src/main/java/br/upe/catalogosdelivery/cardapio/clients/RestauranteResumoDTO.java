@@ -8,6 +8,8 @@ public record RestauranteResumoDTO(
         Long restauranteId,
         String restauranteNome,
         String statusRestaurante,
-        Long taxaEntrega
+        Long taxaEntrega,
+        /** Dono do restaurante; usado na verificação de propriedade das escritas do cardápio. */
+        Long ownerUserId
 ) {
 }

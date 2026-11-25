@@ -46,7 +46,7 @@ public class CardapioController {
             @ApiResponse(responseCode = "400", description = "Dados inválidos"),
             @ApiResponse(responseCode = "404", description = "Restaurante inexistente ou cardápio excluído"),
             @ApiResponse(responseCode = "409", description = "Restaurante desativado (INDISPONIVEL)"),
-            @ApiResponse(responseCode = "503", description = "Serviço de Restaurantes indisponível")
+            @ApiResponse(responseCode = "503", description = "Serviço de Restaurantes ou de Identidade indisponível")
     })
     public ResponseEntity<ProdutoResponseDTO> cadastrarProduto(
             @PathVariable Long restauranteId, @Valid @RequestBody ProdutoRequestDTO request) {
@@ -59,8 +59,12 @@ public class CardapioController {
      * restaurante é uma exclusão lógica (status INDISPONIVEL) e o restaurante pode ser reativado.
      */
     @DeleteMapping("/cardapios/restaurante/{restauranteId}")
-    @Operation(summary = "Excluir logicamente o cardápio de um restaurante", description = "Rota administrativa. Não é chamada pelo serviço de Restaurantes: a exclusão de restaurante é lógica e preserva o cardápio.")
-    @ApiResponse(responseCode = "204", description = "Cardápio excluído ou inexistente")
+    @Operation(summary = "Excluir logicamente o cardápio de um restaurante", description = "Rota administrativa, restrita ao dono do restaurante. Não é chamada pelo serviço de Restaurantes: a exclusão de restaurante é lógica e preserva o cardápio.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Cardápio excluído ou inexistente"),
+            @ApiResponse(responseCode = "403", description = "Usuário não é proprietário do restaurante"),
+            @ApiResponse(responseCode = "404", description = "Restaurante inexistente")
+    })
     public ResponseEntity<Void> excluirCardapioDoRestaurante(@PathVariable Long restauranteId) {
         cardapioService.excluirCardapioDoRestaurante(restauranteId);
         return ResponseEntity.noContent().build();

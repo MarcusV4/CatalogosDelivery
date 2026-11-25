@@ -51,6 +51,8 @@ public class ProdutoService {
 
         // Valida no serviço de Restaurantes (404 se não existir, 503 se estiver fora do ar)
         RestauranteResumoDTO restaurante = restauranteClient.buscarRestaurante(restauranteId);
+        // Só o dono cadastra; a checagem vem antes de criar o cardápio para não deixar rastro.
+        autorizacaoRestauranteService.validarDono(restaurante);
         // Restaurante desativado (exclusão lógica) não recebe novos produtos.
         if (restaurante != null && STATUS_DESATIVADO.equals(restaurante.statusRestaurante())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
@@ -61,7 +63,6 @@ public class ProdutoService {
         if (cardapio.getExcluidoEm() != null) {
             throw new RecursoNaoEncontradoException("Cardápio do restaurante " + restauranteId + " não encontrado.");
         }
-        autorizacaoRestauranteService.validarPermissao(cardapio.getRestauranteId());
 
         produto.setCardapio(cardapio);
 
