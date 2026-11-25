@@ -125,16 +125,6 @@
   gap: var(--esp-4);
 }
 
-.painel-formulario__campos input:not([type='checkbox']),
-.painel-formulario__campos select,
-.painel-formulario__campos textarea {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--borda-campo);
-  border-radius: var(--raio-pequeno);
-  background: var(--papel);
-}
-
 .painel-formulario__campos textarea {
   resize: vertical;
 }
