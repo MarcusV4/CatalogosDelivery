@@ -56,11 +56,75 @@ Se um serviço cair, quem depende dele **continua no ar** e responde com o forma
 | Situação | Resposta |
 |---|---|
 | Recurso não existe no outro serviço | `404 {"erro": true, "mensagem": "Restaurante 99 não encontrado."}` |
-| Requisição inválida (ex.: cadastro sem `ownerUserId`) | `400 {"erro": true, "mensagem": "Informe ownerUserId ..."}` |
+| Requisição inválida (ex.: cadastro sem `restauranteNome`) | `400 {"erro": true, "mensagem": "restauranteNome: ..."}` |
+| Identidade fora do ar ou em timeout (3 s), numa rota de escrita | `503 {"erro": true, "mensagem": "Serviço de identidade indisponível"}` |
 | Outro serviço fora do ar, em timeout (3 s) ou com erro 5xx | `503 {"erro": true, "mensagem": "O serviço de Restaurantes está indisponível no momento. ..."}` |
 | Resposta inesperada do outro serviço | `502` |
 
 A busca de itens continua funcionando sem o serviço de Restaurantes: os itens voltam apenas sem `restauranteNome`/`restauranteStatus`/`restauranteAbertoAgora`. Com o serviço no ar, itens de restaurantes que não existem mais são descartados. A exceção são os filtros que dependem do restaurante (`categoriaRestaurante`, `abertoAgora` e `entregaGratis` em `/api/busca/itens`): sem o serviço não há como aplicá-los, e a busca responde `503`.
+
+## Autenticação (Identidade)
+
+As rotas de **leitura** (`GET`: listar, buscar, cardápio, horários, busca) são
+públicas. As rotas de **escrita** (`POST`, `PUT`, `PATCH`, `DELETE`) de
+Restaurantes e Cardápio exigem o header `Authorization: Bearer <token>`, com o
+JWT emitido pelo serviço de **Identidade** (Equipe 1). A única escrita pública é
+`POST /api/produtos/validacao`, que só consulta itens para o Checkout.
+
+- **Cadastro de restaurante:** o `ownerUserId` é o `sub` do token e não é aceito
+  no corpo. Só perfis de loja cadastram: `role` deve ser `LOJISTA` (lista
+  configurável em `IDENTIDADE_ROLES_CADASTRO_RESTAURANTE`).
+- **Alterações** de restaurante, horários, status e itens do cardápio (produtos e
+  adicionais): permitidas só se `JWT.sub == restaurante.ownerUserId`. O Cardápio
+  lê o dono no serviço de Restaurantes.
+
+| Situação | Resposta |
+|---|---|
+| Sem token, header fora do formato `Bearer`, token inválido ou expirado | `401` (com `WWW-Authenticate: Bearer`) |
+| Usuário não é dono do restaurante, ou perfil sem permissão de cadastro | `403` |
+| Identidade fora do ar, em timeout ou com erro 5xx | `503 {"erro": true, "mensagem": "Serviço de identidade indisponível"}` |
+
+Cada validação aparece no log, sem o token:
+
+```
+[restaurantes-service] -> GET http://identidade:8001/api/auth/validar (validando token no serviço de Identidade)
+[restaurantes-service] <- 200 da Identidade em 15 ms: usuário 57 (LOJISTA)
+```
+
+**Contrato esperado da Identidade** (a confirmar com a Equipe 1 na #20; caminho e
+URL são configuráveis): `GET {IDENTIDADE_URL}{IDENTIDADE_CAMINHO_VALIDACAO}`
+(padrão `/api/auth/validar`) com o mesmo header `Authorization`, respondendo
+`200 {"sub": 57, "role": "LOJISTA"}` (`id` ou `userId` também são aceitos no
+lugar de `sub`) ou `401` para token inválido. O `sub` precisa ser numérico, pois
+`ownerUserId` é um inteiro.
+
+### Mock da Identidade (perfil `dev`)
+
+Enquanto a Equipe 1 não entrega o serviço, o perfil `dev` troca a chamada HTTP
+por um mock local que **lê `sub` e `role` do JWT sem verificar a assinatura** e
+recusa token malformado, sem `sub` numérico ou com `exp` vencido. O Compose sobe
+os serviços nesse perfil. **Ele não é seguro:** qualquer um consegue montar um
+token aceito, então não use o perfil `dev` fora do ambiente local. Para usar a
+Identidade real, defina no `.env` `SPRING_PROFILES_ACTIVE=prod` (qualquer perfil
+diferente de `dev`) e `IDENTIDADE_URL`.
+
+Tokens prontos para o mock (cole no botão **Authorize** do Swagger ou no `curl`):
+
+| Usuário | `sub` | `role` | Token |
+|---|---|---|---|
+| Dono dos restaurantes da seed | `1` | `LOJISTA` | `eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiIxIiwicm9sZSI6IkxPSklTVEEifQ.` |
+| Outro lojista | `2` | `LOJISTA` | `eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiIyIiwicm9sZSI6IkxPSklTVEEifQ.` |
+| Cliente | `3` | `CLIENTE` | `eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiIzIiwicm9sZSI6IkNMSUVOVEUifQ.` |
+
+```bash
+TOKEN=eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiIxIiwicm9sZSI6IkxPSklTVEEifQ.
+curl -X PATCH http://localhost:8004/api/restaurantes/1/status \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"statusRestaurante":"FECHADO"}'
+```
+
+Para gerar outro, monte `base64url({"alg":"none"}).base64url({"sub":"57","role":"LOJISTA"}).`
+(por exemplo em <https://jwt.io>).
 
 ## Executando
 
@@ -92,7 +156,9 @@ e **Granola extra** (R$ 1,50, indisponível).
 A seed termina após o cadastro e não duplica registros: restaurantes, produtos
 e adicionais que já existem (mesmo nome no respectivo contexto) são mantidos;
 só o que falta é cadastrado. Os dados ficam nos volumes dos bancos. Os dados
-e o dono de exemplo (`ownerUserId` 1) estão em `scripts/seed.py`.
+e o dono de exemplo (`ownerUserId` 1) estão em `scripts/seed.py`. A seed
+escreve com um JWT de dev do usuário 1 (`LOJISTA`), aceito pelo mock da
+Identidade; com a Identidade real, informe um token de lojista em `SEED_TOKEN`.
 
 ```bash
 docker compose logs seed                  # confere o resultado da seed
@@ -130,7 +196,7 @@ as portas configuradas. O healthcheck de cada serviço está em
 
 ### Rodando um serviço pela IDE
 
-Suba só os bancos com `docker compose up -d db-restaurantes db-cardapio` e rode a classe `*Application` do módulo desejado. Os valores padrão já apontam para `localhost`.
+Suba só os bancos com `docker compose up -d db-restaurantes db-cardapio` e rode a classe `*Application` do módulo desejado. Os valores padrão já apontam para `localhost`. Fora do Compose o perfil padrão valida o token na Identidade real (`http://localhost:8001`); para usar o mock, ative o perfil `dev` (`SPRING_PROFILES_ACTIVE=dev` ou `--spring.profiles.active=dev`).
 
 ### Build e testes
 
@@ -144,7 +210,8 @@ Suba só os bancos com `docker compose up -d db-restaurantes db-cardapio` e rode
 O front em `frontend/` é **complementar**: a avaliação continua sendo feita pelas
 APIs (Postman/Swagger). Ele tem a base (rotas, tema, client HTTP e tratamento de
 erro), a Home com a busca de restaurantes e pratos e a página de cada restaurante com o cardápio,
-somente leitura. O login é apenas visual e depende da integração com a Identidade (#31).
+somente leitura. O login é apenas visual: o back-end já exige o JWT nas escritas,
+mas o front ainda não chama a Identidade para obtê-lo.
 
 **Stack:** Vite + React + TypeScript (estrito), React Router, TanStack Query para
 dados e cache, `fetch` nativo, CSS puro com variáveis (cores, fontes e espaçamentos
@@ -169,7 +236,7 @@ frontend/src/
 | `VITE_API_RESTAURANTES_URL` | `http://localhost:8004` | Serviço de Restaurantes |
 | `VITE_API_CARDAPIO_URL` | `http://localhost:8005` | Serviço de Cardápio |
 | `VITE_API_BUSCA_URL` | `http://localhost:8006` | Serviço de Busca |
-| `VITE_API_IDENTIDADE_URL` | vazio | Reservada para o login (#31); ainda não é usada |
+| `VITE_API_IDENTIDADE_URL` | vazio | Reservada para o login com a Identidade; ainda não é usada |
 
 > As `VITE_*` são **gravadas no JavaScript durante o build** e quem chama as APIs
 > é o **navegador**. Por isso elas apontam para `localhost` com as portas
@@ -208,7 +275,7 @@ saudáveis e responde em <http://localhost:3000>. A porta pode ser trocada com
 |---|---|---|
 | `/` | Home: busca de restaurantes e de pratos (somente leitura) | `GET /api/busca/restaurantes` e `GET /api/busca/itens` |
 | `/restaurante/:id` | Restaurante e cardápio (somente leitura) | `GET /api/restaurantes/{id}`, `GET /api/restaurantes/{id}/horarios` e `GET /api/restaurantes/{id}/cardapio` |
-| `/login` | Login, apenas visual (#31) | — |
+| `/login` | Login, apenas visual (ainda não chama a Identidade) | — |
 | qualquer outra | Página não encontrada | — |
 
 **Tela inicial (busca).** Usa só o serviço de Busca, numa consulta por vez: a aba
@@ -345,7 +412,7 @@ As respostas de restaurantes incluem endereço, telefone, taxa em centavos, temp
 
 No cadastro (`POST`) e na atualização (`PUT`) de restaurante, só `complemento` e `urlImagem` são opcionais. `estado` é a sigla de 2 letras (gravada em maiúsculas), `cep` segue `00000-000` ou `00000000`, `restauranteTelefone` tem 10 ou 11 dígitos sem máscara (`81999990000`), `taxaEntrega` é `>= 0` e os tempos estimados são `> 0`. O cadastro não recebe `statusRestaurante`: todo restaurante nasce `ABERTO`, e outro status é definido pelo `PATCH .../status`. Em `PUT .../horarios`, cada item exige `diaSemana`, `horaAbertura` e `horaFechamento`. Campos inválidos retornam 400 com a lista `campo: mensagem` em `mensagem`.
 
-Para atualização, status, horários e exclusão lógica, o contrato temporário recebe `ownerUserId` e compara com o proprietário cadastrado. Atualização, status e horários o recebem no JSON; `DELETE` recebe `?ownerUserId=...`. A identidade autenticada ainda depende da integração JWT da #31; esse valor informado pelo cliente não deve ser tratado como prova de identidade em produção.
+Cadastro, atualização, status, horários e exclusão lógica exigem o token (veja [Autenticação](#autenticação-identidade)). Nenhuma dessas rotas recebe mais `ownerUserId`, nem no JSON nem na query: o dono é sempre o `sub` do token, e um `ownerUserId` enviado no corpo é ignorado.
 
 A busca ignora maiúsculas/minúsculas e acentos (`acai` encontra `Açaí`).
 O parâmetro `nome` procura no nome **e na descrição** (do prato ou do
@@ -393,40 +460,35 @@ sai de `GET /api/restaurantes` e, por consequência, da Busca, junto com seus
 itens. O cardápio é preservado, então o restaurante pode ser reativado com
 `PATCH /api/restaurantes/{id}/status`.
 
-**PENDENTE (#31): as escritas do Cardápio estão sem controle de propriedade.**
-Não há autenticação neste repositório, então qualquer chamador pode criar,
-alterar ou excluir produtos e adicionais. Isso afeta:
-
-- `POST /api/restaurantes/{id}/cardapio` e o antigo `POST /api/produtos/{restauranteId}`;
-- `PUT/PATCH/DELETE /api/produtos/{id}` e `PATCH /api/produtos/{id}/disponibilidade`;
-- `POST /api/produtos/{produtoId}/adicionais`;
-- `PUT/PATCH/DELETE /api/produtos/{produtoId}/adicionais/{adicionalId}`;
-- `PATCH /api/produtos/{produtoId}/adicionais/{adicionalId}/disponibilidade`.
-Todas essas operações chamam `AutorizacaoRestauranteService.validarPermissao`,
-atualmente vazio. A #31 deverá implementar ali a checagem do usuário
-autenticado contra o dono mantido em Restaurantes.
+As escritas do Cardápio (produtos, adicionais e a exclusão do cardápio) exigem o
+token do dono do restaurante: o Cardápio consulta `ownerUserId` em
+`GET /api/restaurantes/{id}` e responde `403` para outro usuário. Se o serviço
+de Restaurantes estiver fora do ar, a escrita responde `503`.
 
 Exemplos para validar o fluxo local:
 
+Use um token do [mock da Identidade](#mock-da-identidade-perfil-dev) nas escritas:
+
 ```bash
+TOKEN=eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiIxIiwicm9sZSI6IkxPSklTVEEifQ.   # usuário 1, dono dos restaurantes da seed
 curl http://localhost:8005/api/categorias
 curl http://localhost:8005/api/restaurantes/1/cardapio
 curl -X POST http://localhost:8005/api/restaurantes/1/cardapio \
-  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"nome":"Pizza exemplo","descricao":"Massa fina","preco":2590,"disponivel":true,"categoria":"PIZZA"}'
 curl http://localhost:8005/api/produtos/7
 curl -X PUT http://localhost:8005/api/produtos/7 \
-  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"nome":"Pizza exemplo","descricao":"Massa fina","preco":2790,"disponivel":true,"categoria":"PIZZA"}'
 curl -X PATCH http://localhost:8005/api/produtos/7/disponibilidade \
-  -H 'Content-Type: application/json' -d '{"disponivel":false}'
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"disponivel":false}'
 curl -X POST http://localhost:8005/api/produtos/7/adicionais \
-  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"nome":"Queijo extra","preco":350,"disponivel":true}'
 curl http://localhost:8005/api/produtos/7/adicionais
 curl -X PATCH http://localhost:8005/api/produtos/7/adicionais/3/disponibilidade \
-  -H 'Content-Type: application/json' -d '{"disponivel":false}'
-curl -X DELETE http://localhost:8005/api/produtos/7/adicionais/3
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"disponivel":false}'
+curl -X DELETE http://localhost:8005/api/produtos/7/adicionais/3 -H "Authorization: Bearer $TOKEN"
 ```
 
 Substitua os IDs `7` e `3` pelos IDs retornados no seu banco.
@@ -497,9 +559,9 @@ O Catálogo mantém apenas a referência necessária para relacionar um restaura
 
 | **Entra no Catálogo**                   | **Vem de**            | **Uso no Catálogo**                                                          | **Sai do Catálogo**                       | **Vai para**     |
 | --------------------------------------- | --------------------- | ---------------------------------------------------------------------------- | ----------------------------------------- | ---------------- |
-| JWT (`sub`, `role`)                     | Identidade            | Identificar o usuário e verificar suas permissões gerais                     | Autorização da operação ou erro de acesso | Cliente/Frontend |
-| Dados para criação de restaurante       | Cliente/Frontend      | Receber `ownerUserId` no DTO nesta etapa; a #31 irá obtê-lo do JWT validado  | Restaurante criado                        | Cliente/Frontend |
-| Dados para atualização, horário e status | Proprietário/Frontend | Comparar `ownerUserId` informado com o cadastrado; validar JWT na #31        | Restaurante/horário/status atualizado    | Cliente/Frontend |
+| JWT (`sub`, `role`)                     | Identidade            | Validar o token na Identidade, identificar o usuário e verificar o perfil    | Autorização da operação ou erro de acesso | Cliente/Frontend |
+| Dados para criação de restaurante       | Cliente/Frontend      | Gravar o restaurante com `ownerUserId` = `sub` do JWT validado               | Restaurante criado                        | Cliente/Frontend |
+| Dados para atualização, horário e status | Proprietário/Frontend | Comparar o `sub` do JWT com o `ownerUserId` cadastrado                       | Restaurante/horário/status atualizado    | Cliente/Frontend |
 | Dados de itens do cardápio              | Proprietário/Frontend | Criar ou atualizar itens pertencentes ao restaurante                         | Item criado/atualizado                    | Cliente/Frontend |
 | Solicitação de listagem de restaurantes | Cliente/Frontend      | Buscar restaurantes disponíveis                                              | Lista de restaurantes                     | Cliente/Frontend |
 | Termos e filtros de busca               | Cliente/Frontend      | Filtrar por nome, categoria, status, disponibilidade ou preço                | Resultados filtrados                      | Cliente/Frontend |
@@ -513,7 +575,7 @@ O Catálogo mantém apenas a referência necessária para relacionar um restaura
 
 O serviço de Identidade é responsável por identificar o usuário, enquanto o Catálogo é responsável por determinar quais restaurantes pertencem a esse usuário.
 
-O Catálogo armazena somente o identificador do proprietário em `ownerUserId`, sem copiar nome, e-mail ou CPF do serviço de Identidade. Nesta etapa, o DTO de criação recebe `ownerUserId`; a extração desse valor a partir do `sub` do JWT e a verificação de propriedade ficam para a integração de Identidade (#31), usando o contrato acordado na #20. Até essa integração, o valor do DTO ainda não prova a identidade do usuário nem deve ser usado para autorizar operações.
+O Catálogo armazena somente o identificador do proprietário em `ownerUserId`, sem copiar nome, e-mail ou CPF do serviço de Identidade. Na criação, esse valor é o `sub` do JWT validado na Identidade; ele não é aceito no corpo da requisição.
 
 Exemplo de informações obtidas a partir do JWT:
 
@@ -535,13 +597,13 @@ Exemplo simplificado de restaurante armazenado pelo Catálogo:
 }
 ```
 
-Quando a integração da #31 estiver concluída, o Catálogo comparará a identidade validada do usuário com o proprietário do restaurante:
+Em toda alteração do restaurante ou do seu cardápio, o Catálogo compara a identidade validada do usuário com o proprietário do restaurante:
 
 ```text
 JWT.sub == Restaurant.ownerUserId
 ```
 
-Caso os identificadores sejam iguais, o usuário pode realizar as operações permitidas sobre aquele restaurante. Caso contrário, a operação deve ser rejeitada.
+Caso os identificadores sejam iguais, o usuário pode realizar as operações permitidas sobre aquele restaurante. Caso contrário, a operação é rejeitada com `403`.
 
 Dessa forma, o serviço de Identidade não precisa conhecer os restaurantes existentes e o Catálogo não precisa armazenar os dados completos dos usuários.
 
