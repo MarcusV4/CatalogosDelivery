@@ -159,7 +159,7 @@ public class RestauranteService {
     }
 
     private Restaurante buscarEntidade(Long id) {
-        return restauranteRepo.findById(id).orElseThrow(RestauranteNaoEncontradoException::new);
+        return restauranteRepo.findById(id).orElseThrow(() -> new RestauranteNaoEncontradoException(id));
     }
 
     private void validarProprietario(Restaurante restaurante, Long ownerUserId) {
