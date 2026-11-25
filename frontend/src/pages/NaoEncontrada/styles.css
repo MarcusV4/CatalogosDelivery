@@ -1,0 +1,5 @@
+.nao-encontrada {
+  max-width: var(--largura-formulario);
+  margin: var(--esp-7) auto;
+  text-align: center;
+}

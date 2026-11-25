@@ -1,0 +1,38 @@
+.botao {
+  display: inline-block;
+  text-align: center;
+  border: 0;
+  border-radius: var(--raio-pilula);
+  padding: var(--esp-4) 22px;
+  font-weight: var(--peso-extra);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.botao--principal {
+  background: var(--marca);
+  color: var(--texto-invertido);
+}
+
+.botao--principal:hover:not(:disabled) {
+  background: var(--marca-escura);
+}
+
+.botao--contorno {
+  background: var(--papel);
+  color: var(--marca-escura);
+  border: 1px solid var(--marca-escura);
+}
+
+.botao--contorno:hover:not(:disabled) {
+  background: var(--marca-clara);
+}
+
+.botao--largura-total {
+  width: 100%;
+}
+
+.botao:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
