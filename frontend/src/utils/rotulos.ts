@@ -1,4 +1,5 @@
-import type { CategoriaRestaurante, StatusRestaurante } from '../services/restaurantes';
+import type { CategoriaProduto } from '../services/cardapio';
+import type { CategoriaRestaurante, DiaSemana, StatusRestaurante } from '../services/restaurantes';
 
 /** Nomes dos enums do back para exibição (o `Record` obriga a cobrir todos os valores). */
 export const ROTULOS_CATEGORIA_RESTAURANTE: Record<CategoriaRestaurante, string> = {
@@ -27,4 +28,27 @@ export const ROTULOS_STATUS_RESTAURANTE: Record<StatusRestaurante, string> = {
   ABERTO: 'Aberto',
   FECHADO: 'Fechado',
   INDISPONIVEL: 'Indisponível',
+};
+
+/** Títulos das seções do cardápio (no plural). */
+export const ROTULOS_CATEGORIA_PRODUTO: Record<CategoriaProduto, string> = {
+  LANCHE: 'Lanches',
+  PRATO_PRINCIPAL: 'Pratos principais',
+  PIZZA: 'Pizzas',
+  ENTRADA: 'Entradas',
+  SOBREMESA: 'Sobremesas',
+  BEBIDA: 'Bebidas',
+  VEGETARIANO: 'Vegetarianos',
+  SALGADO: 'Salgados',
+  ORIENTAL: 'Orientais',
+};
+
+export const ROTULOS_DIA_SEMANA: Record<DiaSemana, string> = {
+  DOMINGO: 'Domingo',
+  SEGUNDA: 'Segunda',
+  TERCA: 'Terça',
+  QUARTA: 'Quarta',
+  QUINTA: 'Quinta',
+  SEXTA: 'Sexta',
+  SABADO: 'Sábado',
 };
