@@ -16,11 +16,13 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class RestauranteControllerTest {
@@ -56,6 +58,24 @@ class RestauranteControllerTest {
                         .content("{\"ownerUserId\":10,\"statusRestaurante\":\"FECHADO\"}"))
                 .andExpect(status().isOk());
         verify(restauranteService).atualizarStatus(eq(5L), any(AtualizarStatusRestauranteDTO.class));
+    }
+
+    @Test
+    void cadastroInvalidoRetorna400SemChamarService() throws Exception {
+        mockMvc.perform(post("/api/restaurantes")
+                        .contentType("application/json")
+                        .content("{\"restauranteNome\":\" \",\"estado\":\"Pernambuco\",\"ownerUserId\":10}"))
+                .andExpect(status().isBadRequest());
+        verify(restauranteService, never()).cadastrarRestaurante(any());
+    }
+
+    @Test
+    void statusSemValorRetorna400SemChamarService() throws Exception {
+        mockMvc.perform(patch("/api/restaurantes/5/status")
+                        .contentType("application/json")
+                        .content("{\"ownerUserId\":10}"))
+                .andExpect(status().isBadRequest());
+        verify(restauranteService, never()).atualizarStatus(any(), any());
     }
 
     @Test
