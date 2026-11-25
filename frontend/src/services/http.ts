@@ -5,6 +5,7 @@ export const STATUS_SEM_RESPOSTA = 0;
 export const TIMEOUT_PADRAO_MS = 10_000;
 
 const STATUS_SEM_CONTEUDO = 204;
+const STATUS_NAO_ENCONTRADO = 404;
 const PRIMEIRO_STATUS_DE_ERRO_DO_SERVIDOR = 500;
 const PRIMEIRO_STATUS_DE_ERRO_DO_CLIENTE = 400;
 
@@ -24,6 +25,11 @@ export class ApiError extends Error {
       this.status >= PRIMEIRO_STATUS_DE_ERRO_DO_CLIENTE &&
       this.status < PRIMEIRO_STATUS_DE_ERRO_DO_SERVIDOR
     );
+  }
+
+  /** 404: o recurso não existe (a tela mostra "não encontrado" em vez de erro). */
+  get ehNaoEncontrado(): boolean {
+    return this.status === STATUS_NAO_ENCONTRADO;
   }
 }
 

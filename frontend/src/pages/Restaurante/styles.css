@@ -1,0 +1,224 @@
+.pagina-restaurante {
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-7);
+}
+
+/* Cabeçalho */
+.loja {
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-4);
+}
+
+.loja__topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px;
+  background: var(--marca-clara);
+  border-radius: var(--raio);
+  padding: 22px;
+}
+
+.loja__logo {
+  width: 88px;
+  height: 88px;
+  flex: none;
+  border-radius: var(--raio-circulo);
+  object-fit: cover;
+  background: var(--papel);
+}
+
+.loja__logo--inicial {
+  display: grid;
+  place-items: center;
+  color: var(--marca-escura);
+  font-size: 40px;
+  font-weight: var(--peso-extra);
+}
+
+.loja__dados {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.loja__dados h1 {
+  margin: 0 0 var(--esp-1);
+}
+
+.loja__detalhes {
+  margin: 0 0 var(--esp-3);
+}
+
+/* O fundo do selo "fechado" é a mesma cor do cabeçalho (--marca-clara); o branco o destaca. */
+.loja__topo .selo--fechado {
+  background: var(--papel);
+}
+
+/* Informações */
+.info-loja {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--esp-5);
+  margin: 0;
+}
+
+.info-loja dt {
+  font-size: var(--fonte-mini);
+  color: var(--mudo);
+  font-weight: var(--peso-forte);
+}
+
+.info-loja dd {
+  margin: 0;
+}
+
+.info-loja__linha {
+  display: block;
+}
+
+.horarios summary {
+  cursor: pointer;
+  font-weight: var(--peso-forte);
+}
+
+.horas {
+  list-style: none;
+  margin: var(--esp-3) 0 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+  max-width: 280px;
+  font-size: var(--fonte-pequena);
+}
+
+.horas li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--esp-4);
+}
+
+.horas .horas__hoje {
+  font-weight: var(--peso-extra);
+}
+
+/* Cardápio */
+.cardapio {
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-7);
+}
+
+.chips {
+  display: flex;
+  gap: var(--esp-3);
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.chip {
+  border: 1px solid var(--linha);
+  background: var(--papel);
+  border-radius: var(--raio-pilula);
+  padding: var(--esp-3) 14px;
+  font-weight: var(--peso-forte);
+  font-size: var(--fonte-pequena);
+  white-space: nowrap;
+  text-decoration: none;
+  color: var(--texto);
+}
+
+.chip:hover {
+  border-color: var(--marca);
+  color: var(--marca-escura);
+}
+
+.secao-categoria {
+  scroll-margin-top: var(--margem-ancora);
+}
+
+.itens {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--papel);
+  border: 1px solid var(--linha);
+  border-radius: var(--raio);
+  padding: 14px;
+}
+
+.item__texto {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.item__texto p {
+  margin: 0;
+}
+
+.item__nome {
+  font-size: var(--fonte-base);
+  font-weight: var(--peso-extra);
+  margin: 0;
+}
+
+.item__desc {
+  color: var(--mudo);
+  font-size: var(--fonte-pequena);
+}
+
+.item__texto .item__preco {
+  font-weight: var(--peso-forte);
+  margin-top: var(--esp-1);
+}
+
+.item__imagem {
+  width: 72px;
+  height: 72px;
+  flex: none;
+  border-radius: var(--raio-pequeno);
+  object-fit: cover;
+}
+
+.item__imagem--vazia {
+  display: grid;
+  place-items: center;
+  background: var(--marca-clara);
+  color: var(--marca-escura);
+  font-size: 28px;
+  font-weight: var(--peso-extra);
+}
+
+/* Indisponível: tons esmaecidos com contraste ≥ 4,5:1 e o texto "Indisponível no momento". */
+.item--indisponivel {
+  background: var(--fundo);
+}
+
+.item--indisponivel .item__nome,
+.item--indisponivel .item__preco {
+  color: var(--mudo);
+}
+
+.item--indisponivel .item__imagem {
+  opacity: 0.5;
+}
+
+.item__texto .item__tag {
+  margin-top: var(--esp-1);
+  font-size: var(--fonte-mini);
+  font-weight: var(--peso-extra);
+  color: var(--erro);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
