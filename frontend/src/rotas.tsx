@@ -4,6 +4,7 @@ import { Layout } from './components/Layout';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
 import { NaoEncontrada } from './pages/NaoEncontrada';
+import { PaginaRestaurante } from './pages/Restaurante';
 
 export const roteador = createBrowserRouter([
   {
@@ -20,6 +21,7 @@ export const roteador = createBrowserRouter([
     children: [
       { index: true, element: <Home /> },
       { path: 'login', element: <Login /> },
+      { path: 'restaurante/:id', element: <PaginaRestaurante /> },
       { path: '*', element: <NaoEncontrada /> },
     ],
   },
