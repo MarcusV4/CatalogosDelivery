@@ -71,3 +71,8 @@ export function agruparPorCategoria(produtos: readonly Produto[]): GrupoCategori
     produtos: (porCategoria.get(categoria) ?? []).toSorted((a, b) => a.id - b.id),
   }));
 }
+
+/** Id da âncora da seção da categoria (`PRATO_PRINCIPAL` → `categoria-prato_principal`). */
+export function idDaSecaoCategoria(categoria: string): string {
+  return `categoria-${categoria.toLowerCase()}`;
+}

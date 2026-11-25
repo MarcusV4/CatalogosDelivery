@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { CategoriaProduto, Produto } from '../services/cardapio';
-import { ORDEM_CATEGORIAS_PRODUTO, agruparPorCategoria, rotuloCategoriaProduto } from './cardapio';
+import {
+  ORDEM_CATEGORIAS_PRODUTO,
+  agruparPorCategoria,
+  idDaSecaoCategoria,
+  rotuloCategoriaProduto,
+} from './cardapio';
 import { ROTULOS_CATEGORIA_PRODUTO } from './rotulos';
 
 function produto(id: number, categoria: string, extras: Partial<Produto> = {}): Produto {
@@ -110,5 +115,11 @@ describe('rotuloCategoriaProduto', () => {
 
   it('não confunde propriedades herdadas com categorias', () => {
     expect(rotuloCategoriaProduto('toString')).toBe('Tostring');
+  });
+});
+
+describe('idDaSecaoCategoria', () => {
+  it('gera um id de âncora estável e em minúsculas', () => {
+    expect(idDaSecaoCategoria('PRATO_PRINCIPAL')).toBe('categoria-prato_principal');
   });
 });

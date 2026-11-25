@@ -149,3 +149,12 @@ describe('requisitar', () => {
     );
   });
 });
+
+describe('ApiError.ehNaoEncontrado', () => {
+  it('é verdadeiro só para 404', () => {
+    expect(new ApiError(404, 'x').ehNaoEncontrado).toBe(true);
+    expect(new ApiError(400, 'x').ehNaoEncontrado).toBe(false);
+    expect(new ApiError(503, 'x').ehNaoEncontrado).toBe(false);
+    expect(new ApiError(STATUS_SEM_RESPOSTA, 'x').ehNaoEncontrado).toBe(false);
+  });
+});

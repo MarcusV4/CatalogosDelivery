@@ -1,22 +1,11 @@
 import { SeloSituacao } from '../../../components/SeloSituacao';
 import type { Restaurante } from '../../../services/restaurantes';
-import { formatarPreco } from '../../../utils/preco';
+import { textoEntrega, textoTempo } from '../../../utils/restaurante';
 import { ROTULOS_CATEGORIA_RESTAURANTE } from '../../../utils/rotulos';
 import './CartaoRestaurante.css';
 
 interface CartaoRestauranteProps {
   restaurante: Restaurante;
-}
-
-function textoEntrega({ taxaEntrega }: Restaurante): string {
-  return taxaEntrega === 0 ? 'Entrega grátis' : `Entrega ${formatarPreco(taxaEntrega)}`;
-}
-
-function textoTempo({ tempoEstimadoMin, tempoEstimadoMax }: Restaurante): string | null {
-  if (tempoEstimadoMin == null || tempoEstimadoMax == null) {
-    return null;
-  }
-  return `${tempoEstimadoMin}–${tempoEstimadoMax} min`;
 }
 
 export function CartaoRestaurante({ restaurante }: CartaoRestauranteProps) {
