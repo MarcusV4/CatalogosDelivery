@@ -5,11 +5,13 @@ import br.upe.catalogosdelivery.cardapio.entities.DTOs.ValidacaoItemResponseDTO;
 import br.upe.catalogosdelivery.cardapio.entities.DTOs.ValidacaoItensRequestDTO;
 import br.upe.catalogosdelivery.cardapio.entities.Enums.CategoriaProduto;
 import br.upe.catalogosdelivery.cardapio.entities.Produto;
+import br.upe.catalogosdelivery.cardapio.mappers.ProdutoMapper;
 import br.upe.catalogosdelivery.cardapio.services.CardapioService;
 import br.upe.catalogosdelivery.cardapio.services.ProdutoService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -28,6 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest({CardapioController.class, ProdutoController.class})
+@Import(ProdutoMapper.class)
 class CardapioControllerTest {
 
     @Autowired
