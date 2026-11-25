@@ -1,5 +1,6 @@
 package br.upe.catalogosdelivery.restaurantes.services;
 
+import br.upe.catalogosdelivery.common.seguranca.UsuarioAutenticado;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.AtualizarRestauranteDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.AtualizarStatusRestauranteDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.HorarioFuncionamentoDTO;
@@ -42,6 +43,12 @@ public class RestauranteService {
     @Value("${catalogo.horarios.zone-id:America/Recife}")
     private String zoneId;
 
+    /** Perfis (claim role) que podem cadastrar restaurante, conforme o RBAC da Identidade. */
+    @Value("${catalogo.identidade.roles-cadastro-restaurante:" + ROLE_PADRAO_CADASTRO + "}")
+    private List<String> rolesCadastro;
+
+    static final String ROLE_PADRAO_CADASTRO = "LOJISTA";
+
     public RestauranteService(RestauranteRepo restauranteRepo, HorarioFuncRepo horarioFuncRepo,
                               RestauranteMapper restauranteMapper, Clock clock) {
         this.restauranteRepo = restauranteRepo;
@@ -50,12 +57,16 @@ public class RestauranteService {
         this.clock = clock;
     }
 
-    public Restaurante cadastrarRestaurante(RestauranteDTO dto) {
-        if (dto.ownerUserId() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe ownerUserId.");
+    /** O proprietário é sempre o usuário autenticado (JWT.sub); só perfis de loja podem cadastrar. */
+    public Restaurante cadastrarRestaurante(RestauranteDTO dto, UsuarioAutenticado usuario) {
+        List<String> permitidas = rolesCadastro == null || rolesCadastro.isEmpty()
+                ? List.of(ROLE_PADRAO_CADASTRO) : rolesCadastro;
+        if (!usuario.possuiAlgumaRole(permitidas)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Apenas usuários com perfil " + String.join(" ou ", permitidas) + " podem cadastrar restaurantes.");
         }
         validarDados(dto.restauranteNome(), dto.taxaEntrega(), dto.tempoEstimadoMin(), dto.tempoEstimadoMax());
-        return restauranteRepo.save(restauranteMapper.toEntity(dto));
+        return restauranteRepo.save(restauranteMapper.toEntity(dto, usuario.id()));
     }
 
     /** Lista os restaurantes ativos; os desativados (INDISPONIVEL) seguem acessíveis só por ID. */
@@ -80,9 +91,9 @@ public class RestauranteService {
     }
 
     @Transactional
-    public RestauranteResponseDTO atualizarRestaurante(Long id, AtualizarRestauranteDTO dto) {
+    public RestauranteResponseDTO atualizarRestaurante(Long id, AtualizarRestauranteDTO dto, Long usuarioId) {
         Restaurante restaurante = buscarEntidade(id);
-        validarProprietario(restaurante, dto.ownerUserId());
+        validarProprietario(restaurante, usuarioId);
         validarDados(dto.restauranteNome(), dto.taxaEntrega(), dto.tempoEstimadoMin(), dto.tempoEstimadoMax());
         restaurante.setRestauranteNome(dto.restauranteNome());
         restaurante.setRestauranteDesc(dto.restauranteDesc());
@@ -103,9 +114,9 @@ public class RestauranteService {
     }
 
     @Transactional
-    public RestauranteResponseDTO atualizarStatus(Long id, AtualizarStatusRestauranteDTO dto) {
+    public RestauranteResponseDTO atualizarStatus(Long id, AtualizarStatusRestauranteDTO dto, Long usuarioId) {
         Restaurante restaurante = buscarEntidade(id);
-        validarProprietario(restaurante, dto.ownerUserId());
+        validarProprietario(restaurante, usuarioId);
         if (dto.statusRestaurante() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe statusRestaurante.");
         }
@@ -121,9 +132,9 @@ public class RestauranteService {
     }
 
     @Transactional
-    public List<HorarioFuncionamentoDTO> substituirHorarios(Long id, SubstituirHorariosDTO dto) {
+    public List<HorarioFuncionamentoDTO> substituirHorarios(Long id, SubstituirHorariosDTO dto, Long usuarioId) {
         Restaurante restaurante = buscarEntidade(id);
-        validarProprietario(restaurante, dto.ownerUserId());
+        validarProprietario(restaurante, usuarioId);
         if (dto.horarios() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe a lista de horarios.");
         }
@@ -151,9 +162,9 @@ public class RestauranteService {
     }
 
     @Transactional
-    public void deletarRestaurante(Long id, Long ownerUserId) {
+    public void deletarRestaurante(Long id, Long usuarioId) {
         Restaurante restaurante = buscarEntidade(id);
-        validarProprietario(restaurante, ownerUserId);
+        validarProprietario(restaurante, usuarioId);
         restaurante.setStatusRestaurante(StatusRestaurante.INDISPONIVEL);
         restauranteRepo.save(restaurante);
     }
@@ -162,8 +173,9 @@ public class RestauranteService {
         return restauranteRepo.findById(id).orElseThrow(RestauranteNaoEncontradoException::new);
     }
 
-    private void validarProprietario(Restaurante restaurante, Long ownerUserId) {
-        if (ownerUserId == null || !ownerUserId.equals(restaurante.getOwnerUserId())) {
+    /** Regra de propriedade: JWT.sub == restaurante.ownerUserId. */
+    private void validarProprietario(Restaurante restaurante, Long usuarioId) {
+        if (usuarioId == null || !usuarioId.equals(restaurante.getOwnerUserId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Usuário não é proprietário do restaurante.");
         }
     }

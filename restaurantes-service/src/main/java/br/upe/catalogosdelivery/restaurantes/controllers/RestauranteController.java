@@ -1,5 +1,6 @@
 package br.upe.catalogosdelivery.restaurantes.controllers;
 
+import br.upe.catalogosdelivery.common.seguranca.UsuarioAtual;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.AtualizarRestauranteDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.AtualizarStatusRestauranteDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.HorarioFuncionamentoDTO;
@@ -26,18 +27,22 @@ public class RestauranteController {
 
     private final RestauranteService restauranteService;
     private final RestauranteMapper restauranteMapper;
+    private final UsuarioAtual usuarioAtual;
 
-    public RestauranteController(RestauranteService restauranteService, RestauranteMapper restauranteMapper) {
+    public RestauranteController(RestauranteService restauranteService, RestauranteMapper restauranteMapper,
+                                 UsuarioAtual usuarioAtual) {
         this.restauranteService = restauranteService;
         this.restauranteMapper = restauranteMapper;
+        this.usuarioAtual = usuarioAtual;
     }
 
     @PostMapping
-    @Operation(summary = "Cadastrar restaurante")
+    @Operation(summary = "Cadastrar restaurante", description = "O proprietário (ownerUserId) é o sub do token; não é aceito no corpo. Exige perfil de loja (role).")
     @ApiResponses({@ApiResponse(responseCode = "201", description = "Restaurante cadastrado"),
-            @ApiResponse(responseCode = "400", description = "Dados inválidos")})
+            @ApiResponse(responseCode = "400", description = "Dados inválidos"),
+            @ApiResponse(responseCode = "403", description = "Perfil do usuário não pode cadastrar restaurantes")})
     public ResponseEntity<RestauranteResponseDTO> cadastrarRestaurante(@Valid @RequestBody RestauranteDTO dto) {
-        Restaurante restaurante = restauranteService.cadastrarRestaurante(dto);
+        Restaurante restaurante = restauranteService.cadastrarRestaurante(dto, usuarioAtual.obter());
         return ResponseEntity.status(201).body(restauranteMapper.toResponseDTO(restaurante));
     }
 
@@ -57,14 +62,14 @@ public class RestauranteController {
     }
 
     @PutMapping("/{idRestaurante}")
-    @Operation(summary = "Atualizar dados do restaurante", description = "Substitui os dados cadastrais. ownerUserId identifica o proprietário nesta etapa de integração.")
+    @Operation(summary = "Atualizar dados do restaurante", description = "Substitui os dados cadastrais. Só o proprietário (sub do token igual a ownerUserId) pode alterar.")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "Restaurante atualizado"),
             @ApiResponse(responseCode = "400", description = "Dados inválidos"),
             @ApiResponse(responseCode = "403", description = "Usuário não é proprietário"),
             @ApiResponse(responseCode = "404", description = "Restaurante inexistente")})
     public ResponseEntity<RestauranteResponseDTO> atualizarRestaurante(@PathVariable Long idRestaurante,
                                                                         @Valid @RequestBody AtualizarRestauranteDTO dto) {
-        return ResponseEntity.ok(restauranteService.atualizarRestaurante(idRestaurante, dto));
+        return ResponseEntity.ok(restauranteService.atualizarRestaurante(idRestaurante, dto, usuarioAtual.obter().id()));
     }
 
     @PatchMapping("/{idRestaurante}/status")
@@ -74,7 +79,7 @@ public class RestauranteController {
             @ApiResponse(responseCode = "404", description = "Restaurante inexistente")})
     public ResponseEntity<RestauranteResponseDTO> atualizarStatus(@PathVariable Long idRestaurante,
                                                                    @Valid @RequestBody AtualizarStatusRestauranteDTO dto) {
-        return ResponseEntity.ok(restauranteService.atualizarStatus(idRestaurante, dto));
+        return ResponseEntity.ok(restauranteService.atualizarStatus(idRestaurante, dto, usuarioAtual.obter().id()));
     }
 
     @GetMapping("/{idRestaurante}/horarios")
@@ -93,7 +98,7 @@ public class RestauranteController {
             @ApiResponse(responseCode = "404", description = "Restaurante inexistente")})
     public ResponseEntity<List<HorarioFuncionamentoDTO>> substituirHorarios(@PathVariable Long idRestaurante,
                                                                             @Valid @RequestBody SubstituirHorariosDTO dto) {
-        return ResponseEntity.ok(restauranteService.substituirHorarios(idRestaurante, dto));
+        return ResponseEntity.ok(restauranteService.substituirHorarios(idRestaurante, dto, usuarioAtual.obter().id()));
     }
 
     @DeleteMapping("/{idRestaurante}")
@@ -101,9 +106,8 @@ public class RestauranteController {
     @ApiResponses({@ApiResponse(responseCode = "204", description = "Restaurante desativado"),
             @ApiResponse(responseCode = "403", description = "Usuário não é proprietário"),
             @ApiResponse(responseCode = "404", description = "Restaurante inexistente")})
-    public ResponseEntity<Void> deletarRestaurante(@PathVariable Long idRestaurante,
-                                                    @RequestParam Long ownerUserId) {
-        restauranteService.deletarRestaurante(idRestaurante, ownerUserId);
+    public ResponseEntity<Void> deletarRestaurante(@PathVariable Long idRestaurante) {
+        restauranteService.deletarRestaurante(idRestaurante, usuarioAtual.obter().id());
         return ResponseEntity.noContent().build();
     }
 }

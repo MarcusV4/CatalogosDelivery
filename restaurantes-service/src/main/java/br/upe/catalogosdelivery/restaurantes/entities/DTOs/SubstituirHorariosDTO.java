@@ -7,9 +7,6 @@ import java.util.List;
 
 public record SubstituirHorariosDTO(
 
-        @NotNull(message = "O ID do proprietário deve ser informado.")
-        Long ownerUserId,
-
         // Lista vazia é permitida: os dias omitidos ficam fechados.
         @NotNull(message = "Informe a lista de horários.")
         List<@NotNull(message = "O horário não pode ser nulo.") @Valid HorarioFuncionamentoDTO> horarios
