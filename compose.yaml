@@ -18,6 +18,14 @@ x-app: &app
 x-cors-env: &cors-env
   CATALOGO_CORS_ORIGENS_PERMITIDAS: ${CATALOGO_CORS_ORIGENS_PERMITIDAS:-http://localhost:5173,http://localhost:${FRONTEND_PORT:-3000}}
 
+# Identidade (Equipe 1): valida o JWT das rotas de escrita. O perfil dev troca a
+# chamada HTTP por um mock que aceita JWT sem assinatura (só para desenvolvimento).
+# Para usar a Identidade real: SPRING_PROFILES_ACTIVE=prod e IDENTIDADE_URL no .env.
+x-identidade-env: &identidade-env
+  SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+  IDENTIDADE_URL: ${IDENTIDADE_URL:-http://identidade:8001}
+  IDENTIDADE_CAMINHO_VALIDACAO: ${IDENTIDADE_CAMINHO_VALIDACAO:-/api/auth/validar}
+
 x-db-healthcheck: &db-healthcheck
   interval: 5s
   timeout: 5s
@@ -59,7 +67,7 @@ services:
       args:
         SERVICE: restaurantes-service
     environment:
-      <<: *cors-env
+      <<: [*cors-env, *identidade-env]
       SERVER_PORT: 8004
       RESTAURANTES_DB_URL: ${RESTAURANTES_DB_URL:-jdbc:postgresql://db-restaurantes:5432/restaurantes}
       RESTAURANTES_DB_USERNAME: ${RESTAURANTES_DB_USERNAME:-catalogo}
@@ -81,7 +89,7 @@ services:
       args:
         SERVICE: cardapio-service
     environment:
-      <<: *cors-env
+      <<: [*cors-env, *identidade-env]
       SERVER_PORT: 8005
       CARDAPIO_DB_URL: ${CARDAPIO_DB_URL:-jdbc:postgresql://db-cardapio:5432/cardapio}
       CARDAPIO_DB_USERNAME: ${CARDAPIO_DB_USERNAME:-catalogo}
@@ -152,6 +160,8 @@ services:
       CARDAPIO_DB_URL: ${CARDAPIO_DB_URL:-jdbc:postgresql://db-cardapio:5432/cardapio}
       SEED_ENABLED: ${SEED_ENABLED:-true}
       SEED_ALLOW_EXTERNAL: ${SEED_ALLOW_EXTERNAL:-false}
+      # Vazio: a seed gera um JWT de dev (usuário 1, LOJISTA), aceito só pelo mock.
+      SEED_TOKEN: ${SEED_TOKEN:-}
     command: ["python", "/app/seed.py"]
     depends_on:
       restaurantes:

@@ -5,6 +5,7 @@ existem (mesmo nome dentro do respectivo restaurante ou produto) são mantidos,
 e só o que falta é cadastrado.
 """
 
+import base64
 import json
 import os
 import sys
@@ -25,9 +26,22 @@ LOCAL_DATABASES = {
 CAMPO_ID = "restauranteId"
 CAMPO_NOME = "restauranteNome"
 
-# TODO(#31): quando as rotas de escrita exigirem JWT, enviar um token do mock
-# da Identidade e remover ownerUserId do body (ele passará a vir do token).
+# As rotas de escrita exigem "Authorization: Bearer <JWT>" e o dono do
+# restaurante é o "sub" do token. No Compose os serviços sobem no perfil dev,
+# em que o mock da Identidade aceita um JWT sem assinatura. Com a Identidade
+# real (Equipe 1), informe um token válido de lojista em SEED_TOKEN.
 OWNER_USER_ID = 1
+
+
+def token_dev(sub, role):
+    def b64(dados):
+        texto = json.dumps(dados, separators=(",", ":")).encode("utf-8")
+        return base64.urlsafe_b64encode(texto).rstrip(b"=").decode("ascii")
+
+    return f"{b64({'alg': 'none', 'typ': 'JWT'})}.{b64({'sub': str(sub), 'role': role})}."
+
+
+TOKEN = os.getenv("SEED_TOKEN") or token_dev(OWNER_USER_ID, "LOJISTA")
 
 # Valores monetários em centavos (2590 = R$ 25,90).
 RESTAURANTES = [
@@ -45,7 +59,6 @@ RESTAURANTES = [
             "taxaEntrega": 500,
             "tempoEstimadoMin": 30,
             "tempoEstimadoMax": 45,
-            "ownerUserId": OWNER_USER_ID,
             "categoriaRestaurante": "PIZZARIA",
         },
         "status": "ABERTO",
@@ -102,7 +115,6 @@ RESTAURANTES = [
             "taxaEntrega": 300,
             "tempoEstimadoMin": 20,
             "tempoEstimadoMax": 30,
-            "ownerUserId": OWNER_USER_ID,
             "categoriaRestaurante": "ACAI",
         },
         "status": "FECHADO",
@@ -132,12 +144,10 @@ RESTAURANTES = [
 
 def api_json(base_url, path, method="GET", data=None):
     body = json.dumps(data).encode("utf-8") if data is not None else None
-    request = Request(
-        base_url + path,
-        data=body,
-        headers={"Content-Type": "application/json"} if body else {},
-        method=method,
-    )
+    headers = {"Content-Type": "application/json"} if body else {}
+    if method != "GET":
+        headers["Authorization"] = f"Bearer {TOKEN}"
+    request = Request(base_url + path, data=body, headers=headers, method=method)
     try:
         with urlopen(request, timeout=10) as response:
             return json.load(response)
@@ -162,7 +172,7 @@ def obter_ou_criar_restaurante(dados, status, existentes):
             RESTAURANTES_URL,
             f"/api/restaurantes/{restaurante[CAMPO_ID]}/status",
             "PATCH",
-            {"ownerUserId": dados["ownerUserId"], "statusRestaurante": status},
+            {"statusRestaurante": status},
         )
         print(f"  Status alterado para {status}")
     return restaurante
