@@ -22,3 +22,10 @@
 .estado--erro .estado__titulo {
   color: var(--erro);
 }
+
+.estado__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--esp-3);
+}

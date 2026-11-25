@@ -126,6 +126,38 @@ img {
   padding: var(--esp-6);
 }
 
+/* Chips (atalhos e filtros): <a> ou <button>; o filtro ligado usa aria-pressed="true". */
+.chips {
+  display: flex;
+  gap: var(--esp-3);
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.chip {
+  border: 1px solid var(--linha);
+  background: var(--papel);
+  border-radius: var(--raio-pilula);
+  padding: var(--esp-3) 14px;
+  font-weight: var(--peso-forte);
+  font-size: var(--fonte-pequena);
+  white-space: nowrap;
+  text-decoration: none;
+  color: var(--texto);
+  cursor: pointer;
+}
+
+.chip:hover {
+  border-color: var(--marca);
+  color: var(--marca-escura);
+}
+
+.chip[aria-pressed='true'] {
+  border-color: var(--marca);
+  background: var(--marca-clara);
+  color: var(--marca-escura);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

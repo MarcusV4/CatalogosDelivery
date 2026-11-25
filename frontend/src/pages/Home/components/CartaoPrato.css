@@ -1,0 +1,90 @@
+.prato__link {
+  display: block;
+  height: 100%;
+  color: inherit;
+  text-decoration: none;
+  border-radius: var(--raio);
+}
+
+.prato {
+  display: flex;
+  gap: var(--esp-4);
+  align-items: center;
+  height: 100%;
+  background: var(--papel);
+  border: 1px solid var(--linha);
+  border-radius: var(--raio);
+  padding: var(--esp-4);
+}
+
+.prato__link:hover .prato {
+  border-color: var(--marca);
+}
+
+.prato__imagem {
+  width: 64px;
+  height: 64px;
+  flex: none;
+  border-radius: var(--raio-pequeno);
+  object-fit: cover;
+}
+
+.prato__imagem--vazia {
+  display: grid;
+  place-items: center;
+  background: var(--marca-clara);
+  color: var(--marca-escura);
+  font-size: 26px;
+  font-weight: var(--peso-extra);
+}
+
+.prato__info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.prato__info p {
+  margin: 0;
+}
+
+.prato__nome {
+  font-size: var(--fonte-base);
+  font-weight: var(--peso-extra);
+  margin: 0;
+}
+
+.prato__info .prato__restaurante {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--esp-2);
+}
+
+.prato__info .prato__preco {
+  font-weight: var(--peso-forte);
+  margin-top: var(--esp-1);
+}
+
+.prato__info .prato__tag {
+  margin-top: var(--esp-1);
+  font-size: var(--fonte-mini);
+  font-weight: var(--peso-extra);
+  color: var(--erro);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Indisponível: tons esmaecidos com contraste ≥ 4,5:1, como na página do restaurante. */
+.prato--indisponivel {
+  background: var(--fundo);
+}
+
+.prato--indisponivel .prato__nome,
+.prato--indisponivel .prato__preco {
+  color: var(--mudo);
+}
+
+.prato--indisponivel .prato__imagem {
+  opacity: 0.5;
+}
