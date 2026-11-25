@@ -65,17 +65,18 @@ function ConteudoPainel({ restauranteId }: { restauranteId: number }) {
     );
   }
 
-  const iniciarCadastro = () => {
-    setProdutoEmEdicao(null);
-    setMostrarFormulario(true);
-    setErroAcao(null);
-  };
-
-  const iniciarEdicao = (produto: Produto) => {
+  /** Abre o formulário sem o erro da API de um envio anterior (de outro item ou do cadastro). */
+  const abrirFormulario = (produto: Produto | null) => {
     setProdutoEmEdicao(produto);
     setMostrarFormulario(true);
     setErroAcao(null);
+    criar.reset();
+    atualizar.reset();
   };
+
+  const iniciarCadastro = () => abrirFormulario(null);
+
+  const iniciarEdicao = (produto: Produto) => abrirFormulario(produto);
 
   const fecharFormulario = () => {
     setMostrarFormulario(false);
@@ -99,13 +100,18 @@ function ConteudoPainel({ restauranteId }: { restauranteId: number }) {
     setErroAcao(null);
     try {
       await excluir.mutateAsync(produto.id);
+      if (produtoEmEdicao?.id === produto.id) {
+        fecharFormulario();
+      }
     } catch (erro) {
       setErroAcao(mensagemDoErro(erro));
     }
   };
 
   const categoriasVazias = categorias.data.length === 0;
-  const erroFormulario = mensagemDoErro(produtoEmEdicao ? atualizar.error : criar.error);
+  // Sem erro não há mensagem: mensagemDoErro(null) devolveria o texto de "erro inesperado".
+  const erroMutacao = produtoEmEdicao ? atualizar.error : criar.error;
+  const erroFormulario = erroMutacao ? mensagemDoErro(erroMutacao) : null;
 
   return (
     <section className="painel-cardapio" aria-labelledby="painel-cardapio-titulo">
@@ -138,6 +144,8 @@ function ConteudoPainel({ restauranteId }: { restauranteId: number }) {
 
       {mostrarFormulario ? (
         <FormularioProduto
+          // Os campos só são lidos ao montar: trocar de item recria o formulário com os dados certos.
+          key={produtoEmEdicao?.id ?? 'novo'}
           produto={produtoEmEdicao}
           categorias={categorias.data}
           salvando={criar.isPending || atualizar.isPending}
@@ -234,7 +242,7 @@ interface FormularioProdutoProps {
   produto: Produto | null;
   categorias: CategoriaProduto[];
   salvando: boolean;
-  erro: string;
+  erro: string | null;
   aoCancelar: () => void;
   aoSalvar: (produto: ProdutoCadastro) => Promise<void>;
 }

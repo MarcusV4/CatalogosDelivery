@@ -170,6 +170,63 @@ describe('PainelCardapio', () => {
     });
   });
 
+  it('abre o formulário sem mensagem de erro', async () => {
+    const usuario = userEvent.setup();
+    abrirPainel();
+
+    await screen.findByText('Pizza Recife');
+    await usuario.click(screen.getByRole('button', { name: 'Novo item' }));
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    await usuario.click(screen.getByRole('button', { name: 'Editar Pizza Recife' }));
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('carrega os dados do outro item ao trocar de item com o formulário aberto', async () => {
+    produtosServidor = [produtoBase(), { ...produtoBase(), id: 9, nome: 'Calzone', preco: 3150 }];
+    const usuario = userEvent.setup();
+    abrirPainel();
+
+    await screen.findByText('Calzone');
+    await usuario.click(screen.getByRole('button', { name: 'Editar Pizza Recife' }));
+    await usuario.click(screen.getByRole('button', { name: 'Editar Calzone' }));
+    expect(screen.getByLabelText('Nome')).toHaveProperty('value', 'Calzone');
+    expect(screen.getByLabelText('Preço (R$)')).toHaveProperty('value', '31,50');
+
+    await usuario.click(screen.getByRole('button', { name: 'Novo item' }));
+    expect(screen.getByLabelText('Nome')).toHaveProperty('value', '');
+    expect(screen.getByLabelText('Preço (R$)')).toHaveProperty('value', '');
+  });
+
+  it('não mostra no formulário reaberto o erro de um envio anterior', async () => {
+    const usuario = userEvent.setup();
+    falharProximoCadastro = true;
+    abrirPainel();
+
+    await screen.findByText('Pizza Recife');
+    await usuario.click(screen.getByRole('button', { name: 'Novo item' }));
+    await usuario.type(screen.getByLabelText('Nome'), 'Suco');
+    await usuario.type(screen.getByLabelText('Preço (R$)'), '5,00');
+    await usuario.click(screen.getByRole('button', { name: 'Cadastrar item' }));
+    expect(await screen.findByText('Preço inválido.')).toBeTruthy();
+
+    await usuario.click(screen.getByRole('button', { name: 'Novo item' }));
+    expect(screen.queryByText('Preço inválido.')).toBeNull();
+  });
+
+  it('fecha o formulário ao excluir o item que está sendo editado', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const usuario = userEvent.setup();
+    abrirPainel();
+
+    await screen.findByText('Pizza Recife');
+    await usuario.click(screen.getByRole('button', { name: 'Editar Pizza Recife' }));
+    await usuario.click(screen.getByRole('button', { name: 'Excluir Pizza Recife' }));
+
+    await waitFor(() => expect(screen.queryByText('Pizza Recife')).toBeNull());
+    expect(screen.queryByRole('heading', { name: 'Editar item' })).toBeNull();
+  });
+
   it('alterna disponibilidade e pede confirmação antes de excluir', async () => {
     const usuario = userEvent.setup();
     const confirmar = vi.spyOn(window, 'confirm').mockReturnValue(false);
