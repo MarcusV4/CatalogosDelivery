@@ -1,11 +1,6 @@
 package br.upe.catalogosdelivery.restaurantes.controllers;
 
-import br.upe.catalogosdelivery.restaurantes.entities.DTOs.AtualizarRestauranteDTO;
-import br.upe.catalogosdelivery.restaurantes.entities.DTOs.AtualizarStatusRestauranteDTO;
-import br.upe.catalogosdelivery.restaurantes.entities.DTOs.HorarioFuncionamentoDTO;
-import br.upe.catalogosdelivery.restaurantes.entities.DTOs.RestauranteDTO;
-import br.upe.catalogosdelivery.restaurantes.entities.DTOs.RestauranteResponseDTO;
-import br.upe.catalogosdelivery.restaurantes.entities.DTOs.SubstituirHorariosDTO;
+import br.upe.catalogosdelivery.restaurantes.entities.DTOs.*;
 import br.upe.catalogosdelivery.restaurantes.entities.Restaurante;
 import br.upe.catalogosdelivery.restaurantes.mappers.RestauranteMapper;
 import br.upe.catalogosdelivery.restaurantes.services.RestauranteService;
@@ -83,6 +78,21 @@ public class RestauranteController {
             @ApiResponse(responseCode = "404", description = "Restaurante inexistente")})
     public ResponseEntity<List<HorarioFuncionamentoDTO>> listarHorarios(@PathVariable Long idRestaurante) {
         return ResponseEntity.ok(restauranteService.listarHorarios(idRestaurante));
+    }
+
+    @GetMapping("/{idRestaurante}/funcionamento")
+    @Operation(
+            summary = "Consultar funcionamento atual do restaurante",
+            description = "Retorna o status, se está aberto agora, o dia atual e os horários cadastrados para esse dia."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Funcionamento consultado"),
+            @ApiResponse(responseCode = "404", description = "Restaurante inexistente")
+    })
+    public ResponseEntity<FuncionamentoRestauranteDTO> buscarFuncionamento(
+            @PathVariable Long idRestaurante) {
+
+        return ResponseEntity.ok(restauranteService.buscarFuncionamento(idRestaurante));
     }
 
     @PutMapping("/{idRestaurante}/horarios")
