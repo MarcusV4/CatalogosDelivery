@@ -17,6 +17,9 @@ import br.upe.catalogosdelivery.restaurantes.repositories.HorarioFuncRepo;
 import br.upe.catalogosdelivery.restaurantes.repositories.RestauranteRepo;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
@@ -29,6 +32,8 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.BiConsumer;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -221,9 +226,58 @@ class RestauranteServiceTest {
     }
 
     @Test
-    void restauranteInexistenteRetorna404() {
+    void restauranteInexistenteRetorna404ComOId() {
         when(restauranteRepo.findById(99L)).thenReturn(Optional.empty());
-        assertThrows(RestauranteNaoEncontradoException.class, () -> restauranteService.buscarRestaurante(99L));
+        RestauranteNaoEncontradoException e = assertThrows(RestauranteNaoEncontradoException.class,
+                () -> restauranteService.buscarRestaurante(99L));
+        assertEquals("Restaurante 99 não encontrado.", e.getMessage());
+    }
+
+    @Test
+    void verificarExistenciaLanca404ComOIdQuandoNaoExiste() {
+        when(restauranteRepo.existsById(99L)).thenReturn(false);
+        RestauranteNaoEncontradoException e = assertThrows(RestauranteNaoEncontradoException.class,
+                () -> restauranteService.verificarExistencia(99L));
+        assertEquals("Restaurante 99 não encontrado.", e.getMessage());
+    }
+
+    @Test
+    void verificarExistenciaAceitaRestauranteExistente() {
+        when(restauranteRepo.existsById(1L)).thenReturn(true);
+        assertDoesNotThrow(() -> restauranteService.verificarExistencia(1L));
+    }
+
+    /** Toda operação por id responde 404 antes de checar o proprietário (nunca 403) e não grava nada. */
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("operacoesPorId")
+    void operacaoComRestauranteInexistenteRetorna404AntesDoProprietario(
+            String operacao, BiConsumer<RestauranteService, Long> chamar) {
+        when(restauranteRepo.findById(99L)).thenReturn(Optional.empty());
+        RestauranteNaoEncontradoException e = assertThrows(RestauranteNaoEncontradoException.class,
+                () -> chamar.accept(restauranteService, 99L));
+        assertEquals("Restaurante 99 não encontrado.", e.getMessage());
+        verify(restauranteRepo, never()).save(any());
+        verify(horarioFuncRepo, never()).deleteAllByIdRestauranteRestauranteId(any());
+    }
+
+    private static Stream<Arguments> operacoesPorId() {
+        AtualizarRestauranteDTO dadosValidos = new AtualizarRestauranteDTO("Nome", "Descrição", "Rua A", "10",
+                null, "Centro", "Recife", "PE", "50000-000", "81999990000", 0L, 20, 30, null, 10L,
+                CategoriaRestaurante.PIZZARIA);
+        return Stream.of(
+                Arguments.of("buscarRestaurante",
+                        (BiConsumer<RestauranteService, Long>) RestauranteService::buscarRestaurante),
+                Arguments.of("atualizarRestaurante", (BiConsumer<RestauranteService, Long>)
+                        (service, id) -> service.atualizarRestaurante(id, dadosValidos)),
+                Arguments.of("atualizarStatus", (BiConsumer<RestauranteService, Long>)
+                        (service, id) -> service.atualizarStatus(id,
+                                new AtualizarStatusRestauranteDTO(10L, StatusRestaurante.FECHADO))),
+                Arguments.of("listarHorarios",
+                        (BiConsumer<RestauranteService, Long>) RestauranteService::listarHorarios),
+                Arguments.of("substituirHorarios", (BiConsumer<RestauranteService, Long>)
+                        (service, id) -> service.substituirHorarios(id, new SubstituirHorariosDTO(10L, List.of()))),
+                Arguments.of("deletarRestaurante", (BiConsumer<RestauranteService, Long>)
+                        (service, id) -> service.deletarRestaurante(id, 10L)));
     }
 
     private Restaurante restaurante(Long id, Long owner, StatusRestaurante status) {
