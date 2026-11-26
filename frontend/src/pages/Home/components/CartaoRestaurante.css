@@ -22,6 +22,19 @@
   padding: 14px;
 }
 
+/*
+ * Fechado aparece esmaecido, como no protótipo, mas com cores em vez de opacity no cartão
+ * inteiro: --mudo sobre --fundo mantém o contraste AA. Só a logo (decorativa) fica translúcida.
+ */
+.restaurante--fechado {
+  background: var(--fundo);
+}
+
+.restaurante--fechado .restaurante__nome,
+.restaurante--fechado .restaurante__rodape {
+  color: var(--mudo);
+}
+
 .restaurante--fechado .restaurante__logo {
   opacity: 0.6;
 }
