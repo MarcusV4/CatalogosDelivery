@@ -1,4 +1,4 @@
-/** Serviços do Catálogo chamados pelo front. A Identidade (#31) ainda não é usada. */
+/** APIs do Catálogo acessadas pelo frontend. */
 export type Servico = 'restaurantes' | 'cardapio' | 'busca';
 
 export const NOMES_DOS_SERVICOS: Record<Servico, string> = {

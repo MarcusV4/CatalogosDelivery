@@ -22,6 +22,14 @@ export interface SessaoOAuth {
   expiraEm: number;
 }
 
+type AmbienteOAuth = Pick<
+  ImportMetaEnv,
+  | 'VITE_API_IDENTIDADE_URL'
+  | 'VITE_IDENTIDADE_CLIENT_ID'
+  | 'VITE_IDENTIDADE_REDIRECT_URI'
+  | 'VITE_IDENTIDADE_SCOPES'
+>;
+
 interface RespostaTokens {
   access_token: string;
   refresh_token?: string;
@@ -56,7 +64,7 @@ export function limparSessaoAtual(): void {
 }
 
 /** Lê a configuração do cliente público de navegador; segredo nunca é aceito aqui. */
-export function configuracaoOAuth(env: ImportMetaEnv = import.meta.env): ConfiguracaoOAuth {
+export function configuracaoOAuth(env: AmbienteOAuth = import.meta.env): ConfiguracaoOAuth {
   const emissor = env.VITE_API_IDENTIDADE_URL?.trim().replace(/\/+$/, '') ?? '';
   const clientId = env.VITE_IDENTIDADE_CLIENT_ID?.trim() ?? '';
   const redirectUri =

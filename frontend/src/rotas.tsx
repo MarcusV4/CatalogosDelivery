@@ -1,8 +1,9 @@
 import { createBrowserRouter } from 'react-router-dom';
 import { EstadoMensagem } from './components/EstadoMensagem';
 import { Layout } from './components/Layout';
+import { RotaProtegida } from './components/RotaProtegida';
 import { Home } from './pages/Home';
-import { Login } from './pages/Login';
+import { Login, RetornoOAuth } from './pages/Login';
 import { NaoEncontrada } from './pages/NaoEncontrada';
 import { PainelCardapio } from './pages/PainelCardapio';
 import { PaginaRestaurante } from './pages/Restaurante';
@@ -22,8 +23,19 @@ export const roteador = createBrowserRouter([
     children: [
       { index: true, element: <Home /> },
       { path: 'login', element: <Login /> },
+      { path: 'oauth/callback', element: <RetornoOAuth /> },
       { path: 'restaurante/:id', element: <PaginaRestaurante /> },
-      { path: 'painel/restaurantes/:restauranteId/cardapio', element: <PainelCardapio /> },
+      {
+        path: 'painel',
+        element: <RotaProtegida />,
+        children: [
+          {
+            path: 'restaurantes/:restauranteId/cardapio',
+            element: <PainelCardapio />,
+          },
+          { path: '*', element: <NaoEncontrada /> },
+        ],
+      },
       { path: '*', element: <NaoEncontrada /> },
     ],
   },
