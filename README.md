@@ -42,7 +42,9 @@ O módulo `catalogo-common` é uma biblioteca compartilhada (não é um serviço
 
 As APIs usam ISO 8601. Horários de funcionamento são enviados como `HH:mm:ss`
 (por exemplo, `18:00:00`) e o dia da semana usa os valores do enum `DiaSemana`
-(`DOMINGO` a `SABADO`). Instantes, como `excluidoEm`, usam UTC com `Z`
+(`DOMINGO` a `SABADO`). `GET` e `PUT /api/restaurantes/{id}/horarios` devolvem
+os dias nessa ordem da semana, seja qual for a ordem de envio; um dia sem
+horário não aparece na lista. Instantes, como `excluidoEm`, usam UTC com `Z`
 (por exemplo, `2026-08-24T14:30:00Z`). Não envie datas em formato regional.
 
 Os horários de funcionamento representam a hora local de `America/Recife`.
