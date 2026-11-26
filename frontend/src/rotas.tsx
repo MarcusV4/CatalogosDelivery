@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { EstadoMensagem } from './components/EstadoMensagem';
 import { Layout } from './components/Layout';
 import { RotaProtegida } from './components/RotaProtegida';
@@ -6,7 +6,7 @@ import { Home } from './pages/Home';
 import { Login, RetornoOAuth } from './pages/Login';
 import { NaoEncontrada } from './pages/NaoEncontrada';
 import { PainelCardapio } from './pages/PainelCardapio';
-import { PainelInicio } from './pages/PainelInicio';
+import { PainelRestaurantes } from './pages/PainelRestaurantes';
 import { PaginaRestaurante } from './pages/Restaurante';
 
 export const roteador = createBrowserRouter([
@@ -30,7 +30,8 @@ export const roteador = createBrowserRouter([
         path: 'painel',
         element: <RotaProtegida />,
         children: [
-          { index: true, element: <PainelInicio /> },
+          { index: true, element: <Navigate to="restaurantes" replace /> },
+          { path: 'restaurantes', element: <PainelRestaurantes /> },
           {
             path: 'restaurantes/:restauranteId/cardapio',
             element: <PainelCardapio />,

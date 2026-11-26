@@ -89,6 +89,23 @@ describe('requisitar', () => {
     expect(fetchFalso.mock.calls[0]?.[1]?.headers).not.toHaveProperty('Authorization');
   });
 
+  it('envia Bearer em consultas protegidas quando solicitado', async () => {
+    definirSessaoAtual({
+      accessToken: 'token-de-usuario',
+      refreshToken: 'refresh',
+      tipo: 'LOJA',
+      usuarioId: '57',
+      expiraEm: Date.now() + 60_000,
+    });
+    fetchFalso.mockResolvedValue(respostaJson(200, []));
+
+    await requisitar('restaurantes', '/api/restaurantes', { exigirAutenticacao: true });
+
+    expect(fetchFalso.mock.calls[0]?.[1]?.headers).toMatchObject({
+      Authorization: 'Bearer token-de-usuario',
+    });
+  });
+
   it('limpa os tokens e avisa a aplicação quando uma escrita autenticada responde 401', async () => {
     definirSessaoAtual({
       accessToken: 'token-expirado',

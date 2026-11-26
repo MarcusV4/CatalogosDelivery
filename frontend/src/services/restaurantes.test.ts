@@ -1,6 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from './http';
-import { buscarRestaurante, chavesRestaurantes, listarHorarios } from './restaurantes';
+import { definirSessaoAtual, limparSessaoAtual } from './oauth';
+import {
+  atualizarRestaurante,
+  atualizarStatusRestaurante,
+  buscarRestaurante,
+  chavesRestaurantes,
+  criarRestaurante,
+  listarHorarios,
+  listarRestaurantesDoUsuario,
+  substituirHorarios,
+} from './restaurantes';
 
 const ORIGEM = 'http://localhost:8004';
 
@@ -20,6 +30,7 @@ describe('serviço de Restaurantes', () => {
   });
 
   afterEach(() => {
+    limparSessaoAtual();
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
     fetchFalso.mockReset();
@@ -50,6 +61,107 @@ describe('serviço de Restaurantes', () => {
 
     await expect(listarHorarios(7)).resolves.toEqual(horarios);
     expect(fetchFalso.mock.calls[0]?.[0]).toBe(`${ORIGEM}/api/restaurantes/7/horarios`);
+  });
+
+  it('lista somente os restaurantes ativos do usuário com consulta autenticada', async () => {
+    definirSessaoAtual({
+      accessToken: 'token-loja',
+      refreshToken: 'refresh',
+      tipo: 'LOJA',
+      usuarioId: '57',
+      expiraEm: Date.now() + 60_000,
+    });
+    fetchFalso.mockResolvedValue(
+      respostaJson(200, [
+        { restauranteId: 1, ownerUserId: 57 },
+        { restauranteId: 2, ownerUserId: 99 },
+      ]),
+    );
+
+    await expect(listarRestaurantesDoUsuario(57)).resolves.toEqual([
+      { restauranteId: 1, ownerUserId: 57 },
+    ]);
+    expect(fetchFalso.mock.calls[0]?.[1]?.headers).toMatchObject({
+      Authorization: 'Bearer token-loja',
+    });
+  });
+
+  it('cadastra restaurante sem aceitar ownerUserId vindo do front', async () => {
+    definirSessaoAtual({
+      accessToken: 'token-loja',
+      refreshToken: 'refresh',
+      tipo: 'LOJA',
+      usuarioId: '57',
+      expiraEm: Date.now() + 60_000,
+    });
+    fetchFalso.mockResolvedValue(respostaJson(201, { restauranteId: 3 }));
+    const cadastro = {
+      restauranteNome: 'Casa do Acarajé',
+      restauranteDesc: 'Comida baiana',
+      logradouro: 'Rua A',
+      numero: '10',
+      complemento: '',
+      bairro: 'Centro',
+      cidade: 'Recife',
+      estado: 'PE',
+      cep: '50000-000',
+      restauranteTelefone: '81999990000',
+      taxaEntrega: 500,
+      tempoEstimadoMin: 30,
+      tempoEstimadoMax: 50,
+      urlImagem: '',
+      categoriaRestaurante: 'COMIDA_REGIONAL',
+    } as const;
+
+    await criarRestaurante(cadastro);
+
+    expect(fetchFalso.mock.calls[0]?.[0]).toBe(`${ORIGEM}/api/restaurantes`);
+    expect(JSON.parse(String(fetchFalso.mock.calls[0]?.[1]?.body))).not.toHaveProperty('ownerUserId');
+  });
+
+  it('atualiza dados, status e horários em rotas protegidas sem ownerUserId no corpo', async () => {
+    definirSessaoAtual({
+      accessToken: 'token-loja',
+      refreshToken: 'refresh',
+      tipo: 'LOJA',
+      usuarioId: '57',
+      expiraEm: Date.now() + 60_000,
+    });
+    fetchFalso
+      .mockResolvedValueOnce(respostaJson(200, { restauranteId: 7 }))
+      .mockResolvedValueOnce(respostaJson(200, { restauranteId: 7 }))
+      .mockResolvedValueOnce(respostaJson(200, []));
+    const dados = {
+      restauranteNome: 'Casa do Acarajé',
+      restauranteDesc: 'Comida baiana',
+      logradouro: 'Rua A',
+      numero: '10',
+      complemento: '',
+      bairro: 'Centro',
+      cidade: 'Recife',
+      estado: 'PE',
+      cep: '50000-000',
+      restauranteTelefone: '81999990000',
+      taxaEntrega: 500,
+      tempoEstimadoMin: 30,
+      tempoEstimadoMax: 50,
+      urlImagem: '',
+      categoriaRestaurante: 'COMIDA_REGIONAL',
+    } as const;
+
+    await atualizarRestaurante(7, dados);
+    await atualizarStatusRestaurante(7, 'FECHADO');
+    await substituirHorarios(7, []);
+
+    expect(fetchFalso.mock.calls.map(([url]) => url)).toEqual([
+      `${ORIGEM}/api/restaurantes/7`,
+      `${ORIGEM}/api/restaurantes/7/status`,
+      `${ORIGEM}/api/restaurantes/7/horarios`,
+    ]);
+    for (const [, init] of fetchFalso.mock.calls) {
+      expect(init?.headers).toMatchObject({ Authorization: 'Bearer token-loja' });
+      expect(String(init?.body)).not.toContain('ownerUserId');
+    }
   });
 });
 

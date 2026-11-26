@@ -242,7 +242,8 @@ operações de escrita enviam `Authorization: Bearer <access_token>` quando há 
 |---|---|---|
 | `/` | Home: busca de restaurantes e de pratos (somente leitura) | `GET /api/busca/restaurantes` e `GET /api/busca/itens` |
 | `/restaurante/:id` | Restaurante e cardápio (somente leitura) | `GET /api/restaurantes/{id}`, `GET /api/restaurantes/{id}/horarios` e `GET /api/restaurantes/{id}/cardapio` |
-| `/painel` | Restaurantes ativos do dono logado (`ownerUserId` igual ao `sub` do token), com o link para o cardápio de cada um | `GET /api/restaurantes` |
+| `/painel` | Redireciona para `/painel/restaurantes` | — |
+| `/painel/restaurantes` | Painel protegido para contas de loja; lista os restaurantes ativos associados à conta (com o link para o cardápio de cada um), cadastra e altera dados, status e horários | `GET/POST /api/restaurantes`, `PUT/PATCH /api/restaurantes/{id}` e `GET/PUT /api/restaurantes/{id}/horarios` |
 | `/painel/restaurantes/:restauranteId/cardapio` | Painel protegido para contas de loja; lista e gerencia itens do restaurante indicado na rota | `GET /api/restaurantes/{id}/cardapio`, `GET /api/categorias`, `POST /api/restaurantes/{id}/cardapio`, `PUT /api/produtos/{id}`, `PATCH /api/produtos/{id}/disponibilidade` e `DELETE /api/produtos/{id}` |
 | `/login` | Inicia o login hospedado com Authorization Code + PKCE | Metadados OAuth e troca de código |
 | `/oauth/callback` | Valida `state`, troca o código e estabelece a sessão | `POST /v1/oauth/tokens` |
@@ -251,6 +252,16 @@ operações de escrita enviam `Authorization: Bearer <access_token>` quando há 
 O painel converte o preço digitado em reais para centavos antes de enviar à API.
 Como a autorização de proprietário ainda não está integrada, use essa rota somente
 no ambiente local/de desenvolvimento; a tela exibe esse estado.
+
+O painel de restaurantes envia o Bearer nas consultas e gravações e usa o identificador
+numérico da conta para filtrar a listagem de restaurantes ativos retornada pela API. Essa
+filtragem serve somente para apresentar os dados: a autorização precisa ser aplicada pelo
+serviço de Restaurantes. A listagem atual omite restaurantes `INDISPONIVEL`; após marcar um
+restaurante como indisponível, ele permanece na tela até uma nova carga, mas não pode ser
+recuperado pela listagem após recarregar. A integração da #31 precisa fornecer a listagem
+autenticada do proprietário (incluindo seus restaurantes indisponíveis) e aplicar a
+propriedade em cadastro, edição, status e horários. O front mostra as mensagens `400` e
+`403` recebidas da API, mas não substitui essa validação do servidor.
 
 **Tela inicial (busca).** Usa só o serviço de Busca, numa consulta por vez: a aba
 **Restaurantes** chama `/api/busca/restaurantes` e a aba **Pratos**, `/api/busca/itens`.

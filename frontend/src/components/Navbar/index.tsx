@@ -17,7 +17,7 @@ export function Navbar() {
             Início
           </NavLink>
           {ehContaDeLoja(sessao) ? (
-            <NavLink to="/painel" className="topo__link">
+            <NavLink to="/painel/restaurantes" className="topo__link">
               Painel
             </NavLink>
           ) : null}

@@ -25,7 +25,7 @@ export function Login() {
       <section className="cartao login" aria-labelledby="login-titulo">
         <h1 id="login-titulo">Sessão ativa</h1>
         <p className="mudo">Você entrou com uma conta do tipo {sessao.tipo}.</p>
-        {ehContaDeLoja(sessao) ? <Link to="/painel">Abrir painel da loja</Link> : null}
+        {ehContaDeLoja(sessao) ? <Link to="/painel/restaurantes">Abrir painel da loja</Link> : null}
         {erro ? <p role="alert">{erro}</p> : null}
         <Botao variante="contorno" onClick={() => void sair()}>
           Sair

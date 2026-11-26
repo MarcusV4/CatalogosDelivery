@@ -46,6 +46,8 @@ type MetodoHttp = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 export interface OpcoesRequisicao {
   metodo?: MetodoHttp;
   corpo?: unknown;
+  /** Envia Bearer também em consultas GET protegidas; GETs públicos seguem sem token. */
+  exigirAutenticacao?: boolean;
   /** Sinal de cancelamento (o TanStack Query envia um para cada consulta). */
   signal?: AbortSignal;
   timeoutMs?: number;
@@ -63,11 +65,17 @@ interface ErroPadrao {
 export async function requisitar<T>(
   servico: Servico,
   caminho: string,
-  { metodo = 'GET', corpo, signal, timeoutMs = TIMEOUT_PADRAO_MS }: OpcoesRequisicao = {},
+  {
+    metodo = 'GET',
+    corpo,
+    signal,
+    timeoutMs = TIMEOUT_PADRAO_MS,
+    exigirAutenticacao = false,
+  }: OpcoesRequisicao = {},
 ): Promise<T> {
   const url = `${origemDoServico(servico)}${caminho}`;
   const temCorpo = corpo !== undefined;
-  const sessao = metodo === 'GET' ? null : lerSessaoAtual();
+  const sessao = metodo === 'GET' && !exigirAutenticacao ? null : lerSessaoAtual();
   const limiteDeTempo = AbortSignal.timeout(timeoutMs);
 
   let resposta: Response;

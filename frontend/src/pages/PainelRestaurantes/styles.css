@@ -1,0 +1,123 @@
+.painel-restaurantes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-5);
+}
+
+.painel-restaurantes__lista {
+  display: grid;
+  gap: var(--esp-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.painel-restaurantes__cartao {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--esp-4);
+  padding: var(--esp-5);
+  border: 1px solid var(--linha);
+  border-radius: var(--raio);
+  background: var(--papel);
+}
+
+.painel-restaurantes__dados h2 {
+  margin: 0 0 var(--esp-2);
+}
+
+.painel-restaurantes__dados p {
+  margin: 0 0 var(--esp-2);
+}
+
+.painel-restaurantes__status {
+  font-weight: var(--peso-forte);
+  color: var(--marca-escura);
+}
+
+.painel-restaurantes__status--indisponivel {
+  color: var(--erro);
+}
+
+.painel-restaurantes__status-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--esp-2);
+}
+
+.painel-restaurantes__acoes,
+.painel-restaurantes__formulario,
+.painel-restaurantes__horarios {
+  grid-column: 1 / -1;
+}
+
+.painel-restaurantes__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--esp-2);
+}
+
+.painel-restaurantes__horarios > div:first-child h2 {
+  margin: 0 0 var(--esp-2);
+}
+
+.painel-restaurantes__horarios > div:first-child p {
+  margin: 0;
+}
+
+.painel-restaurantes__dias {
+  display: grid;
+  gap: var(--esp-2);
+}
+
+.painel-restaurantes__dia {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) minmax(0, 2fr);
+  align-items: center;
+  gap: var(--esp-4);
+  padding: var(--esp-3);
+  border: 1px solid var(--linha);
+  border-radius: var(--raio-pequeno);
+}
+
+.painel-restaurantes__dia-nome {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-2);
+  font-weight: var(--peso-forte);
+  cursor: pointer;
+}
+
+.painel-restaurantes__dia-nome input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--marca);
+}
+
+.painel-restaurantes__faixa {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--esp-2);
+}
+
+.painel-restaurantes__erro {
+  margin: 0;
+  color: var(--erro);
+}
+
+@media (max-width: 680px) {
+  .painel-restaurantes__cartao {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .painel-restaurantes__dia {
+    grid-template-columns: 1fr;
+    gap: var(--esp-2);
+  }
+
+  .painel-restaurantes__acoes > * {
+    flex: 1 1 100%;
+  }
+}
