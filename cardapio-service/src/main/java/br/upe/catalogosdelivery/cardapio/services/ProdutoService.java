@@ -177,6 +177,9 @@ public class ProdutoService {
                     "Informe restauranteId e ao menos um item para validar.");
         }
 
+        log.info("Solicitação de validação de itens recebida. Restaurante: {}, Quantidade de itens: {}",
+                request.restauranteId(), request.itens().size());
+
         return request.itens().stream()
                 .map(item -> validarItem(request.restauranteId(), item))
                 .toList();
@@ -194,14 +197,21 @@ public class ProdutoService {
                 .filter(p -> p.getCardapio().getExcluidoEm() == null)
                 .orElse(null);
         if (produto == null) {
+            log.warn("Item {} não encontrado ou pertencente a um cardápio excluído.", item.itemId());
             return new ValidacaoItemResponseDTO(item.itemId(), false, false, null, null, null);
         }
 
         Long restauranteDoProduto = produto.getCardapio().getRestauranteId();
         if (!restauranteId.equals(restauranteDoProduto)) {
+            log.warn("Item {} pertence ao restaurante {}, mas foi solicitado para o restaurante {}.",
+                    item.itemId(), restauranteDoProduto, restauranteId);
+
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Todos os itens devem pertencer ao restaurante informado.");
         }
+
+        log.info("Item validado: id={}, nome={}, disponível={}, restaurante={}",
+                produto.getId(), produto.getNome(), produto.isDisponivel(), restauranteDoProduto);
 
         return new ValidacaoItemResponseDTO(
                 produto.getId(), true, produto.isDisponivel(), produto.getPreco(),
