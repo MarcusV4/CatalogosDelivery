@@ -1,4 +1,11 @@
-export type Papel = 'CLIENTE' | 'LOJA' | 'ENTREGADOR' | 'ADMIN';
+/** Papel lido da claim `role`, normalizado: maiúsculas e sem o prefixo `ROLE_` do Spring. */
+export type Papel = string;
+
+/**
+ * Papéis que abrem o painel do dono. O contrato da Identidade usa `LOJA` e o back-end do
+ * Catálogo (#31) usa `LOJISTA` por padrão; os dois valem até o contrato ser fechado.
+ */
+export const PAPEIS_DE_LOJA: readonly Papel[] = ['LOJA', 'LOJISTA'];
 
 export interface ConfiguracaoOAuth {
   emissor: string;
@@ -47,7 +54,6 @@ interface ClaimsAcesso {
 }
 
 const TEMPO_LIMITE_MS = 10_000;
-const PAPEIS: Papel[] = ['CLIENTE', 'LOJA', 'ENTREGADOR', 'ADMIN'];
 let sessaoAtual: SessaoOAuth | null = null;
 
 /** Sessão em memória: tokens de usuário não são persistidos no armazenamento do navegador. */
@@ -63,12 +69,24 @@ export function limparSessaoAtual(): void {
   sessaoAtual = null;
 }
 
+/** Mesma normalização do back-end: ignora maiúsculas e o prefixo `ROLE_`. */
+export function normalizarPapel(role: string): Papel {
+  const maiusculo = role.trim().toUpperCase();
+  return maiusculo.startsWith('ROLE_') ? maiusculo.slice('ROLE_'.length) : maiusculo;
+}
+
+/** A sessão é de uma conta de loja (dona de restaurantes)? Só controla a interface. */
+export function ehContaDeLoja(sessao: SessaoOAuth | null): boolean {
+  return sessao !== null && PAPEIS_DE_LOJA.includes(sessao.tipo);
+}
+
 /** Lê a configuração do cliente público de navegador; segredo nunca é aceito aqui. */
 export function configuracaoOAuth(env: AmbienteOAuth = import.meta.env): ConfiguracaoOAuth {
   const emissor = env.VITE_API_IDENTIDADE_URL?.trim().replace(/\/+$/, '') ?? '';
   const clientId = env.VITE_IDENTIDADE_CLIENT_ID?.trim() ?? '';
+  // `||`: variável presente mas vazia no .env também usa o callback padrão.
   const redirectUri =
-    env.VITE_IDENTIDADE_REDIRECT_URI?.trim() ?? `${window.location.origin}/oauth/callback`;
+    env.VITE_IDENTIDADE_REDIRECT_URI?.trim() || `${window.location.origin}/oauth/callback`;
   const escopos = env.VITE_IDENTIDADE_SCOPES?.trim() ?? '';
 
   if (!emissor || !clientId || !redirectUri) {
@@ -197,7 +215,7 @@ export function decodificarClaims(token: string): ClaimsAcesso {
     const bytes = Uint8Array.from(binario, (caractere) => caractere.charCodeAt(0));
     const claims: unknown = JSON.parse(new TextDecoder().decode(bytes));
     if (!ehClaimsAcesso(claims)) throw new Error();
-    return claims;
+    return { ...claims, role: normalizarPapel(claims.role) };
   } catch {
     throw new Error('O serviço de autenticação retornou um token inválido.');
   }
@@ -267,8 +285,9 @@ function ehClaimsAcesso(valor: unknown): valor is ClaimsAcesso {
   return (
     typeof claims.sub === 'string' &&
     claims.sub.length > 0 &&
+    // Papel desconhecido não impede o login: ele só não abre o painel do dono.
     typeof claims.role === 'string' &&
-    PAPEIS.includes(claims.role as Papel) &&
+    claims.role.trim().length > 0 &&
     typeof claims.exp === 'number' &&
     Number.isFinite(claims.exp)
   );

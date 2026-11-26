@@ -3,6 +3,7 @@ import {
   configuracaoOAuth,
   criarUrlAutorizacao,
   decodificarClaims,
+  ehContaDeLoja,
   obterMetadadosOAuth,
   revogarRefreshToken,
   trocarCodigoPorTokens,
@@ -12,6 +13,7 @@ import {
   limparSessaoAtual,
   type ConfiguracaoOAuth,
   type MetadadosOAuth,
+  type SessaoOAuth,
 } from './oauth';
 
 const config: ConfiguracaoOAuth = {
@@ -184,6 +186,52 @@ describe('cliente OAuth', () => {
       role: 'CLIENTE',
       exp: 1_900_000_000,
     });
+  });
+
+  it('normaliza o papel como o back-end: maiúsculas e sem o prefixo ROLE_', () => {
+    expect(decodificarClaims(jwt({ sub: '57', role: 'ROLE_lojista', exp: 1_900_000_000 })).role).toBe(
+      'LOJISTA',
+    );
+    expect(decodificarClaims(jwt({ sub: '57', role: ' loja ', exp: 1_900_000_000 })).role).toBe(
+      'LOJA',
+    );
+  });
+
+  it('aceita papel desconhecido no login, mas recusa token sem papel', () => {
+    expect(decodificarClaims(jwt({ sub: '57', role: 'GERENTE', exp: 1_900_000_000 })).role).toBe(
+      'GERENTE',
+    );
+    expect(() => decodificarClaims(jwt({ sub: '57', role: ' ', exp: 1_900_000_000 }))).toThrow(
+      'token inválido',
+    );
+  });
+
+  it('trata LOJA e LOJISTA como conta de loja, e os outros papéis não', () => {
+    const sessao = (tipo: string): SessaoOAuth => ({
+      accessToken: 'access',
+      refreshToken: 'refresh',
+      tipo,
+      usuarioId: '57',
+      expiraEm: 1_900_000_000_000,
+    });
+
+    expect(ehContaDeLoja(sessao('LOJA'))).toBe(true);
+    expect(ehContaDeLoja(sessao('LOJISTA'))).toBe(true);
+    expect(ehContaDeLoja(sessao('CLIENTE'))).toBe(false);
+    expect(ehContaDeLoja(sessao('GERENTE'))).toBe(false);
+    expect(ehContaDeLoja(null)).toBe(false);
+  });
+
+  it('usa o callback padrão quando VITE_IDENTIDADE_REDIRECT_URI está vazia', () => {
+    vi.stubGlobal('window', { location: { origin: 'http://localhost:3000' } });
+
+    expect(
+      configuracaoOAuth({
+        VITE_API_IDENTIDADE_URL: 'http://localhost:18001',
+        VITE_IDENTIDADE_CLIENT_ID: 'front-publico',
+        VITE_IDENTIDADE_REDIRECT_URI: '',
+      }).redirectUri,
+    ).toBe('http://localhost:3000/oauth/callback');
   });
 
   it('mantém a sessão em memória e permite removê-la', () => {

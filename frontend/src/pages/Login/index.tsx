@@ -4,6 +4,7 @@ import { Botao } from '../../components/Botao';
 import { Carregando } from '../../components/Carregando';
 import { useAutenticacao } from '../../hooks/useAutenticacao';
 import { useTituloPagina } from '../../hooks/useTituloPagina';
+import { ehContaDeLoja } from '../../services/oauth';
 import './styles.css';
 
 /** Inicia o fluxo interativo hospedado pelo serviço de autenticação. */
@@ -24,7 +25,7 @@ export function Login() {
       <section className="cartao login" aria-labelledby="login-titulo">
         <h1 id="login-titulo">Sessão ativa</h1>
         <p className="mudo">Você entrou com uma conta do tipo {sessao.tipo}.</p>
-        {sessao.tipo === 'LOJA' ? <Link to="/painel">Abrir painel da loja</Link> : null}
+        {ehContaDeLoja(sessao) ? <Link to="/painel">Abrir painel da loja</Link> : null}
         {erro ? <p role="alert">{erro}</p> : null}
         <Botao variante="contorno" onClick={() => void sair()}>
           Sair

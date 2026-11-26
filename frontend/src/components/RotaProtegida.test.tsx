@@ -51,6 +51,19 @@ describe('RotaProtegida', () => {
     expect(screen.getByText('Painel do restaurante')).toBeTruthy();
   });
 
+  it('permite o papel LOJISTA usado pelo back-end do Catálogo', () => {
+    mocks.sessao = {
+      accessToken: 'access',
+      refreshToken: 'refresh',
+      tipo: 'LOJISTA',
+      usuarioId: '57',
+      expiraEm: Date.now() + 60_000,
+    };
+    montarRotaProtegida();
+
+    expect(screen.getByText('Painel do restaurante')).toBeTruthy();
+  });
+
   it('nega a rota de proprietário para uma sessão CLIENTE', () => {
     mocks.sessao = {
       accessToken: 'access',

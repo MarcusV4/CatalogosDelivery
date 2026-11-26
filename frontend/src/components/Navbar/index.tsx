@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { useAutenticacao } from '../../hooks/useAutenticacao';
+import { ehContaDeLoja } from '../../services/oauth';
 import './styles.css';
 
 export function Navbar() {
@@ -15,7 +16,7 @@ export function Navbar() {
           <NavLink to="/" end className="topo__link">
             Início
           </NavLink>
-          {sessao?.tipo === 'LOJA' ? (
+          {ehContaDeLoja(sessao) ? (
             <NavLink to="/painel" className="topo__link">
               Painel
             </NavLink>

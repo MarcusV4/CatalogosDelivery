@@ -1,6 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { EstadoMensagem } from './EstadoMensagem';
 import { useAutenticacao } from '../hooks/useAutenticacao';
+import { ehContaDeLoja } from '../services/oauth';
 
 /** Bloqueio de interface para o painel; a API continua responsável pela autorização real. */
 export function RotaProtegida() {
@@ -16,7 +17,7 @@ export function RotaProtegida() {
       />
     );
   }
-  if (sessao.tipo !== 'LOJA') {
+  if (!ehContaDeLoja(sessao)) {
     return (
       <EstadoMensagem
         tipo="erro"
