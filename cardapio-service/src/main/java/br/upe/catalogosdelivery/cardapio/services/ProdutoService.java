@@ -1,4 +1,6 @@
 package br.upe.catalogosdelivery.cardapio.services;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import br.upe.catalogosdelivery.cardapio.clients.RestauranteClient;
 import br.upe.catalogosdelivery.cardapio.clients.RestauranteResumoDTO;
@@ -42,6 +44,8 @@ public class ProdutoService {
     AutorizacaoRestauranteService autorizacaoRestauranteService;
 
     private final ProdutoMapper produtoMapper = new ProdutoMapper();
+
+    private static final Logger log = LoggerFactory.getLogger(ProdutoService.class);
 
     public ProdutoResponseDTO cadastrarProduto(Produto produto, Long restauranteId){
         if (produto == null || produto.getPreco() == null || produto.getPreco() < 0) {
