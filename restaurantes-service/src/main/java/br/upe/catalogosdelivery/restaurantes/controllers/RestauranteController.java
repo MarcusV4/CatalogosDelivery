@@ -1,6 +1,12 @@
 package br.upe.catalogosdelivery.restaurantes.controllers;
 
-import br.upe.catalogosdelivery.restaurantes.entities.DTOs.*;
+import br.upe.catalogosdelivery.restaurantes.entities.DTOs.AtualizarRestauranteDTO;
+import br.upe.catalogosdelivery.restaurantes.entities.DTOs.AtualizarStatusRestauranteDTO;
+import br.upe.catalogosdelivery.restaurantes.entities.DTOs.FuncionamentoRestauranteDTO;
+import br.upe.catalogosdelivery.restaurantes.entities.DTOs.HorarioFuncionamentoDTO;
+import br.upe.catalogosdelivery.restaurantes.entities.DTOs.RestauranteDTO;
+import br.upe.catalogosdelivery.restaurantes.entities.DTOs.RestauranteResponseDTO;
+import br.upe.catalogosdelivery.restaurantes.entities.DTOs.SubstituirHorariosDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.Restaurante;
 import br.upe.catalogosdelivery.restaurantes.mappers.RestauranteMapper;
 import br.upe.catalogosdelivery.restaurantes.services.RestauranteService;
