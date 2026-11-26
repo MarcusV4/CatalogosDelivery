@@ -10,8 +10,7 @@
   margin: 0;
 }
 
-.login__form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--esp-4);
+.login__erro {
+  margin: 0;
+  color: var(--erro);
 }

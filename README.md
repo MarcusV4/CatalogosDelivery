@@ -155,10 +155,10 @@ O `verify` falha se algum módulo, ou qualquer classe de service, ficar abaixo d
 ## Frontend
 
 O front em `frontend/` é **complementar**: a avaliação continua sendo feita pelas
-APIs (Postman/Swagger). Inclui a Home de busca, a página pública de restaurante,
-o painel para gerenciar os itens do cardápio e uma tela de login ainda visual.
-O painel permite listar, cadastrar, editar, alterar disponibilidade e excluir itens.
-O bloqueio de operações por proprietário ainda depende da integração de autorização.
+APIs (Postman/Swagger). Ele inclui a Home com a busca, a página somente leitura do
+restaurante, o painel do cardápio e o login OAuth de usuário com Authorization Code + PKCE.
+A guarda de rotas filtra o acesso pelo papel do token; a validação do token
+e a autorização das operações ainda dependem da integração do back-end (#31).
 
 **Stack:** Vite + React + TypeScript (estrito), React Router, TanStack Query para
 dados e cache, `fetch` nativo, CSS puro com variáveis (cores, fontes e espaçamentos
@@ -168,10 +168,10 @@ do protótipo), Vitest, ESLint e Prettier. Requer Node 22.12 ou mais novo.
 frontend/src/
 ├── assets/       # imagens, fontes e arquivos estáticos
 ├── components/   # componentes compartilhados (Layout, Navbar, Botao, EstadoMensagem, Carregando...)
-├── context/      # estado global: notificações (toasts) e provedor do TanStack Query
-├── hooks/        # hooks reutilizáveis (useNotificacao, useTituloPagina, useDebounce) e de consulta (useRestaurante, useBuscaRestaurantes...)
-├── pages/        # Home (/), Restaurante (/restaurante/:id), PainelCardapio (/painel/restaurantes/:id/cardapio), Login e NaoEncontrada
-├── services/     # http.ts (wrapper do fetch), consultas.ts (QueryClient) e um arquivo por API
+├── context/      # estado global: notificações, consultas e sessão de autenticação
+├── hooks/        # hooks reutilizáveis e de consulta, incluindo useAutenticacao
+├── pages/        # Home, Restaurante, PainelCardapio, Login, callback OAuth e NaoEncontrada (404)
+├── services/     # client HTTP, OAuth PKCE, consultas e APIs do catálogo
 ├── styles/       # tema.css (variáveis) e global.css
 └── utils/        # preço (centavos e digitado em reais), datas, rótulos, cardápio, horários, filtros da busca e paginação
 ```
@@ -183,7 +183,10 @@ frontend/src/
 | `VITE_API_RESTAURANTES_URL` | `http://localhost:8004` | Serviço de Restaurantes |
 | `VITE_API_CARDAPIO_URL` | `http://localhost:8005` | Serviço de Cardápio |
 | `VITE_API_BUSCA_URL` | `http://localhost:8006` | Serviço de Busca |
-| `VITE_API_IDENTIDADE_URL` | vazio | Reservada para o login (#31); ainda não é usada |
+| `VITE_API_IDENTIDADE_URL` | `http://127.0.0.1:18001` | Emissor OAuth usado para descoberta de metadados |
+| `VITE_IDENTIDADE_CLIENT_ID` | vazio | Identificador do cliente público registrado para o front |
+| `VITE_IDENTIDADE_REDIRECT_URI` | `http://localhost:5173/oauth/callback` | Callback que também precisa estar registrado no serviço |
+| `VITE_IDENTIDADE_SCOPES` | vazio | Escopos opcionais de usuário publicados pelo serviço |
 
 > As `VITE_*` são **gravadas no JavaScript durante o build** e quem chama as APIs
 > é o **navegador**. Por isso elas apontam para `localhost` com as portas
@@ -216,14 +219,33 @@ O contêiner `frontend` só sobe depois que Restaurantes, Cardápio e Busca fica
 saudáveis e responde em <http://localhost:3000>. A porta pode ser trocada com
 `FRONTEND_PORT` no `.env`.
 
+Para habilitar o login, registre um **cliente público** para o front com Authorization
+Code + PKCE (S256) e cadastre exatamente o `redirect_uri` configurado. O contrato
+disponível não fornece o `client_id` desta aplicação; obtenha-o no provisionamento
+do cliente e configure-o no `.env`. **Não crie nem exponha `client_secret` no front.**
+Os valores `VITE_*` são incorporados no JavaScript durante o build; não são segredos.
+
+Os tokens ficam apenas em memória no navegador. A renovação usa refresh token
+rotativo e o logout revoga a sessão. Um refresh de página encerra a sessão local e
+exige novo login.
+
+O painel abre para contas de loja: papel `LOJA` (contrato da Identidade) ou `LOJISTA`
+(padrão do back-end do Catálogo), comparados sem diferenciar maiúsculas e sem o prefixo
+`ROLE_`. Um papel desconhecido não impede o login; ele só não abre o painel.
+O papel lido do access token serve somente para mostrar/esconder rotas na interface;
+não valida a assinatura no navegador e não substitui a autorização do back-end. As
+operações de escrita enviam `Authorization: Bearer <access_token>` quando há sessão.
+
 ### Páginas
 
 | Rota | Página | Dados |
 |---|---|---|
 | `/` | Home: busca de restaurantes e de pratos (somente leitura) | `GET /api/busca/restaurantes` e `GET /api/busca/itens` |
 | `/restaurante/:id` | Restaurante e cardápio (somente leitura) | `GET /api/restaurantes/{id}`, `GET /api/restaurantes/{id}/horarios` e `GET /api/restaurantes/{id}/cardapio` |
-| `/painel/restaurantes/:restauranteId/cardapio` | Painel para listar e gerenciar itens do restaurante indicado na rota | `GET /api/restaurantes/{id}/cardapio`, `GET /api/categorias`, `POST /api/restaurantes/{id}/cardapio`, `PUT /api/produtos/{id}`, `PATCH /api/produtos/{id}/disponibilidade` e `DELETE /api/produtos/{id}` |
-| `/login` | Login, apenas visual (#31) | — |
+| `/painel` | Restaurantes ativos do dono logado (`ownerUserId` igual ao `sub` do token), com o link para o cardápio de cada um | `GET /api/restaurantes` |
+| `/painel/restaurantes/:restauranteId/cardapio` | Painel protegido para contas de loja; lista e gerencia itens do restaurante indicado na rota | `GET /api/restaurantes/{id}/cardapio`, `GET /api/categorias`, `POST /api/restaurantes/{id}/cardapio`, `PUT /api/produtos/{id}`, `PATCH /api/produtos/{id}/disponibilidade` e `DELETE /api/produtos/{id}` |
+| `/login` | Inicia o login hospedado com Authorization Code + PKCE | Metadados OAuth e troca de código |
+| `/oauth/callback` | Valida `state`, troca o código e estabelece a sessão | `POST /v1/oauth/tokens` |
 | qualquer outra | Página não encontrada | — |
 
 O painel converte o preço digitado em reais para centavos antes de enviar à API.

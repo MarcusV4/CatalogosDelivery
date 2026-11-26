@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, STATUS_SEM_RESPOSTA, requisitar } from './http';
+import { definirSessaoAtual, lerSessaoAtual, limparSessaoAtual } from './oauth';
 
 const ORIGEM = 'http://localhost:8004';
 
@@ -25,6 +26,7 @@ describe('requisitar', () => {
   });
 
   afterEach(() => {
+    limparSessaoAtual();
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
     fetchFalso.mockReset();
@@ -50,6 +52,66 @@ describe('requisitar', () => {
     const init = fetchFalso.mock.calls[0]?.[1];
     expect(init?.body).toBe('{"nome":"A"}');
     expect(init?.headers).toMatchObject({ 'Content-Type': 'application/json' });
+  });
+
+  it('envia o access token no Bearer para operações protegidas de escrita', async () => {
+    definirSessaoAtual({
+      accessToken: 'token-de-usuario',
+      refreshToken: 'refresh',
+      tipo: 'LOJA',
+      usuarioId: 'loja-1',
+      expiraEm: Date.now() + 60_000,
+    });
+    fetchFalso.mockResolvedValue(respostaJson(201, { restauranteId: 1 }));
+
+    await requisitar('restaurantes', '/api/restaurantes', {
+      metodo: 'POST',
+      corpo: { nome: 'Loja' },
+    });
+
+    expect(fetchFalso.mock.calls[0]?.[1]?.headers).toMatchObject({
+      Authorization: 'Bearer token-de-usuario',
+    });
+  });
+
+  it('não envia Bearer em consultas públicas', async () => {
+    definirSessaoAtual({
+      accessToken: 'token-de-usuario',
+      refreshToken: 'refresh',
+      tipo: 'LOJA',
+      usuarioId: 'loja-1',
+      expiraEm: Date.now() + 60_000,
+    });
+    fetchFalso.mockResolvedValue(respostaJson(200, []));
+
+    await requisitar('restaurantes', '/api/restaurantes');
+
+    expect(fetchFalso.mock.calls[0]?.[1]?.headers).not.toHaveProperty('Authorization');
+  });
+
+  it('limpa os tokens e avisa a aplicação quando uma escrita autenticada responde 401', async () => {
+    definirSessaoAtual({
+      accessToken: 'token-expirado',
+      refreshToken: 'refresh',
+      tipo: 'LOJA',
+      usuarioId: 'loja-1',
+      expiraEm: Date.now() + 60_000,
+    });
+    const dispatchEvent = vi.fn();
+    vi.stubGlobal('window', { dispatchEvent });
+    fetchFalso.mockResolvedValue(respostaJson(401, { erro: true, mensagem: 'Não autenticado.' }));
+
+    await expect(
+      requisitar('restaurantes', '/api/restaurantes', {
+        metodo: 'POST',
+        corpo: { nome: 'Loja' },
+      }),
+    ).rejects.toMatchObject({ status: 401 });
+
+    expect(lerSessaoAtual()).toBeNull();
+    expect(dispatchEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'auth:unauthorized' }),
+    );
   });
 
   it('resolve undefined em respostas 204', async () => {

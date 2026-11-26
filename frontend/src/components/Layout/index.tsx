@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Navbar } from '../Navbar';
+import { RedirecionarSessaoExpirada } from '../RedirecionarSessaoExpirada';
 import './styles.css';
 
 interface LayoutProps {
@@ -15,6 +16,7 @@ export function Layout({ children }: LayoutProps) {
         Pular para o conteúdo
       </a>
       <Navbar />
+      <RedirecionarSessaoExpirada />
       <main id="conteudo" className="layout__conteudo" tabIndex={-1}>
         {children ?? <Outlet />}
       </main>

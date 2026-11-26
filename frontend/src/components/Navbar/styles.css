@@ -41,6 +41,13 @@
   text-underline-offset: 6px;
 }
 
+.topo__botao {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
 /* Texto pequeno sobre vermelho fica no tom escuro para manter o contraste (ver tema.css). */
 .topo__link--destaque {
   background: var(--papel);
@@ -51,4 +58,12 @@
 
 .topo__link--destaque.active {
   text-decoration: none;
+}
+
+.topo__erro {
+  margin: 0 auto;
+  max-width: var(--largura-conteudo);
+  padding: 0 var(--margem-lateral) var(--esp-3);
+  color: var(--texto-invertido);
+  font-size: var(--fonte-pequena);
 }
