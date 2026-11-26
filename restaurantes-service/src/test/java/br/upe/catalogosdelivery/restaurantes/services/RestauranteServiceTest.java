@@ -2,6 +2,7 @@ package br.upe.catalogosdelivery.restaurantes.services;
 
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.AtualizarRestauranteDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.AtualizarStatusRestauranteDTO;
+import br.upe.catalogosdelivery.restaurantes.entities.DTOs.FuncionamentoRestauranteDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.HorarioFuncionamentoDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.RestauranteDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.RestauranteResponseDTO;
@@ -378,10 +379,68 @@ class RestauranteServiceTest {
                                 new AtualizarStatusRestauranteDTO(10L, StatusRestaurante.FECHADO))),
                 Arguments.of("listarHorarios",
                         (BiConsumer<RestauranteService, Long>) RestauranteService::listarHorarios),
+                Arguments.of("buscarFuncionamento",
+                        (BiConsumer<RestauranteService, Long>) RestauranteService::buscarFuncionamento),
                 Arguments.of("substituirHorarios", (BiConsumer<RestauranteService, Long>)
                         (service, id) -> service.substituirHorarios(id, new SubstituirHorariosDTO(10L, List.of()))),
                 Arguments.of("deletarRestaurante", (BiConsumer<RestauranteService, Long>)
                         (service, id) -> service.deletarRestaurante(id, 10L)));
+    }
+
+    /** Segunda-feira, 16/11/2026, 15:00 no relógio dos testes. */
+    private static final Instant SEGUNDA_15H = Instant.parse("2026-11-16T15:00:00Z");
+
+    private FuncionamentoRestauranteDTO funcionamento(StatusRestaurante status, Instant instante,
+                                                      HorarioFuncionamento... horarios) {
+        Restaurante restaurante = restaurante(1L, 10L, status);
+        when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante));
+        when(clock.withZone(any())).thenReturn(Clock.fixed(instante, ZoneOffset.UTC));
+        List<HorarioFuncionamento> lista = List.of(horarios);
+        lista.forEach(h -> h.setIdRestaurante(restaurante));
+        when(horarioFuncRepo.findAllByIdRestauranteRestauranteId(1L)).thenReturn(lista);
+        return restauranteService.buscarFuncionamento(1L);
+    }
+
+    @Test
+    void funcionamentoDentroDoHorarioEstaAbertoETrazSoOsHorariosDeHoje() {
+        FuncionamentoRestauranteDTO resultado = funcionamento(StatusRestaurante.ABERTO, SEGUNDA_15H,
+                horario(DiaSemana.SEGUNDA, "09:00", "18:00", null),
+                horario(DiaSemana.TERCA, "10:00", "22:00", null));
+
+        assertEquals(StatusRestaurante.ABERTO, resultado.status());
+        assertTrue(resultado.abertoAgora());
+        assertEquals(DiaSemana.SEGUNDA, resultado.diaSemana());
+        assertEquals(List.of(new HorarioFuncionamentoDTO(DiaSemana.SEGUNDA,
+                java.time.LocalTime.of(9, 0), java.time.LocalTime.of(18, 0))), resultado.horarios());
+    }
+
+    @Test
+    void funcionamentoDeRestauranteFechadoNaoEstaAbertoMesmoDentroDoHorario() {
+        FuncionamentoRestauranteDTO resultado = funcionamento(StatusRestaurante.FECHADO, SEGUNDA_15H,
+                horario(DiaSemana.SEGUNDA, "09:00", "18:00", null));
+
+        assertEquals(StatusRestaurante.FECHADO, resultado.status());
+        assertFalse(resultado.abertoAgora());
+        assertEquals(1, resultado.horarios().size());
+    }
+
+    @Test
+    void funcionamentoForaDoHorarioDeHojeNaoEstaAberto() {
+        FuncionamentoRestauranteDTO resultado = funcionamento(StatusRestaurante.ABERTO,
+                Instant.parse("2026-11-16T18:00:00Z"), horario(DiaSemana.SEGUNDA, "09:00", "18:00", null));
+
+        assertFalse(resultado.abertoAgora());
+        assertEquals(DiaSemana.SEGUNDA, resultado.diaSemana());
+    }
+
+    @Test
+    void funcionamentoSemHorarioHojeNaoEstaAbertoEVemSemHorarios() {
+        FuncionamentoRestauranteDTO resultado = funcionamento(StatusRestaurante.ABERTO, SEGUNDA_15H,
+                horario(DiaSemana.TERCA, "09:00", "18:00", null));
+
+        assertFalse(resultado.abertoAgora());
+        assertEquals(DiaSemana.SEGUNDA, resultado.diaSemana());
+        assertTrue(resultado.horarios().isEmpty());
     }
 
     private Restaurante restaurante(Long id, Long owner, StatusRestaurante status) {

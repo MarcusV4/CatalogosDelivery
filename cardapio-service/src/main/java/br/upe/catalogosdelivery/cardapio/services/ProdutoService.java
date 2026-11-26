@@ -13,6 +13,8 @@ import br.upe.catalogosdelivery.cardapio.entities.Produto;
 import br.upe.catalogosdelivery.cardapio.mappers.ProdutoMapper;
 import br.upe.catalogosdelivery.cardapio.repositories.CardapioRepo;
 import br.upe.catalogosdelivery.cardapio.repositories.ProdutoRepo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -42,6 +44,8 @@ public class ProdutoService {
     AutorizacaoRestauranteService autorizacaoRestauranteService;
 
     private final ProdutoMapper produtoMapper = new ProdutoMapper();
+
+    private static final Logger log = LoggerFactory.getLogger(ProdutoService.class);
 
     public ProdutoResponseDTO cadastrarProduto(Produto produto, Long restauranteId){
         if (produto == null || produto.getPreco() == null || produto.getPreco() < 0) {
@@ -173,6 +177,11 @@ public class ProdutoService {
                     "Informe restauranteId e ao menos um item para validar.");
         }
 
+        // Prova da integração com o Checkout: uma linha por consulta recebida.
+        log.info("[Cardápio] Checkout consultou itens {} do restaurante {}",
+                request.itens().stream().map(item -> item == null ? null : item.itemId()).toList(),
+                request.restauranteId());
+
         return request.itens().stream()
                 .map(item -> validarItem(request.restauranteId(), item))
                 .toList();
@@ -195,6 +204,8 @@ public class ProdutoService {
 
         Long restauranteDoProduto = produto.getCardapio().getRestauranteId();
         if (!restauranteId.equals(restauranteDoProduto)) {
+            log.warn("[Cardápio] Validação rejeitada: item {} é do restaurante {}, não do restaurante {}",
+                    item.itemId(), restauranteDoProduto, restauranteId);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Todos os itens devem pertencer ao restaurante informado.");
         }

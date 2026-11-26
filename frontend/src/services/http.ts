@@ -1,4 +1,5 @@
 import { NOMES_DOS_SERVICOS, origemDoServico, type Servico } from './config';
+import { limparSessaoAtual, lerSessaoAtual } from './oauth';
 
 /** Status usado quando não houve resposta HTTP (rede, serviço fora do ar ou timeout). */
 export const STATUS_SEM_RESPOSTA = 0;
@@ -66,6 +67,7 @@ export async function requisitar<T>(
 ): Promise<T> {
   const url = `${origemDoServico(servico)}${caminho}`;
   const temCorpo = corpo !== undefined;
+  const sessao = metodo === 'GET' ? null : lerSessaoAtual();
   const limiteDeTempo = AbortSignal.timeout(timeoutMs);
 
   let resposta: Response;
@@ -75,6 +77,7 @@ export async function requisitar<T>(
       headers: {
         Accept: 'application/json',
         ...(temCorpo ? { 'Content-Type': 'application/json' } : {}),
+        ...(sessao ? { Authorization: `Bearer ${sessao.accessToken}` } : {}),
       },
       body: temCorpo ? JSON.stringify(corpo) : undefined,
       signal: signal ? AbortSignal.any([signal, limiteDeTempo]) : limiteDeTempo,
@@ -87,6 +90,10 @@ export async function requisitar<T>(
   }
 
   if (!resposta.ok) {
+    if (resposta.status === 401 && sessao) {
+      limparSessaoAtual();
+      if (typeof window !== 'undefined') window.dispatchEvent(new Event('auth:unauthorized'));
+    }
     throw await erroDaResposta(servico, resposta);
   }
   if (resposta.status === STATUS_SEM_CONTEUDO) {

@@ -2,6 +2,7 @@ package br.upe.catalogosdelivery.restaurantes.services;
 
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.AtualizarRestauranteDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.AtualizarStatusRestauranteDTO;
+import br.upe.catalogosdelivery.restaurantes.entities.DTOs.FuncionamentoRestauranteDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.HorarioFuncionamentoDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.RestauranteDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.RestauranteResponseDTO;
@@ -14,6 +15,8 @@ import br.upe.catalogosdelivery.restaurantes.exceptions.RestauranteNaoEncontrado
 import br.upe.catalogosdelivery.restaurantes.mappers.RestauranteMapper;
 import br.upe.catalogosdelivery.restaurantes.repositories.HorarioFuncRepo;
 import br.upe.catalogosdelivery.restaurantes.repositories.RestauranteRepo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -21,9 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Clock;
-import java.time.LocalDate;
+import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
@@ -34,6 +38,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class RestauranteService {
+
+    private static final Logger log = LoggerFactory.getLogger(RestauranteService.class);
 
     /**
      * Ordem de declaração de {@link DiaSemana} (DOMINGO a SABADO): enums se comparam pelo ordinal, não pelo
@@ -133,6 +139,24 @@ public class RestauranteService {
         return naOrdemDaSemana(horarioFuncRepo.findAllByIdRestauranteRestauranteId(id));
     }
 
+    /** Funcionamento atual para o Checkout: status, se está aberto agora e os horários de hoje. */
+    public FuncionamentoRestauranteDTO buscarFuncionamento(Long idRestaurante) {
+        Restaurante restaurante = buscarEntidade(idRestaurante);
+        List<HorarioFuncionamento> horarios = horarioFuncRepo
+                .findAllByIdRestauranteRestauranteId(idRestaurante);
+        // Um único instante para abertoAgora e para o dia: perto da meia-noite os dois não divergem.
+        Momento agora = agora();
+        boolean abertoAgora = estaAberto(restaurante, horarios, agora);
+        List<HorarioFuncionamentoDTO> horariosHoje = horarios.stream()
+                .filter(h -> h.getDiaSemana() == agora.dia())
+                .map(h -> new HorarioFuncionamentoDTO(h.getDiaSemana(), h.getHoraAbertura(), h.getHoraFechamento()))
+                .toList();
+        log.info("[Restaurantes] Checkout consultou o funcionamento do restaurante {}: status={}, abertoAgora={}",
+                idRestaurante, restaurante.getStatusRestaurante(), abertoAgora);
+        return new FuncionamentoRestauranteDTO(restaurante.getStatusRestaurante(), abertoAgora, agora.dia(),
+                horariosHoje);
+    }
+
     @Transactional
     public List<HorarioFuncionamentoDTO> substituirHorarios(Long id, SubstituirHorariosDTO dto) {
         Restaurante restaurante = buscarEntidade(id);
@@ -204,10 +228,28 @@ public class RestauranteService {
 
     private RestauranteResponseDTO toResponse(Restaurante restaurante, List<HorarioFuncionamento> horarios) {
         RestauranteResponseDTO dto = restauranteMapper.toResponseDTO(restaurante);
-        ZoneId zone = ZoneId.of(zoneId == null ? "America/Recife" : zoneId);
-        LocalDate hoje = LocalDate.now(clock.withZone(zone));
-        LocalTime agora = LocalTime.now(clock.withZone(zone));
-        DiaSemana diaHoje = switch (hoje.getDayOfWeek()) {
+        boolean abertoAgora = estaAberto(restaurante, horarios, agora());
+        return new RestauranteResponseDTO(dto.restauranteId(), dto.restauranteNome(), dto.restauranteDesc(),
+                dto.logradouro(), dto.numero(), dto.complemento(), dto.bairro(), dto.cidade(), dto.estado(), dto.cep(),
+                dto.restauranteTelefone(), dto.urlImagem(), dto.ownerUserId(), dto.statusRestaurante(),
+                dto.categoriaRestaurante(), dto.taxaEntrega(), dto.tempoEstimadoMin(), dto.tempoEstimadoMax(), abertoAgora);
+    }
+
+    /** Aberto agora: status ABERTO e o instante dentro de um dos horários do dia. */
+    private static boolean estaAberto(Restaurante restaurante, List<HorarioFuncionamento> horarios, Momento agora) {
+        return restaurante.getStatusRestaurante() == StatusRestaurante.ABERTO
+                && horarios.stream().anyMatch(h -> h.getDiaSemana() == agora.dia()
+                && !agora.hora().isBefore(h.getHoraAbertura()) && agora.hora().isBefore(h.getHoraFechamento()));
+    }
+
+    /** Dia e hora atuais no fuso dos horários, lidos do relógio uma única vez. */
+    private Momento agora() {
+        ZonedDateTime agora = ZonedDateTime.now(clock.withZone(ZoneId.of(zoneId == null ? "America/Recife" : zoneId)));
+        return new Momento(diaSemana(agora.getDayOfWeek()), agora.toLocalTime());
+    }
+
+    private static DiaSemana diaSemana(DayOfWeek dia) {
+        return switch (dia) {
             case SUNDAY -> DiaSemana.DOMINGO;
             case MONDAY -> DiaSemana.SEGUNDA;
             case TUESDAY -> DiaSemana.TERCA;
@@ -216,12 +258,8 @@ public class RestauranteService {
             case FRIDAY -> DiaSemana.SEXTA;
             case SATURDAY -> DiaSemana.SABADO;
         };
-        boolean abertoAgora = restaurante.getStatusRestaurante() == StatusRestaurante.ABERTO
-                && horarios.stream().anyMatch(h -> h.getDiaSemana() == diaHoje
-                && !agora.isBefore(h.getHoraAbertura()) && agora.isBefore(h.getHoraFechamento()));
-        return new RestauranteResponseDTO(dto.restauranteId(), dto.restauranteNome(), dto.restauranteDesc(),
-                dto.logradouro(), dto.numero(), dto.complemento(), dto.bairro(), dto.cidade(), dto.estado(), dto.cep(),
-                dto.restauranteTelefone(), dto.urlImagem(), dto.ownerUserId(), dto.statusRestaurante(),
-                dto.categoriaRestaurante(), dto.taxaEntrega(), dto.tempoEstimadoMin(), dto.tempoEstimadoMax(), abertoAgora);
+    }
+
+    private record Momento(DiaSemana dia, LocalTime hora) {
     }
 }

@@ -267,6 +267,62 @@ class RestauranteApiIntegrationTest {
     }
 
     @Test
+    @Transactional
+    void funcionamentoMostraAbertoAgoraComOsHorariosDeHojeEFechadoQuandoOStatusEhFechado() throws Exception {
+        long id = criarRestaurante();
+        String hoje = diaSemana(LocalDate.now(ZoneId.of("America/Recife")).getDayOfWeek());
+        String outroDia = hoje.equals("SEGUNDA") ? "TERCA" : "SEGUNDA";
+        mockMvc.perform(put("/api/restaurantes/{id}/horarios", id)
+                        .contentType("application/json")
+                        .content("""
+                                {"ownerUserId":42,"horarios":[
+                                  {"diaSemana":"%s","horaAbertura":"00:00:00","horaFechamento":"23:59:59"},
+                                  {"diaSemana":"%s","horaAbertura":"10:00:00","horaFechamento":"22:00:00"}
+                                ]}
+                                """.formatted(hoje, outroDia)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/restaurantes/{id}/funcionamento", id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ABERTO"))
+                .andExpect(jsonPath("$.abertoAgora").value(true))
+                .andExpect(jsonPath("$.diaSemana").value(hoje))
+                .andExpect(jsonPath("$.horarios.length()").value(1))
+                .andExpect(jsonPath("$.horarios[0].diaSemana").value(hoje))
+                .andExpect(jsonPath("$.horarios[0].horaAbertura").value("00:00:00"));
+
+        mockMvc.perform(patch("/api/restaurantes/{id}/status", id)
+                        .contentType("application/json")
+                        .content("{\"ownerUserId\":42,\"statusRestaurante\":\"FECHADO\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/restaurantes/{id}/funcionamento", id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("FECHADO"))
+                .andExpect(jsonPath("$.abertoAgora").value(false))
+                .andExpect(jsonPath("$.horarios.length()").value(1));
+    }
+
+    @Test
+    @Transactional
+    void funcionamentoSemHorarioCadastradoNaoEstaAberto() throws Exception {
+        long id = criarRestaurante();
+
+        mockMvc.perform(get("/api/restaurantes/{id}/funcionamento", id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ABERTO"))
+                .andExpect(jsonPath("$.abertoAgora").value(false))
+                .andExpect(jsonPath("$.horarios").isEmpty());
+    }
+
+    @Test
+    void funcionamentoDeRestauranteInexistenteRetorna404() throws Exception {
+        mockMvc.perform(get("/api/restaurantes/99999/funcionamento"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.mensagem").value("Restaurante 99999 não encontrado."));
+    }
+
+    @Test
     void swaggerListaRotasDeGerenciamentoDeRestaurantes() throws Exception {
         mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
@@ -274,6 +330,7 @@ class RestauranteApiIntegrationTest {
                 .andExpect(jsonPath("$.paths['/api/restaurantes/{idRestaurante}/status'].patch").exists())
                 .andExpect(jsonPath("$.paths['/api/restaurantes/{idRestaurante}/horarios'].get").exists())
                 .andExpect(jsonPath("$.paths['/api/restaurantes/{idRestaurante}/horarios'].put").exists())
+                .andExpect(jsonPath("$.paths['/api/restaurantes/{idRestaurante}/funcionamento'].get").exists())
                 .andExpect(jsonPath("$.paths['/api/restaurantes/{idRestaurante}'].delete").exists());
     }
 
