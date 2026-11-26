@@ -7,7 +7,7 @@ import java.util.Collection;
 import java.util.List;
 
 public interface HorarioFuncRepo extends JpaRepository<HorarioFuncionamento, Long> {
-    List<HorarioFuncionamento> findAllByIdRestauranteRestauranteIdOrderByDiaSemana(Long restauranteId);
+    List<HorarioFuncionamento> findAllByIdRestauranteRestauranteId(Long restauranteId);
     List<HorarioFuncionamento> findAllByIdRestauranteRestauranteIdIn(Collection<Long> restauranteIds);
     void deleteAllByIdRestauranteRestauranteId(Long restauranteId);
 }

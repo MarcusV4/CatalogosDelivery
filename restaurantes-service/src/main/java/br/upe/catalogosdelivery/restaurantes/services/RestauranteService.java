@@ -37,7 +37,7 @@ public class RestauranteService {
 
     /**
      * Ordem de declaração de {@link DiaSemana} (DOMINGO a SABADO): enums se comparam pelo ordinal, não pelo
-     * texto gravado no banco. Um dia nulo (dado legado) vai para o fim, como no ORDER BY do Postgres.
+     * texto gravado no banco. Um dia nulo (dado legado) vai para o fim em vez de gerar erro.
      */
     private static final Comparator<HorarioFuncionamento> ORDEM_DA_SEMANA = Comparator.comparing(
             HorarioFuncionamento::getDiaSemana, Comparator.nullsLast(Comparator.naturalOrder()));
@@ -130,7 +130,7 @@ public class RestauranteService {
 
     public List<HorarioFuncionamentoDTO> listarHorarios(Long id) {
         buscarEntidade(id);
-        return naOrdemDaSemana(horarioFuncRepo.findAllByIdRestauranteRestauranteIdOrderByDiaSemana(id));
+        return naOrdemDaSemana(horarioFuncRepo.findAllByIdRestauranteRestauranteId(id));
     }
 
     @Transactional
@@ -199,7 +199,7 @@ public class RestauranteService {
 
     private RestauranteResponseDTO toResponse(Restaurante restaurante) {
         return toResponse(restaurante, horarioFuncRepo
-                .findAllByIdRestauranteRestauranteIdOrderByDiaSemana(restaurante.getRestauranteId()));
+                .findAllByIdRestauranteRestauranteId(restaurante.getRestauranteId()));
     }
 
     private RestauranteResponseDTO toResponse(Restaurante restaurante, List<HorarioFuncionamento> horarios) {

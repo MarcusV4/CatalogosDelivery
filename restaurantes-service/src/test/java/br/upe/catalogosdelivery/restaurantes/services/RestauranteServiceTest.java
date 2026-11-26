@@ -101,7 +101,7 @@ class RestauranteServiceTest {
         restaurante.setCategoriaRestaurante(CategoriaRestaurante.PIZZARIA);
         restaurante.setTaxaEntrega(550L);
         when(restauranteRepo.findById(10L)).thenReturn(Optional.of(restaurante));
-        when(horarioFuncRepo.findAllByIdRestauranteRestauranteIdOrderByDiaSemana(10L)).thenReturn(List.of());
+        when(horarioFuncRepo.findAllByIdRestauranteRestauranteId(10L)).thenReturn(List.of());
         when(clock.withZone(any())).thenReturn(Clock.fixed(Instant.parse("2026-11-16T15:00:00Z"), ZoneOffset.UTC));
 
         RestauranteResponseDTO resultado = restauranteService.buscarRestaurante(10L);
@@ -137,7 +137,7 @@ class RestauranteServiceTest {
         Restaurante restaurante = restaurante(1L, 10L, StatusRestaurante.ABERTO);
         when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante));
         when(restauranteRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(horarioFuncRepo.findAllByIdRestauranteRestauranteIdOrderByDiaSemana(1L)).thenReturn(List.of());
+        when(horarioFuncRepo.findAllByIdRestauranteRestauranteId(1L)).thenReturn(List.of());
         when(clock.withZone(any())).thenReturn(Clock.systemUTC());
         restauranteService.atualizarRestaurante(1L, atualizar(10L));
         assertEquals("Nome", restaurante.getRestauranteNome());
@@ -150,7 +150,7 @@ class RestauranteServiceTest {
         Restaurante restaurante = restaurante(1L, 10L, StatusRestaurante.ABERTO);
         when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante));
         when(restauranteRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(horarioFuncRepo.findAllByIdRestauranteRestauranteIdOrderByDiaSemana(1L)).thenReturn(List.of());
+        when(horarioFuncRepo.findAllByIdRestauranteRestauranteId(1L)).thenReturn(List.of());
         when(clock.withZone(any())).thenReturn(Clock.systemUTC());
         restauranteService.atualizarStatus(1L, new AtualizarStatusRestauranteDTO(10L, StatusRestaurante.FECHADO));
         assertEquals(StatusRestaurante.FECHADO, restaurante.getStatusRestaurante());
@@ -201,7 +201,7 @@ class RestauranteServiceTest {
                                                     List<DiaSemana> esperados) {
         Restaurante restaurante = restaurante(1L, 10L, StatusRestaurante.ABERTO);
         when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante));
-        when(horarioFuncRepo.findAllByIdRestauranteRestauranteIdOrderByDiaSemana(1L)).thenReturn(
+        when(horarioFuncRepo.findAllByIdRestauranteRestauranteId(1L)).thenReturn(
                 gravados.stream().map(dia -> horarioDoDia(dia, restaurante)).toList());
 
         assertEquals(horariosDosDias(esperados), restauranteService.listarHorarios(1L));
@@ -228,7 +228,7 @@ class RestauranteServiceTest {
         when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante));
         Clock fixed = Clock.fixed(Instant.parse("2026-11-16T15:00:00Z"), ZoneOffset.UTC);
         when(clock.withZone(any())).thenReturn(fixed);
-        when(horarioFuncRepo.findAllByIdRestauranteRestauranteIdOrderByDiaSemana(1L)).thenReturn(List.of(
+        when(horarioFuncRepo.findAllByIdRestauranteRestauranteId(1L)).thenReturn(List.of(
                 horario(DiaSemana.SEGUNDA, "09:00", "18:00", restaurante)));
         assertFalse(restauranteService.buscarRestaurante(1L).abertoAgora());
     }
@@ -239,7 +239,7 @@ class RestauranteServiceTest {
         when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante));
         Clock fixed = Clock.fixed(Instant.parse("2026-11-16T15:00:00Z"), ZoneOffset.UTC);
         when(clock.withZone(any())).thenReturn(fixed);
-        when(horarioFuncRepo.findAllByIdRestauranteRestauranteIdOrderByDiaSemana(1L)).thenReturn(List.of(
+        when(horarioFuncRepo.findAllByIdRestauranteRestauranteId(1L)).thenReturn(List.of(
                 horario(DiaSemana.SEGUNDA, "09:00", "18:00", restaurante)));
         assertTrue(restauranteService.buscarRestaurante(1L).abertoAgora());
     }
@@ -250,7 +250,7 @@ class RestauranteServiceTest {
         when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante));
         Clock fixed = Clock.fixed(Instant.parse("2026-11-16T21:00:00Z"), ZoneOffset.UTC);
         when(clock.withZone(any())).thenReturn(fixed);
-        when(horarioFuncRepo.findAllByIdRestauranteRestauranteIdOrderByDiaSemana(1L)).thenReturn(List.of(
+        when(horarioFuncRepo.findAllByIdRestauranteRestauranteId(1L)).thenReturn(List.of(
                 horario(DiaSemana.SEGUNDA, "16:00", "18:00", restaurante)));
         assertFalse(restauranteService.buscarRestaurante(1L).abertoAgora());
     }
@@ -318,7 +318,7 @@ class RestauranteServiceTest {
         assertTrue(resultado.get(0).abertoAgora());
         assertFalse(resultado.get(1).abertoAgora());
         verify(restauranteRepo, never()).findAll();
-        verify(horarioFuncRepo, never()).findAllByIdRestauranteRestauranteIdOrderByDiaSemana(any());
+        verify(horarioFuncRepo, never()).findAllByIdRestauranteRestauranteId(any());
     }
 
     @Test
