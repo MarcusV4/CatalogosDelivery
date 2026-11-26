@@ -24,6 +24,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
@@ -33,6 +34,13 @@ import java.util.stream.Collectors;
 
 @Service
 public class RestauranteService {
+
+    /**
+     * Ordem de declaração de {@link DiaSemana} (DOMINGO a SABADO): enums se comparam pelo ordinal, não pelo
+     * texto gravado no banco. Um dia nulo (dado legado) vai para o fim, como no ORDER BY do Postgres.
+     */
+    private static final Comparator<HorarioFuncionamento> ORDEM_DA_SEMANA = Comparator.comparing(
+            HorarioFuncionamento::getDiaSemana, Comparator.nullsLast(Comparator.naturalOrder()));
 
     private final RestauranteRepo restauranteRepo;
     private final HorarioFuncRepo horarioFuncRepo;
@@ -122,9 +130,7 @@ public class RestauranteService {
 
     public List<HorarioFuncionamentoDTO> listarHorarios(Long id) {
         buscarEntidade(id);
-        return horarioFuncRepo.findAllByIdRestauranteRestauranteIdOrderByDiaSemana(id).stream()
-                .map(h -> new HorarioFuncionamentoDTO(h.getDiaSemana(), h.getHoraAbertura(), h.getHoraFechamento()))
-                .toList();
+        return naOrdemDaSemana(horarioFuncRepo.findAllByIdRestauranteRestauranteIdOrderByDiaSemana(id));
     }
 
     @Transactional
@@ -152,7 +158,13 @@ public class RestauranteService {
             horario.setIdRestaurante(restaurante);
             return horario;
         }).toList();
-        return horarioFuncRepo.saveAll(entidades).stream()
+        return naOrdemDaSemana(horarioFuncRepo.saveAll(entidades));
+    }
+
+    /** Resposta das rotas de horários: só a lista devolvida é ordenada; o que foi gravado não muda. */
+    private static List<HorarioFuncionamentoDTO> naOrdemDaSemana(List<HorarioFuncionamento> horarios) {
+        return horarios.stream()
+                .sorted(ORDEM_DA_SEMANA)
                 .map(h -> new HorarioFuncionamentoDTO(h.getDiaSemana(), h.getHoraAbertura(), h.getHoraFechamento()))
                 .toList();
     }
