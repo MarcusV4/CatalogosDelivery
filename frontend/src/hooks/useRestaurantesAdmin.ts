@@ -52,7 +52,7 @@ export function useRestaurantesAdmin(usuarioId: number) {
     mutationFn: ({ id, valor }: { id: number; valor: StatusRestaurante }) =>
       atualizarStatusRestaurante(id, valor),
     meta: { silenciarErro: true },
-    onSuccess: (restaurante) => {
+    onSuccess: async (restaurante) => {
       // Mantém o item INDISPONIVEL visível na sessão atual, pois a listagem pública do serviço
       // ainda omite restaurantes desativados. A listagem completa do dono depende do back-end.
       cliente.setQueryData<typeof restaurantes.data>(chave, (atuais) => {
@@ -62,6 +62,12 @@ export function useRestaurantesAdmin(usuarioId: number) {
               item.restauranteId === restaurante.restauranteId ? restaurante : item,
             )
           : [...lista, restaurante];
+      });
+      // A página pública do restaurante também mostra o status. `exact` preserva a consulta
+      // de horários (chave filha), para não descartar edições de horário ainda não salvas.
+      await cliente.invalidateQueries({
+        queryKey: chavesRestaurantes.detalhe(restaurante.restauranteId),
+        exact: true,
       });
       notificar('Status do restaurante atualizado.', 'sucesso');
     },
