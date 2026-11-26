@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import type { HorarioFuncionamento } from '../services/restaurantes';
-import { diaDaSemanaEm, montarSemana, resumoDeHoje, temHorarios, textoIntervalo } from './horarios';
+import type { DiaSemana, HorarioFuncionamento } from '../services/restaurantes';
+import {
+  diaDaSemanaEm,
+  momentoEm,
+  montarSemana,
+  previsaoDeFuncionamento,
+  resumoDeHoje,
+  temHorarios,
+  textoIntervalo,
+  textoPrevisao,
+} from './horarios';
 
 const SEGUNDA_A_NOITE: HorarioFuncionamento = {
   diaSemana: 'SEGUNDA',
@@ -81,5 +90,93 @@ describe('diaDaSemanaEm', () => {
 
   it('recusa data inválida', () => {
     expect(() => diaDaSemanaEm(new Date('ontem'))).toThrow(RangeError);
+  });
+});
+
+describe('momentoEm', () => {
+  it('devolve o dia e o minuto do dia em Recife', () => {
+    // 01:30 UTC de quarta é 22:30 de terça em Recife.
+    expect(momentoEm(new Date('2026-11-25T01:30:00Z'))).toEqual({ dia: 'TERCA', minutos: 1350 });
+    expect(momentoEm(new Date('2026-11-25T03:00:00Z'))).toEqual({ dia: 'QUARTA', minutos: 0 });
+  });
+});
+
+/** 2026-11-24 é uma terça; Recife é UTC−3. */
+const TERCA_12H = new Date('2026-11-24T15:00:00Z');
+const TERCA_16H = new Date('2026-11-24T19:00:00Z');
+const SABADO_15H = new Date('2026-11-28T18:00:00Z');
+
+function horario(diaSemana: DiaSemana, abertura: string, fechamento: string): HorarioFuncionamento {
+  return { diaSemana, horaAbertura: `${abertura}:00`, horaFechamento: `${fechamento}:00` };
+}
+
+/** Previsão já em texto, como aparece no selo. */
+function previsao(
+  horarios: HorarioFuncionamento[],
+  abertoAgora: boolean,
+  agora: Date,
+): string | null {
+  const resultado = previsaoDeFuncionamento(horarios, abertoAgora, agora);
+  return resultado ? textoPrevisao(resultado) : null;
+}
+
+describe('previsaoDeFuncionamento', () => {
+  it('aberto: fecha no horário de hoje', () => {
+    expect(previsao([horario('TERCA', '11:00', '23:30')], true, TERCA_12H)).toBe('fecha às 23:30');
+  });
+
+  it('aberto: fechamento às 23:59:59 aparece como 23:59', () => {
+    const horarios: HorarioFuncionamento[] = [
+      { diaSemana: 'TERCA', horaAbertura: '00:00:00', horaFechamento: '23:59:59' },
+    ];
+    expect(previsao(horarios, true, TERCA_12H)).toBe('fecha às 23:59');
+  });
+
+  it('aberto sem horário para hoje não prevê nada', () => {
+    expect(previsao([horario('QUARTA', '11:00', '15:00')], true, TERCA_12H)).toBeNull();
+  });
+
+  it('fechado antes do horário de hoje: abre hoje', () => {
+    expect(previsao([horario('TERCA', '18:00', '23:00')], false, TERCA_12H)).toBe(
+      'abre hoje às 18:00',
+    );
+  });
+
+  it('fechado depois do horário de hoje: abre amanhã', () => {
+    const horarios = [horario('TERCA', '11:00', '15:00'), horario('QUARTA', '10:00', '15:00')];
+    expect(previsao(horarios, false, TERCA_16H)).toBe('abre amanhã às 10:00');
+  });
+
+  it('pula os dias sem horário e diz o nome do dia, em minúsculas', () => {
+    expect(previsao([horario('SEXTA', '11:00', '22:00')], false, TERCA_12H)).toBe(
+      'abre sexta às 11:00',
+    );
+  });
+
+  it('dá a volta na semana, de sábado para domingo e segunda', () => {
+    expect(previsao([horario('DOMINGO', '10:00', '14:00')], false, SABADO_15H)).toBe(
+      'abre amanhã às 10:00',
+    );
+    expect(previsao([horario('SEGUNDA', '10:00', '14:00')], false, SABADO_15H)).toBe(
+      'abre segunda às 10:00',
+    );
+  });
+
+  it('só com o horário de hoje, já encerrado: abre no mesmo dia da próxima semana', () => {
+    expect(previsao([horario('TERCA', '11:00', '15:00')], false, TERCA_16H)).toBe(
+      'abre terça às 11:00',
+    );
+  });
+
+  it('sem horários não prevê nada', () => {
+    expect(previsao([], false, TERCA_12H)).toBeNull();
+    expect(previsao([], true, TERCA_12H)).toBeNull();
+  });
+
+  it('ignora horário em formato inválido', () => {
+    const horarios: HorarioFuncionamento[] = [
+      { diaSemana: 'TERCA', horaAbertura: '6 da tarde', horaFechamento: '23:00:00' },
+    ];
+    expect(previsao(horarios, false, TERCA_12H)).toBeNull();
   });
 });
