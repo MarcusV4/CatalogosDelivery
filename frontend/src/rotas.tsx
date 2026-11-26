@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { EstadoMensagem } from './components/EstadoMensagem';
 import { Layout } from './components/Layout';
 import { RotaProtegida } from './components/RotaProtegida';
@@ -30,6 +30,7 @@ export const roteador = createBrowserRouter([
         path: 'painel',
         element: <RotaProtegida />,
         children: [
+          { index: true, element: <Navigate to="restaurantes" replace /> },
           { path: 'restaurantes', element: <PainelRestaurantes /> },
           {
             path: 'restaurantes/:restauranteId/cardapio',
