@@ -229,6 +229,9 @@ Os tokens ficam apenas em memória no navegador. A renovação usa refresh token
 rotativo e o logout revoga a sessão. Um refresh de página encerra a sessão local e
 exige novo login.
 
+O painel abre para contas de loja: papel `LOJA` (contrato da Identidade) ou `LOJISTA`
+(padrão do back-end do Catálogo), comparados sem diferenciar maiúsculas e sem o prefixo
+`ROLE_`. Um papel desconhecido não impede o login; ele só não abre o painel.
 O papel lido do access token serve somente para mostrar/esconder rotas na interface;
 não valida a assinatura no navegador e não substitui a autorização do back-end. As
 operações de escrita enviam `Authorization: Bearer <access_token>` quando há sessão.
@@ -239,7 +242,8 @@ operações de escrita enviam `Authorization: Bearer <access_token>` quando há 
 |---|---|---|
 | `/` | Home: busca de restaurantes e de pratos (somente leitura) | `GET /api/busca/restaurantes` e `GET /api/busca/itens` |
 | `/restaurante/:id` | Restaurante e cardápio (somente leitura) | `GET /api/restaurantes/{id}`, `GET /api/restaurantes/{id}/horarios` e `GET /api/restaurantes/{id}/cardapio` |
-| `/painel/restaurantes/:restauranteId/cardapio` | Painel protegido para contas `LOJA`; lista e gerencia itens do restaurante indicado na rota | `GET /api/restaurantes/{id}/cardapio`, `GET /api/categorias`, `POST /api/restaurantes/{id}/cardapio`, `PUT /api/produtos/{id}`, `PATCH /api/produtos/{id}/disponibilidade` e `DELETE /api/produtos/{id}` |
+| `/painel` | Restaurantes ativos do dono logado (`ownerUserId` igual ao `sub` do token), com o link para o cardápio de cada um | `GET /api/restaurantes` |
+| `/painel/restaurantes/:restauranteId/cardapio` | Painel protegido para contas de loja; lista e gerencia itens do restaurante indicado na rota | `GET /api/restaurantes/{id}/cardapio`, `GET /api/categorias`, `POST /api/restaurantes/{id}/cardapio`, `PUT /api/produtos/{id}`, `PATCH /api/produtos/{id}/disponibilidade` e `DELETE /api/produtos/{id}` |
 | `/login` | Inicia o login hospedado com Authorization Code + PKCE | Metadados OAuth e troca de código |
 | `/oauth/callback` | Valida `state`, troca o código e estabelece a sessão | `POST /v1/oauth/tokens` |
 | qualquer outra | Página não encontrada | — |
