@@ -63,6 +63,11 @@ export const chavesRestaurantes = {
   horarios: (id: number) => [...chavesRestaurantes.detalhe(id), 'horarios'] as const,
 };
 
+/** Restaurantes ativos (`GET /api/restaurantes`); os desativados (INDISPONIVEL) ficam de fora. */
+export function listarRestaurantes(signal?: AbortSignal): Promise<Restaurante[]> {
+  return requisitar<Restaurante[]>('restaurantes', '/api/restaurantes', { signal });
+}
+
 /** Um restaurante pelo id, inclusive desativado (INDISPONIVEL). Responde 404 se não existir. */
 export function buscarRestaurante(id: number, signal?: AbortSignal): Promise<Restaurante> {
   return requisitar<Restaurante>('restaurantes', `/api/restaurantes/${id}`, { signal });
