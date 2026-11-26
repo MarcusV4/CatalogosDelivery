@@ -155,9 +155,10 @@ O `verify` falha se algum módulo, ou qualquer classe de service, ficar abaixo d
 ## Frontend
 
 O front em `frontend/` é **complementar**: a avaliação continua sendo feita pelas
-APIs (Postman/Swagger). Ele tem a base (rotas, tema, client HTTP e tratamento de
-erro), a Home com a busca de restaurantes e pratos e a página de cada restaurante com o cardápio,
-somente leitura. O login é apenas visual e depende da integração com a Identidade (#31).
+APIs (Postman/Swagger). Inclui a Home de busca, a página pública de restaurante,
+o painel para gerenciar os itens do cardápio e uma tela de login ainda visual.
+O painel permite listar, cadastrar, editar, alterar disponibilidade e excluir itens.
+O bloqueio de operações por proprietário ainda depende da integração de autorização.
 
 **Stack:** Vite + React + TypeScript (estrito), React Router, TanStack Query para
 dados e cache, `fetch` nativo, CSS puro com variáveis (cores, fontes e espaçamentos
@@ -169,7 +170,7 @@ frontend/src/
 ├── components/   # componentes compartilhados (Layout, Navbar, Botao, EstadoMensagem, Carregando...)
 ├── context/      # estado global: notificações (toasts) e provedor do TanStack Query
 ├── hooks/        # hooks reutilizáveis (useNotificacao, useTituloPagina, useDebounce) e de consulta (useRestaurante, useBuscaRestaurantes...)
-├── pages/        # uma pasta por rota: Home (/), Restaurante (/restaurante/:id), Login (/login) e NaoEncontrada (404)
+├── pages/        # Home (/), Restaurante (/restaurante/:id), PainelCardapio (/painel/restaurantes/:id/cardapio), Login e NaoEncontrada
 ├── services/     # http.ts (wrapper do fetch), consultas.ts (QueryClient) e um arquivo por API
 ├── styles/       # tema.css (variáveis) e global.css
 └── utils/        # preço (centavos e digitado em reais), datas, rótulos, cardápio, horários, filtros da busca e paginação
@@ -221,8 +222,13 @@ saudáveis e responde em <http://localhost:3000>. A porta pode ser trocada com
 |---|---|---|
 | `/` | Home: busca de restaurantes e de pratos (somente leitura) | `GET /api/busca/restaurantes` e `GET /api/busca/itens` |
 | `/restaurante/:id` | Restaurante e cardápio (somente leitura) | `GET /api/restaurantes/{id}`, `GET /api/restaurantes/{id}/horarios` e `GET /api/restaurantes/{id}/cardapio` |
+| `/painel/restaurantes/:restauranteId/cardapio` | Painel para listar e gerenciar itens do restaurante indicado na rota | `GET /api/restaurantes/{id}/cardapio`, `GET /api/categorias`, `POST /api/restaurantes/{id}/cardapio`, `PUT /api/produtos/{id}`, `PATCH /api/produtos/{id}/disponibilidade` e `DELETE /api/produtos/{id}` |
 | `/login` | Login, apenas visual (#31) | — |
 | qualquer outra | Página não encontrada | — |
+
+O painel converte o preço digitado em reais para centavos antes de enviar à API.
+Como a autorização de proprietário ainda não está integrada, use essa rota somente
+no ambiente local/de desenvolvimento; a tela exibe esse estado.
 
 **Tela inicial (busca).** Usa só o serviço de Busca, numa consulta por vez: a aba
 **Restaurantes** chama `/api/busca/restaurantes` e a aba **Pratos**, `/api/busca/itens`.
