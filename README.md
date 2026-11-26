@@ -346,6 +346,7 @@ centavos) e não há como separá-los: recrie os bancos locais com
 | Restaurantes | `POST/GET /api/restaurantes`, `GET/PUT/DELETE /api/restaurantes/{id}` | Cadastro, consulta, atualização e desativação lógica (`DELETE` retorna 204) |
 | Restaurantes | `PATCH /api/restaurantes/{id}/status` | Altera o status do restaurante |
 | Restaurantes | `GET/PUT /api/restaurantes/{id}/horarios` | Consulta ou substitui os horários da semana; dias omitidos ficam fechados |
+| Restaurantes | `GET /api/restaurantes/{id}/funcionamento` | Status, se está aberto agora e os horários de hoje (para o Checkout) |
 | Cardápio | `GET /api/produtos` | Todos os itens (usado pela Busca) |
 | Cardápio | `DELETE /api/cardapios/restaurante/{restauranteId}` | Exclui logicamente o cardápio de um restaurante (rota administrativa; o Restaurantes não a chama) |
 | Cardápio | `GET/POST /api/restaurantes/{restauranteId}/cardapio` | Consulta ou cadastra itens do cardápio |
@@ -575,25 +576,67 @@ Dessa forma, o serviço de Identidade não precisa conhecer os restaurantes exis
 
 O Catálogo funciona como a **fonte de verdade** para informações relacionadas aos restaurantes e seus cardápios.
 
-Quando um cliente seleciona itens para realizar uma compra, o Checkout pode validar os itens selecionados no Cardápio:
+Antes de fechar um pedido, o Checkout consulta dois endpoints. O contrato abaixo é a
+proposta da #30 e **ainda depende da aprovação da Equipe 3**. Os dois endpoints estão
+no Swagger, com exemplos.
+
+### Validação de itens: `POST /api/produtos/validacao` (Cardápio)
+
+Requisição: o restaurante do pedido e os itens do carrinho.
 
 ```json
 {
   "restauranteId": 10,
   "itens": [
-    {
-      "itemId": 101,
-      "quantidade": 2
-    },
-    {
-      "itemId": 102,
-      "quantidade": 1
-    }
+    { "itemId": 101, "quantidade": 2 },
+    { "itemId": 102, "quantidade": 1 }
   ]
 }
 ```
 
-`POST /api/produtos/validacao` retorna por item `existe`, `disponivel`, `preco` em centavos, `restauranteId` e `nome`. Um item inexistente retorna `existe: false`; itens pertencentes a outro restaurante são rejeitados. O formato final deve seguir o contrato combinado com Checkout na #20/#30.
+Resposta `200`: um resultado por item, na mesma ordem.
+
+```json
+[
+  { "itemId": 101, "existe": true, "disponivel": true, "preco": 2590, "restauranteId": 10, "nome": "Pizza Calabresa" },
+  { "itemId": 102, "existe": false, "disponivel": false, "preco": null, "restauranteId": null, "nome": null }
+]
+```
+
+- `preco` é em centavos. Item inexistente, ou de um cardápio excluído, volta com `existe: false`.
+- Item indisponível volta com `existe: true` e `disponivel: false`. Cabe ao Checkout recusar o pedido.
+- Responde `400` quando falta `restauranteId` ou a lista de itens está vazia, quando um
+  item não tem `itemId` ou tem `quantidade` menor que 1, e quando algum item pertence a
+  outro restaurante.
+
+### Funcionamento do restaurante: `GET /api/restaurantes/{id}/funcionamento` (Restaurantes)
+
+Resposta `200`:
+
+```json
+{
+  "status": "ABERTO",
+  "abertoAgora": true,
+  "diaSemana": "SEGUNDA",
+  "horarios": [
+    { "diaSemana": "SEGUNDA", "horaAbertura": "11:00:00", "horaFechamento": "23:00:00" }
+  ]
+}
+```
+
+- `abertoAgora` só é `true` com status `ABERTO` e o horário atual (em `America/Recife`)
+  dentro de um dos horários de hoje.
+- `horarios` traz só os horários de hoje, e vem vazio quando o restaurante não abre no dia.
+- Restaurante inexistente responde `404` com `"Restaurante {id} não encontrado."`.
+
+### Logs da integração
+
+Cada consulta do Checkout gera uma linha de log, que serve de prova da integração:
+
+```text
+[Cardápio] Checkout consultou itens [101, 102] do restaurante 10
+[Restaurantes] Checkout consultou o funcionamento do restaurante 10: status=ABERTO, abertoAgora=true
+```
 
 O Catálogo é responsável por fornecer informações atualizadas sobre esses itens, como:
 
