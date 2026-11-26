@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
+import { isValidElement, type ReactNode } from 'react';
 import { RotaProtegida } from './components/RotaProtegida';
 import { PainelCardapio } from './pages/PainelCardapio';
 import { roteador } from './rotas';
@@ -11,7 +12,11 @@ describe('rotas do painel', () => {
       (rota) => rota.path === 'restaurantes/:restauranteId/cardapio',
     );
 
-    expect(rotaPainel?.element?.type).toBe(RotaProtegida);
-    expect(rotaCardapio?.element?.type).toBe(PainelCardapio);
+    expect(tipoDoElemento(rotaPainel?.element)).toBe(RotaProtegida);
+    expect(tipoDoElemento(rotaCardapio?.element)).toBe(PainelCardapio);
   });
 });
+
+function tipoDoElemento(elemento: ReactNode | undefined): unknown {
+  return isValidElement(elemento) ? elemento.type : null;
+}
