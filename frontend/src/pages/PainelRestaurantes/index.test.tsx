@@ -49,6 +49,7 @@ describe('PainelRestaurantes', () => {
   let restaurantesServidor: Restaurante[];
   let negarStatus: boolean;
   let falharCadastro: boolean;
+  let falharEdicao: boolean;
   let falharListagem: boolean;
   let horariosServidor: Array<{ diaSemana: string; horaAbertura: string; horaFechamento: string }>;
 
@@ -68,6 +69,7 @@ describe('PainelRestaurantes', () => {
     ];
     negarStatus = false;
     falharCadastro = false;
+    falharEdicao = false;
     falharListagem = false;
     horariosServidor = [
       { diaSemana: 'SEGUNDA', horaAbertura: '09:00:00', horaFechamento: '18:00:00' },
@@ -92,6 +94,12 @@ describe('PainelRestaurantes', () => {
         return resposta(novo, 201);
       }
       if (url === `${ORIGEM}/api/restaurantes/1` && metodo === 'PUT') {
+        if (falharEdicao) {
+          return resposta(
+            { erro: true, mensagem: 'Usuário não é proprietário do restaurante.' },
+            403,
+          );
+        }
         const dados = JSON.parse(String(init?.body)) as Partial<Restaurante>;
         restaurantesServidor = restaurantesServidor.map((r) =>
           r.restauranteId === 1 ? { ...r, ...dados } : r,
@@ -248,6 +256,51 @@ describe('PainelRestaurantes', () => {
     }
     await usuario.click(screen.getByRole('button', { name: 'Cadastrar restaurante' }));
     expect((await screen.findByRole('alert')).textContent).toContain('CEP inválido.');
+  });
+
+  it('não mostra no cadastro reaberto o erro de um envio anterior', async () => {
+    falharCadastro = true;
+    const usuario = userEvent.setup();
+    abrirPainel();
+    await screen.findByRole('heading', { name: 'Cantina da Praça' });
+    await usuario.click(screen.getByRole('button', { name: 'Novo restaurante' }));
+    const valores: Record<string, string> = {
+      'restaurante-nome': 'Bistrô do Recife',
+      'restaurante-descricao': 'Pratos regionais',
+      'restaurante-telefone': '81999990000',
+      'restaurante-logradouro': 'Rua Nova',
+      'restaurante-numero': '25',
+      'restaurante-bairro': 'Boa Vista',
+      'restaurante-cidade': 'Recife',
+      'restaurante-estado': 'PE',
+      'restaurante-cep': '50000-000',
+      'restaurante-taxa': '4,50',
+      'restaurante-tempo-min': '20',
+      'restaurante-tempo-max': '40',
+    };
+    for (const [id, valor] of Object.entries(valores)) {
+      await usuario.type(document.getElementById(id) as HTMLElement, valor);
+    }
+    await usuario.click(screen.getByRole('button', { name: 'Cadastrar restaurante' }));
+    expect(await screen.findByText('CEP inválido.')).toBeTruthy();
+
+    await usuario.click(screen.getByRole('button', { name: 'Cancelar' }));
+    await usuario.click(screen.getByRole('button', { name: 'Novo restaurante' }));
+    expect(screen.queryByText('CEP inválido.')).toBeNull();
+  });
+
+  it('não mostra na edição reaberta o erro 403 de um envio anterior', async () => {
+    falharEdicao = true;
+    const usuario = userEvent.setup();
+    abrirPainel();
+    await screen.findByRole('heading', { name: 'Cantina da Praça' });
+    await usuario.click(screen.getByRole('button', { name: 'Editar dados' }));
+    await usuario.click(screen.getByRole('button', { name: 'Salvar alterações' }));
+    expect(await screen.findByText('Usuário não é proprietário do restaurante.')).toBeTruthy();
+
+    await usuario.click(screen.getByRole('button', { name: 'Cancelar' }));
+    await usuario.click(screen.getByRole('button', { name: 'Editar dados' }));
+    expect(screen.queryByText('Usuário não é proprietário do restaurante.')).toBeNull();
   });
 
   it('edita os dados, converte taxa de centavos para reais e envia atualização autenticada', async () => {

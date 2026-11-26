@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type Dispatch, type SetStateAction } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Botao } from '../../components/Botao';
@@ -78,7 +78,7 @@ function ConteudoPainel({
   horariosDoRestaurante: Restaurante | null;
   setHorariosDoRestaurante: (restaurante: Restaurante | null) => void;
   errosStatus: Record<number, string>;
-  setErrosStatus: (erros: Record<number, string>) => void;
+  setErrosStatus: Dispatch<SetStateAction<Record<number, string>>>;
 }) {
   const { restaurantes, criar, atualizar, status } = useRestaurantesAdmin(usuarioId);
   const salvandoDados = criar.isPending || atualizar.isPending;
@@ -98,6 +98,26 @@ function ConteudoPainel({
   }
 
   const itens = restaurantes.data ?? [];
+  // Abrir ou fechar um formulário descarta o erro da API de um envio anterior.
+  const abrirCadastro = () => {
+    setRestauranteEditando(null);
+    criar.reset();
+    setMostrarCadastro(true);
+  };
+  const fecharCadastro = () => {
+    criar.reset();
+    setMostrarCadastro(false);
+  };
+  const abrirEdicao = (restaurante: Restaurante) => {
+    setMostrarCadastro(false);
+    setHorariosDoRestaurante(null);
+    atualizar.reset();
+    setRestauranteEditando(restaurante);
+  };
+  const fecharEdicao = () => {
+    atualizar.reset();
+    setRestauranteEditando(null);
+  };
   const salvarCadastro = (dados: Parameters<typeof criar.mutate>[0]) => {
     criar.mutate(dados, {
       onSuccess: () => {
@@ -124,10 +144,7 @@ function ConteudoPainel({
         </div>
         <Botao
           disabled={mostrarCadastro || salvandoDados}
-          onClick={() => {
-            setRestauranteEditando(null);
-            setMostrarCadastro(true);
-          }}
+          onClick={abrirCadastro}
         >
           Novo restaurante
         </Botao>
@@ -138,7 +155,7 @@ function ConteudoPainel({
           salvando={criar.isPending}
           erro={criar.error ? mensagemDoErro(criar.error) : null}
           aoSalvar={salvarCadastro}
-          aoCancelar={() => setMostrarCadastro(false)}
+          aoCancelar={fecharCadastro}
         />
       ) : null}
       {restauranteEditando ? (
@@ -148,7 +165,7 @@ function ConteudoPainel({
           salvando={atualizar.isPending}
           erro={atualizar.error ? mensagemDoErro(atualizar.error) : null}
           aoSalvar={salvarEdicao}
-          aoCancelar={() => setRestauranteEditando(null)}
+          aoCancelar={fecharEdicao}
         />
       ) : null}
 
@@ -158,7 +175,7 @@ function ConteudoPainel({
             tipo="vazio"
             titulo="Você ainda não tem restaurantes cadastrados."
             descricao="Cadastre seu primeiro restaurante para começar a gerenciá-lo."
-            acoes={<Botao onClick={() => setMostrarCadastro(true)}>Cadastrar restaurante</Botao>}
+            acoes={<Botao onClick={abrirCadastro}>Cadastrar restaurante</Botao>}
           />
         </div>
       ) : null}
@@ -183,11 +200,7 @@ function ConteudoPainel({
                 <div className="painel-restaurantes__acoes">
                   <Botao
                     variante="contorno"
-                    onClick={() => {
-                      setMostrarCadastro(false);
-                      setHorariosDoRestaurante(null);
-                      setRestauranteEditando(restaurante);
-                    }}
+                    onClick={() => abrirEdicao(restaurante)}
                   >
                     Editar dados
                   </Botao>
@@ -220,15 +233,15 @@ function ConteudoPainel({
                     disabled={status.isPending}
                     onChange={(evento) => {
                       const valor = evento.target.value as StatusRestaurante;
-                      setErrosStatus({ ...errosStatus, [restaurante.restauranteId]: '' });
+                      setErrosStatus((atuais) => ({ ...atuais, [restaurante.restauranteId]: '' }));
                       status.mutate(
                         { id: restaurante.restauranteId, valor },
                         {
                           onError: (erro) =>
-                            setErrosStatus({
-                              ...errosStatus,
+                            setErrosStatus((atuais) => ({
+                              ...atuais,
                               [restaurante.restauranteId]: mensagemDoErro(erro),
-                            }),
+                            })),
                         },
                       );
                     }}
