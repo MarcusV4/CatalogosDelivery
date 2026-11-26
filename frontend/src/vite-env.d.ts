@@ -4,8 +4,11 @@ interface ImportMetaEnv {
   readonly VITE_API_RESTAURANTES_URL?: string;
   readonly VITE_API_CARDAPIO_URL?: string;
   readonly VITE_API_BUSCA_URL?: string;
-  /** Reservada para o login com a Identidade (#31). */
+  /** Emissor (issuer) do Authorization Server. */
   readonly VITE_API_IDENTIDADE_URL?: string;
+  readonly VITE_IDENTIDADE_CLIENT_ID?: string;
+  readonly VITE_IDENTIDADE_REDIRECT_URI?: string;
+  readonly VITE_IDENTIDADE_SCOPES?: string;
 }
 
 interface ImportMeta {

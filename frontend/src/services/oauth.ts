@@ -40,6 +40,20 @@ interface ClaimsAcesso {
 
 const TEMPO_LIMITE_MS = 10_000;
 const PAPEIS: Papel[] = ['CLIENTE', 'LOJA', 'ENTREGADOR', 'ADMIN'];
+let sessaoAtual: SessaoOAuth | null = null;
+
+/** Sessão em memória: tokens de usuário não são persistidos no armazenamento do navegador. */
+export function lerSessaoAtual(): SessaoOAuth | null {
+  return sessaoAtual;
+}
+
+export function definirSessaoAtual(sessao: SessaoOAuth): void {
+  sessaoAtual = sessao;
+}
+
+export function limparSessaoAtual(): void {
+  sessaoAtual = null;
+}
 
 /** Lê a configuração do cliente público de navegador; segredo nunca é aceito aqui. */
 export function configuracaoOAuth(env: ImportMetaEnv = import.meta.env): ConfiguracaoOAuth {
@@ -203,13 +217,19 @@ async function enviarTokens(
     if (resposta.status >= 500) {
       throw new Error('O serviço de autenticação está indisponível no momento. Tente novamente.');
     }
-    throw new Error(erro?.error_description ?? erro?.mensagem ?? 'Não foi possível entrar. Confira os dados e tente novamente.');
+    throw new Error(
+      erro?.error_description ??
+        erro?.mensagem ??
+        'Não foi possível entrar. Confira os dados e tente novamente.',
+    );
   }
   if (!ehRespostaTokens(corpo)) {
     throw new Error('O serviço de autenticação retornou uma resposta de sessão inválida.');
   }
   if (!corpo.refresh_token) {
-    throw new Error('O serviço de autenticação não retornou o refresh token necessário para manter a sessão.');
+    throw new Error(
+      'O serviço de autenticação não retornou o refresh token necessário para manter a sessão.',
+    );
   }
   const claims = decodificarClaims(corpo.access_token);
   return {
@@ -228,7 +248,8 @@ function ehMetadadosOAuth(valor: unknown): valor is MetadadosOAuth {
     typeof metadados.issuer === 'string' &&
     typeof metadados.authorization_endpoint === 'string' &&
     typeof metadados.token_endpoint === 'string' &&
-    (metadados.revocation_endpoint === undefined || typeof metadados.revocation_endpoint === 'string')
+    (metadados.revocation_endpoint === undefined ||
+      typeof metadados.revocation_endpoint === 'string')
   );
 }
 

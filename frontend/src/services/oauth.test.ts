@@ -1,11 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  configuracaoOAuth,
   criarUrlAutorizacao,
   decodificarClaims,
   obterMetadadosOAuth,
   revogarRefreshToken,
   trocarCodigoPorTokens,
   renovarTokens,
+  definirSessaoAtual,
+  lerSessaoAtual,
+  limparSessaoAtual,
   type ConfiguracaoOAuth,
   type MetadadosOAuth,
 } from './oauth';
@@ -25,7 +29,10 @@ const metadados: MetadadosOAuth = {
 };
 
 function jwt(payload: Record<string, unknown>): string {
-  const codificado = btoa(JSON.stringify(payload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  const codificado = btoa(JSON.stringify(payload))
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
   return `header.${codificado}.signature`;
 }
 
@@ -41,9 +48,39 @@ afterEach(() => {
 });
 
 describe('cliente OAuth', () => {
+  it('lê issuer, client_id e redirect_uri do ambiente sem exigir segredo no navegador', () => {
+    expect(
+      configuracaoOAuth({
+        VITE_API_IDENTIDADE_URL: 'http://localhost:18001/',
+        VITE_IDENTIDADE_CLIENT_ID: 'front-publico',
+        VITE_IDENTIDADE_REDIRECT_URI: 'http://localhost:5173/oauth/callback',
+        VITE_IDENTIDADE_SCOPES: 'perfil:ler',
+      }),
+    ).toEqual({
+      emissor: 'http://localhost:18001',
+      clientId: 'front-publico',
+      redirectUri: 'http://localhost:5173/oauth/callback',
+      escopos: 'perfil:ler',
+    });
+  });
+
+  it('explica quais configurações são obrigatórias se o client_id estiver ausente', () => {
+    expect(() =>
+      configuracaoOAuth({
+        VITE_API_IDENTIDADE_URL: 'http://localhost:18001',
+        VITE_IDENTIDADE_REDIRECT_URI: 'http://localhost:5173/oauth/callback',
+      }),
+    ).toThrow('VITE_API_IDENTIDADE_URL, VITE_IDENTIDADE_CLIENT_ID');
+  });
+
   it('monta autorização Authorization Code com PKCE S256 sem segredo no navegador', () => {
     const url = new URL(
-      criarUrlAutorizacao(metadados.authorization_endpoint, config, 'estado-seguro', 'desafio-pkce'),
+      criarUrlAutorizacao(
+        metadados.authorization_endpoint,
+        config,
+        'estado-seguro',
+        'desafio-pkce',
+      ),
     );
 
     expect(url.origin + url.pathname).toBe(metadados.authorization_endpoint);
@@ -149,6 +186,21 @@ describe('cliente OAuth', () => {
     });
   });
 
+  it('mantém a sessão em memória e permite removê-la', () => {
+    const sessao = {
+      accessToken: 'access',
+      refreshToken: 'refresh',
+      tipo: 'LOJA' as const,
+      usuarioId: 'id-1',
+      expiraEm: 1_900_000_000_000,
+    };
+    definirSessaoAtual(sessao);
+
+    expect(lerSessaoAtual()).toBe(sessao);
+    limparSessaoAtual();
+    expect(lerSessaoAtual()).toBeNull();
+  });
+
   it('rejeita resposta OAuth sem refresh token rotativo', async () => {
     const fetchFalso = vi.fn<typeof fetch>().mockResolvedValue(
       respostaJson(200, {
@@ -158,9 +210,9 @@ describe('cliente OAuth', () => {
       }),
     );
 
-    await expect(
-      renovarTokens(config, metadados, 'refresh-anterior', fetchFalso),
-    ).rejects.toThrow('refresh token');
+    await expect(renovarTokens(config, metadados, 'refresh-anterior', fetchFalso)).rejects.toThrow(
+      'refresh token',
+    );
   });
 
   it('transforma falha de rede do serviço OAuth em mensagem amigável', async () => {
