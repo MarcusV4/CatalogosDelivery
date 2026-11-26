@@ -6,6 +6,7 @@ import { Home } from './pages/Home';
 import { Login, RetornoOAuth } from './pages/Login';
 import { NaoEncontrada } from './pages/NaoEncontrada';
 import { PainelCardapio } from './pages/PainelCardapio';
+import { PainelRestaurantes } from './pages/PainelRestaurantes';
 import { PaginaRestaurante } from './pages/Restaurante';
 
 export const roteador = createBrowserRouter([
@@ -29,6 +30,7 @@ export const roteador = createBrowserRouter([
         path: 'painel',
         element: <RotaProtegida />,
         children: [
+          { path: 'restaurantes', element: <PainelRestaurantes /> },
           {
             path: 'restaurantes/:restauranteId/cardapio',
             element: <PainelCardapio />,

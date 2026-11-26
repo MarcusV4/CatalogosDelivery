@@ -16,7 +16,7 @@ export function Navbar() {
             Início
           </NavLink>
           {sessao?.tipo === 'LOJA' ? (
-            <NavLink to="/painel" className="topo__link">
+            <NavLink to="/painel/restaurantes" className="topo__link">
               Painel
             </NavLink>
           ) : null}
