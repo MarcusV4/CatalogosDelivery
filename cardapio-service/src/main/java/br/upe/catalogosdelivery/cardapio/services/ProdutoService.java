@@ -1,6 +1,4 @@
 package br.upe.catalogosdelivery.cardapio.services;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import br.upe.catalogosdelivery.cardapio.clients.RestauranteClient;
 import br.upe.catalogosdelivery.cardapio.clients.RestauranteResumoDTO;
@@ -15,6 +13,8 @@ import br.upe.catalogosdelivery.cardapio.entities.Produto;
 import br.upe.catalogosdelivery.cardapio.mappers.ProdutoMapper;
 import br.upe.catalogosdelivery.cardapio.repositories.CardapioRepo;
 import br.upe.catalogosdelivery.cardapio.repositories.ProdutoRepo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -177,8 +177,10 @@ public class ProdutoService {
                     "Informe restauranteId e ao menos um item para validar.");
         }
 
-        log.info("Solicitação de validação de itens recebida. Restaurante: {}, Quantidade de itens: {}",
-                request.restauranteId(), request.itens().size());
+        // Prova da integração com o Checkout: uma linha por consulta recebida.
+        log.info("[Cardápio] Checkout consultou itens {} do restaurante {}",
+                request.itens().stream().map(item -> item == null ? null : item.itemId()).toList(),
+                request.restauranteId());
 
         return request.itens().stream()
                 .map(item -> validarItem(request.restauranteId(), item))
@@ -197,21 +199,16 @@ public class ProdutoService {
                 .filter(p -> p.getCardapio().getExcluidoEm() == null)
                 .orElse(null);
         if (produto == null) {
-            log.warn("Item {} não encontrado ou pertencente a um cardápio excluído.", item.itemId());
             return new ValidacaoItemResponseDTO(item.itemId(), false, false, null, null, null);
         }
 
         Long restauranteDoProduto = produto.getCardapio().getRestauranteId();
         if (!restauranteId.equals(restauranteDoProduto)) {
-            log.warn("Item {} pertence ao restaurante {}, mas foi solicitado para o restaurante {}.",
+            log.warn("[Cardápio] Validação rejeitada: item {} é do restaurante {}, não do restaurante {}",
                     item.itemId(), restauranteDoProduto, restauranteId);
-
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Todos os itens devem pertencer ao restaurante informado.");
         }
-
-        log.info("Item validado: id={}, nome={}, disponível={}, restaurante={}",
-                produto.getId(), produto.getNome(), produto.isDisponivel(), restauranteDoProduto);
 
         return new ValidacaoItemResponseDTO(
                 produto.getId(), true, produto.isDisponivel(), produto.getPreco(),
