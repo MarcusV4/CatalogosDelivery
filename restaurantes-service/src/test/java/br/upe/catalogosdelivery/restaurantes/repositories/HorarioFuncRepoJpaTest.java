@@ -58,11 +58,11 @@ class HorarioFuncRepoJpaTest {
 
         assertEquals("ACAI", jdbcTemplate.queryForObject("select categoria_restaurante from restaurante where restaurante_id = ?",
                 String.class, restaurante.getRestauranteId()));
-        assertEquals(1, horarioFuncRepo.findAllByIdRestauranteRestauranteIdOrderByDiaSemana(
+        assertEquals(1, horarioFuncRepo.findAllByIdRestauranteRestauranteId(
                 restaurante.getRestauranteId()).size());
 
         horarioFuncRepo.deleteAllByIdRestauranteRestauranteId(restaurante.getRestauranteId());
-        assertEquals(0, horarioFuncRepo.findAllByIdRestauranteRestauranteIdOrderByDiaSemana(
+        assertEquals(0, horarioFuncRepo.findAllByIdRestauranteRestauranteId(
                 restaurante.getRestauranteId()).size());
     }
 }

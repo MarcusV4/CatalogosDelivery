@@ -21,6 +21,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
@@ -30,6 +32,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
@@ -43,11 +46,15 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class RestauranteServiceTest {
 
+    private static final int HORA_ABERTURA_DOMINGO = 8;
+    private static final int DURACAO_TURNO_HORAS = 4;
+
     @Mock RestauranteRepo restauranteRepo;
     @Mock HorarioFuncRepo horarioFuncRepo;
     @Spy RestauranteMapper restauranteMapper = new RestauranteMapper();
     @Mock Clock clock;
     @InjectMocks RestauranteService restauranteService;
+    @Captor ArgumentCaptor<List<HorarioFuncionamento>> salvos;
 
     @Test
     void cadastraRestauranteValidoComOsDadosDoDono() {
@@ -95,7 +102,7 @@ class RestauranteServiceTest {
         restaurante.setCategoriaRestaurante(CategoriaRestaurante.PIZZARIA);
         restaurante.setTaxaEntrega(550L);
         when(restauranteRepo.findById(10L)).thenReturn(Optional.of(restaurante));
-        when(horarioFuncRepo.findAllByIdRestauranteRestauranteIdOrderByDiaSemana(10L)).thenReturn(List.of());
+        when(horarioFuncRepo.findAllByIdRestauranteRestauranteId(10L)).thenReturn(List.of());
         when(clock.withZone(any())).thenReturn(Clock.fixed(Instant.parse("2026-11-16T15:00:00Z"), ZoneOffset.UTC));
 
         RestauranteResponseDTO resultado = restauranteService.buscarRestaurante(10L);
@@ -131,7 +138,7 @@ class RestauranteServiceTest {
         Restaurante restaurante = restaurante(1L, 10L, StatusRestaurante.ABERTO);
         when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante));
         when(restauranteRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(horarioFuncRepo.findAllByIdRestauranteRestauranteIdOrderByDiaSemana(1L)).thenReturn(List.of());
+        when(horarioFuncRepo.findAllByIdRestauranteRestauranteId(1L)).thenReturn(List.of());
         when(clock.withZone(any())).thenReturn(Clock.systemUTC());
         restauranteService.atualizarRestaurante(1L, atualizar(10L));
         assertEquals("Nome", restaurante.getRestauranteNome());
@@ -144,7 +151,7 @@ class RestauranteServiceTest {
         Restaurante restaurante = restaurante(1L, 10L, StatusRestaurante.ABERTO);
         when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante));
         when(restauranteRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(horarioFuncRepo.findAllByIdRestauranteRestauranteIdOrderByDiaSemana(1L)).thenReturn(List.of());
+        when(horarioFuncRepo.findAllByIdRestauranteRestauranteId(1L)).thenReturn(List.of());
         when(clock.withZone(any())).thenReturn(Clock.systemUTC());
         restauranteService.atualizarStatus(1L, new AtualizarStatusRestauranteDTO(10L, StatusRestaurante.FECHADO));
         assertEquals(StatusRestaurante.FECHADO, restaurante.getStatusRestaurante());
@@ -175,13 +182,54 @@ class RestauranteServiceTest {
         assertEquals(List.of(segunda), resultado);
     }
 
+    /** Dias como o banco os devolvia (ordem do texto) ou como o cliente os enviou, e a ordem esperada. */
+    private static Stream<Arguments> diasForaDeOrdem() {
+        return Stream.of(
+                Arguments.of("semana completa em ordem alfabética",
+                        List.of(DiaSemana.DOMINGO, DiaSemana.QUARTA, DiaSemana.QUINTA, DiaSemana.SABADO,
+                                DiaSemana.SEGUNDA, DiaSemana.SEXTA, DiaSemana.TERCA),
+                        List.of(DiaSemana.DOMINGO, DiaSemana.SEGUNDA, DiaSemana.TERCA, DiaSemana.QUARTA,
+                                DiaSemana.QUINTA, DiaSemana.SEXTA, DiaSemana.SABADO)),
+                Arguments.of("alguns dias fora de ordem",
+                        List.of(DiaSemana.SEXTA, DiaSemana.SEGUNDA, DiaSemana.QUARTA, DiaSemana.SABADO),
+                        List.of(DiaSemana.SEGUNDA, DiaSemana.QUARTA, DiaSemana.SEXTA, DiaSemana.SABADO)),
+                Arguments.of("sem horários", List.of(), List.of()));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("diasForaDeOrdem")
+    void listarHorariosDevolveOsDiasNaOrdemDaSemana(String caso, List<DiaSemana> gravados,
+                                                    List<DiaSemana> esperados) {
+        Restaurante restaurante = restaurante(1L, 10L, StatusRestaurante.ABERTO);
+        when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante));
+        when(horarioFuncRepo.findAllByIdRestauranteRestauranteId(1L)).thenReturn(
+                gravados.stream().map(dia -> horarioDoDia(dia, restaurante)).toList());
+
+        assertEquals(horariosDosDias(esperados), restauranteService.listarHorarios(1L));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("diasForaDeOrdem")
+    void substituirHorariosDevolveOsDiasNaOrdemDaSemanaSemReordenarOQueGrava(String caso, List<DiaSemana> enviados,
+                                                                           List<DiaSemana> esperados) {
+        when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante(1L, 10L, StatusRestaurante.ABERTO)));
+        when(horarioFuncRepo.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        List<HorarioFuncionamentoDTO> resultado = restauranteService.substituirHorarios(1L,
+                new SubstituirHorariosDTO(10L, horariosDosDias(enviados)));
+
+        assertEquals(horariosDosDias(esperados), resultado);
+        verify(horarioFuncRepo).saveAll(salvos.capture());
+        assertEquals(enviados, salvos.getValue().stream().map(HorarioFuncionamento::getDiaSemana).toList());
+    }
+
     @Test
     void fechadoNaoEhAbertoAgoraMesmoDentroDoHorario() {
         Restaurante restaurante = restaurante(1L, 10L, StatusRestaurante.FECHADO);
         when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante));
         Clock fixed = Clock.fixed(Instant.parse("2026-11-16T15:00:00Z"), ZoneOffset.UTC);
         when(clock.withZone(any())).thenReturn(fixed);
-        when(horarioFuncRepo.findAllByIdRestauranteRestauranteIdOrderByDiaSemana(1L)).thenReturn(List.of(
+        when(horarioFuncRepo.findAllByIdRestauranteRestauranteId(1L)).thenReturn(List.of(
                 horario(DiaSemana.SEGUNDA, "09:00", "18:00", restaurante)));
         assertFalse(restauranteService.buscarRestaurante(1L).abertoAgora());
     }
@@ -192,7 +240,7 @@ class RestauranteServiceTest {
         when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante));
         Clock fixed = Clock.fixed(Instant.parse("2026-11-16T15:00:00Z"), ZoneOffset.UTC);
         when(clock.withZone(any())).thenReturn(fixed);
-        when(horarioFuncRepo.findAllByIdRestauranteRestauranteIdOrderByDiaSemana(1L)).thenReturn(List.of(
+        when(horarioFuncRepo.findAllByIdRestauranteRestauranteId(1L)).thenReturn(List.of(
                 horario(DiaSemana.SEGUNDA, "09:00", "18:00", restaurante)));
         assertTrue(restauranteService.buscarRestaurante(1L).abertoAgora());
     }
@@ -203,7 +251,7 @@ class RestauranteServiceTest {
         when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante));
         Clock fixed = Clock.fixed(Instant.parse("2026-11-16T21:00:00Z"), ZoneOffset.UTC);
         when(clock.withZone(any())).thenReturn(fixed);
-        when(horarioFuncRepo.findAllByIdRestauranteRestauranteIdOrderByDiaSemana(1L)).thenReturn(List.of(
+        when(horarioFuncRepo.findAllByIdRestauranteRestauranteId(1L)).thenReturn(List.of(
                 horario(DiaSemana.SEGUNDA, "16:00", "18:00", restaurante)));
         assertFalse(restauranteService.buscarRestaurante(1L).abertoAgora());
     }
@@ -271,7 +319,7 @@ class RestauranteServiceTest {
         assertTrue(resultado.get(0).abertoAgora());
         assertFalse(resultado.get(1).abertoAgora());
         verify(restauranteRepo, never()).findAll();
-        verify(horarioFuncRepo, never()).findAllByIdRestauranteRestauranteIdOrderByDiaSemana(any());
+        verify(horarioFuncRepo, never()).findAllByIdRestauranteRestauranteId(any());
     }
 
     @Test
@@ -349,7 +397,7 @@ class RestauranteServiceTest {
         when(clock.withZone(any())).thenReturn(Clock.fixed(instante, ZoneOffset.UTC));
         List<HorarioFuncionamento> lista = List.of(horarios);
         lista.forEach(h -> h.setIdRestaurante(restaurante));
-        when(horarioFuncRepo.findAllByIdRestauranteRestauranteIdOrderByDiaSemana(1L)).thenReturn(lista);
+        when(horarioFuncRepo.findAllByIdRestauranteRestauranteId(1L)).thenReturn(lista);
         return restauranteService.buscarFuncionamento(1L);
     }
 
@@ -416,5 +464,20 @@ class RestauranteServiceTest {
         horario.setHoraFechamento(java.time.LocalTime.parse(fim));
         horario.setIdRestaurante(restaurante);
         return horario;
+    }
+
+    /** Horário próprio de cada dia, para a ordenação não poder trocar o horário de um dia pelo de outro. */
+    private static HorarioFuncionamentoDTO horarioDtoDoDia(DiaSemana dia) {
+        LocalTime abertura = LocalTime.of(HORA_ABERTURA_DOMINGO + dia.ordinal(), 0);
+        return new HorarioFuncionamentoDTO(dia, abertura, abertura.plusHours(DURACAO_TURNO_HORAS));
+    }
+
+    private static List<HorarioFuncionamentoDTO> horariosDosDias(List<DiaSemana> dias) {
+        return dias.stream().map(RestauranteServiceTest::horarioDtoDoDia).toList();
+    }
+
+    private HorarioFuncionamento horarioDoDia(DiaSemana dia, Restaurante restaurante) {
+        HorarioFuncionamentoDTO dto = horarioDtoDoDia(dia);
+        return horario(dia, dto.horaAbertura().toString(), dto.horaFechamento().toString(), restaurante);
     }
 }

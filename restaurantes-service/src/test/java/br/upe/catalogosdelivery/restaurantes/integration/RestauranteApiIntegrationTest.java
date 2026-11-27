@@ -182,6 +182,32 @@ class RestauranteApiIntegrationTest {
                         .value("horarios[0].horaFechamento: A hora de fechamento deve ser informada."));
     }
 
+    /** O dia é gravado como texto: a resposta segue a ordem da semana, não a alfabética nem a de envio. */
+    @Test
+    @Transactional
+    void putEGetDeHorariosDevolvemOsDiasNaOrdemDaSemana() throws Exception {
+        long id = criarRestaurante();
+        String[] ordemDaSemana = {"SEGUNDA", "QUARTA", "SEXTA", "SABADO"};
+        mockMvc.perform(put("/api/restaurantes/{id}/horarios", id)
+                        .contentType("application/json")
+                        .content("""
+                                {"ownerUserId":42,"horarios":[
+                                  {"diaSemana":"SEXTA","horaAbertura":"18:00:00","horaFechamento":"23:00:00"},
+                                  {"diaSemana":"SEGUNDA","horaAbertura":"09:00:00","horaFechamento":"17:00:00"},
+                                  {"diaSemana":"QUARTA","horaAbertura":"10:00:00","horaFechamento":"16:00:00"},
+                                  {"diaSemana":"SABADO","horaAbertura":"11:00:00","horaFechamento":"15:00:00"}
+                                ]}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].diaSemana").value(org.hamcrest.Matchers.contains(ordemDaSemana)))
+                .andExpect(jsonPath("$[0].horaAbertura").value("09:00:00"));
+
+        mockMvc.perform(get("/api/restaurantes/{id}/horarios", id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].diaSemana").value(org.hamcrest.Matchers.contains(ordemDaSemana)))
+                .andExpect(jsonPath("$[2].horaFechamento").value("23:00:00"));
+    }
+
     @Test
     @Transactional
     void rejeitaAlteracoesDeOutroOwnerENaoApagaRestaurante() throws Exception {
