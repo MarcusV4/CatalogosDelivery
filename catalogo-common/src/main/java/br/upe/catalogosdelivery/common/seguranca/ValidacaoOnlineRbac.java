@@ -83,7 +83,8 @@ public class ValidacaoOnlineRbac {
         if (corpo == null) {
             throw new FalhaIntegracaoException("O serviço de autorização respondeu sem corpo.", null);
         }
-        if (Boolean.FALSE.equals(corpo.get("active"))) {
+        // O RBAC da Identidade responde "ativo"; "active" é o nome da introspecção OAuth (RFC 7662).
+        if (Boolean.FALSE.equals(corpo.get("ativo")) || Boolean.FALSE.equals(corpo.get("active"))) {
             log.info("[{}] <- RBAC informou token inativo", origem);
             throw new NaoAutenticadoException("Sua sessão expirou ou foi encerrada. Entre novamente.");
         }
