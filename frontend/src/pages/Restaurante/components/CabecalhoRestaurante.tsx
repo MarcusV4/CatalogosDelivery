@@ -1,34 +1,30 @@
 import { ImagemComFallback } from '../../../components/ImagemComFallback';
 import { SeloSituacao } from '../../../components/SeloSituacao';
 import type { Restaurante } from '../../../services/restaurantes';
+import type { Previsao } from '../../../utils/horarios';
 import { textoEntrega, textoTempo } from '../../../utils/restaurante';
 import { ROTULOS_CATEGORIA_RESTAURANTE } from '../../../utils/rotulos';
+import { avisoDeFechado } from '../../../utils/situacao';
 
 interface CabecalhoRestauranteProps {
   restaurante: Restaurante;
+  /** `null` enquanto os horários carregam ou se não for possível prever. */
+  previsao: Previsao | null;
   idTitulo: string;
 }
 
-const AVISO_PEDIDOS = 'Você pode ver o cardápio, mas não pedir.';
-
-/** Aviso do protótipo para quando o restaurante não está aberto agora. */
-function avisoFechado({ abertoAgora, statusRestaurante }: Restaurante): string | null {
-  if (abertoAgora) {
-    return null;
-  }
-  return statusRestaurante === 'INDISPONIVEL'
-    ? `Este restaurante está temporariamente indisponível. ${AVISO_PEDIDOS}`
-    : `Este restaurante está fechado agora. ${AVISO_PEDIDOS}`;
-}
-
-export function CabecalhoRestaurante({ restaurante, idTitulo }: CabecalhoRestauranteProps) {
+export function CabecalhoRestaurante({
+  restaurante,
+  previsao,
+  idTitulo,
+}: CabecalhoRestauranteProps) {
   const { restauranteNome } = restaurante;
   const detalhes = [
     ROTULOS_CATEGORIA_RESTAURANTE[restaurante.categoriaRestaurante],
     textoTempo(restaurante),
     textoEntrega(restaurante),
   ].filter(Boolean);
-  const aviso = avisoFechado(restaurante);
+  const aviso = avisoDeFechado(restaurante, previsao);
 
   return (
     <header className="loja">
@@ -46,7 +42,7 @@ export function CabecalhoRestaurante({ restaurante, idTitulo }: CabecalhoRestaur
         <div className="loja__dados">
           <h1 id={idTitulo}>{restauranteNome}</h1>
           <p className="loja__detalhes">{detalhes.join(' · ')}</p>
-          <SeloSituacao restaurante={restaurante} />
+          <SeloSituacao restaurante={restaurante} previsao={previsao} />
         </div>
       </div>
       {aviso ? <p className="aviso">{aviso}</p> : null}

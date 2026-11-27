@@ -24,6 +24,29 @@ export const ROTULOS_CATEGORIA_RESTAURANTE: Record<CategoriaRestaurante, string>
   OUTROS: 'Outros',
 };
 
+/** Nomes curtos dos cartões de categoria da Home, como no protótipo ("Brasileira", "Japonesa"…). */
+export const ROTULOS_CATEGORIA_RESTAURANTE_CURTOS: Record<CategoriaRestaurante, string> = {
+  HAMBURGUERIA: 'Hamburgueria',
+  PIZZARIA: 'Pizzaria',
+  COMIDA_BRASILEIRA: 'Brasileira',
+  COMIDA_REGIONAL: 'Regional',
+  COMIDA_JAPONESA: 'Japonesa',
+  COMIDA_CHINESA: 'Chinesa',
+  COMIDA_ITALIANA: 'Italiana',
+  COMIDA_MEXICANA: 'Mexicana',
+  COMIDA_ARABE: 'Árabe',
+  LANCHONETE: 'Lanchonete',
+  MARMITARIA: 'Marmitaria',
+  CHURRASCARIA: 'Churrascaria',
+  COMIDA_SAUDAVEL: 'Saudável',
+  COMIDA_VEGETARIANA_E_VEGANA: 'Vegetariana e vegana',
+  PADARIA: 'Padaria',
+  DOCERIA: 'Doceria',
+  SORVETERIA: 'Sorveteria',
+  ACAI: 'Açaí',
+  OUTROS: 'Outros',
+};
+
 export const ROTULOS_STATUS_RESTAURANTE: Record<StatusRestaurante, string> = {
   ABERTO: 'Aberto',
   FECHADO: 'Fechado',

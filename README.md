@@ -272,7 +272,7 @@ Cada cartão (restaurante ou prato) abre a página do restaurante.
 | Na tela | Na URL do front | `/api/busca/restaurantes` | `/api/busca/itens` |
 |---|---|---|---|
 | Campo de busca (nome) | `nome` | `nome` | `nome` |
-| Chip de categoria do restaurante | `categoria` | `categoria` | `categoriaRestaurante` |
+| Cartão de categoria do restaurante | `categoria` | `categoria` | `categoriaRestaurante` |
 | "Abertos agora" | `abertoAgora=true` | `abertoAgora=true` | `abertoAgora=true` |
 | Preço "De" / "Até" (em reais), só na aba Pratos | `precoMin` / `precoMax` (centavos) | — | `precoMin` / `precoMax` |
 | Aba Pratos | `tipo=pratos` | — | — |
@@ -295,17 +295,27 @@ Cada cartão (restaurante ou prato) abre a página do restaurante.
   com "Tentar de novo", sem detalhes técnicos. Se a Busca devolver pratos sem
   `restauranteNome` (Restaurantes fora do ar e nenhum filtro de restaurante), os cartões
   aparecem sem o restaurante e com um aviso. Pratos indisponíveis aparecem esmaecidos.
+- **Visual:** as categorias aparecem em cartões roláveis com nomes curtos ("Brasileira",
+  "Japonesa"), sem emojis. Restaurantes fechados aparecem esmaecidos, com cores (e não
+  `opacity`) para manter o contraste AA.
 - **Diferenças para o protótipo:** o texto não encontra restaurantes pelos pratos nem pela
   categoria (a API procura no nome e na descrição); não há ordenação por nota nem
   "abertos primeiro" (ordem da API: nome); restaurantes sem cardápio também aparecem.
+  O cartão do restaurante mostra só "Fechado agora", sem "abre amanhã às 11:00", porque a
+  Busca não devolve os horários.
 
 **Página do restaurante.** As três consultas correm em paralelo; só a do restaurante
 bloqueia a tela.
 
-- **Cabeçalho:** nome, categoria, tempo estimado, taxa de entrega e o selo
-  "Aberto agora" / "Fechado agora" / "Indisponível", que vem de `abertoAgora` (calculado
-  pelo back). Fora do horário ou com status `INDISPONIVEL` aparece um aviso, mas o
-  cardápio continua visível (o restaurante desativado segue acessível pelo id).
+- **Cabeçalho:** nome, categoria, tempo estimado, taxa de entrega e o selo de situação.
+  Aberto ou fechado vem sempre de `abertoAgora` (calculado pelo back); os horários só
+  completam o texto, como no protótipo: "Aberto · fecha às 23:30", "Fechado · abre hoje às
+  18:00", "abre amanhã às 11:00" ou "abre sexta às 11:00". Com status `FECHADO` (definido
+  pelo dono), sem horários ou enquanto eles carregam, o selo mostra "Fechado agora" ou
+  "Aberto agora"; `INDISPONIVEL` mostra "Indisponível". Fora do horário ou indisponível
+  aparece um aviso, com a previsão de abertura quando houver, mas o cardápio continua
+  visível (o restaurante desativado segue acessível pelo id). A previsão usa o instante em
+  que o restaurante foi carregado, o mesmo do `abertoAgora`.
 - **Informações:** descrição, endereço, telefone e horários. O resumo mostra o dia de
   hoje em `America/Recife` ("Hoje, 18:00 às 23:00" ou "Fechado hoje") e abre a semana
   de domingo a sábado; dias sem horário aparecem como "Fechado".

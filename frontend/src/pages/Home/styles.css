@@ -70,6 +70,47 @@
   gap: var(--esp-3);
 }
 
+/* Categorias em cartões, como no protótipo, mas só com texto (sem emojis: decisão da #65). */
+.categorias {
+  display: flex;
+  gap: var(--esp-3);
+  overflow-x: auto;
+  padding-bottom: var(--esp-1);
+}
+
+.categoria {
+  flex: none;
+  display: grid;
+  place-items: center;
+  min-width: 96px;
+  min-height: 64px;
+  padding: var(--esp-4) 14px;
+  border: 1px solid var(--linha);
+  border-radius: var(--raio);
+  background: var(--papel);
+  color: var(--texto);
+  font-size: var(--fonte-pequena);
+  font-weight: var(--peso-forte);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.categoria:hover {
+  border-color: var(--marca);
+  color: var(--marca-escura);
+}
+
+.categoria[aria-pressed='true'] {
+  border-color: var(--marca);
+  background: var(--marca-clara);
+  color: var(--marca-escura);
+}
+
+/* Contorno de foco por dentro: a rolagem horizontal da lista cortaria o contorno de fora. */
+.categoria:focus-visible {
+  outline-offset: -4px;
+}
+
 .faixa-preco {
   border: 0;
   margin: 0;
