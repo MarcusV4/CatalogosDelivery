@@ -45,6 +45,7 @@ RESTAURANTES = [
             "cep": "51011-000",
             "restauranteTelefone": "8133330001",
             "taxaEntrega": 500,
+            "pedidoMinimo": 2000,  # R$ 20,00; o Açaí fica sem mínimo
             "tempoEstimadoMin": 30,
             "tempoEstimadoMax": 45,
             "categoriaRestaurante": "PIZZARIA",
