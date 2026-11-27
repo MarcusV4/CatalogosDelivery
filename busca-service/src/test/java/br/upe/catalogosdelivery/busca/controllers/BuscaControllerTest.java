@@ -35,7 +35,7 @@ class BuscaControllerTest {
         FiltroRestaurantes filtro = new FiltroRestaurantes("pizza", "PIZZARIA", "ABERTO", null, null);
         when(buscaService.buscarRestaurantes(eq(filtro), eq(0), eq(20), eq(null)))
                 .thenReturn(new PaginaDTO<>(List.of(new RestauranteDTO(10L, "Pizzaria Recife", null, "Recife", "PE",
-                        null, "ABERTO", "PIZZARIA", 550L, 30, 45, true)), 0, 20, 1, 1));
+                        null, "ABERTO", "PIZZARIA", 550L, 2000L, 30, 45, true)), 0, 20, 1, 1));
 
         mockMvc.perform(get("/api/busca/restaurantes")
                         .param("nome", "pizza")
@@ -43,7 +43,8 @@ class BuscaControllerTest {
                         .param("status", "ABERTO"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.conteudo[0].restauranteId").value(10))
-                .andExpect(jsonPath("$.conteudo[0].restauranteNome").value("Pizzaria Recife"));
+                .andExpect(jsonPath("$.conteudo[0].restauranteNome").value("Pizzaria Recife"))
+                .andExpect(jsonPath("$.conteudo[0].pedidoMinimo").value(2000));
 
         verify(buscaService).buscarRestaurantes(filtro, 0, 20, null);
     }

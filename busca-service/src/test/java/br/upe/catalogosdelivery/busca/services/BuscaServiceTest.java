@@ -31,11 +31,11 @@ class BuscaServiceTest {
     private BuscaService buscaService;
 
     private final RestauranteDTO pizzaria = new RestauranteDTO(1L, "Pizzaria do João", null, "Recife", "PE",
-            null, "ABERTO", "PIZZARIA", 500L, 30, 45, true);
+            null, "ABERTO", "PIZZARIA", 500L, 2000L, 30, 45, true);
     private final RestauranteDTO acaiteria = new RestauranteDTO(2L, "Açaí da Praia", null, "Olinda", "PE",
-            null, "FECHADO", "ACAI", 300L, 10, 20, false);
+            null, "FECHADO", "ACAI", 300L, null, 10, 20, false);
     private final RestauranteDTO hamburgueria = new RestauranteDTO(3L, "Burger Recife", "Smash artesanal", "Recife", "PE",
-            null, "ABERTO", "HAMBURGUERIA", 0L, null, null, false);
+            null, "ABERTO", "HAMBURGUERIA", 0L, null, null, null, false);
 
     private final ProdutoDTO calabresa = new ProdutoDTO(10L, "Pizza Calabresa", "Molho de tomate, calabresa e cebola", 4590L, true, "PIZZA", 1L, "img");
     private final ProdutoDTO marguerita = new ProdutoDTO(11L, "Pizza Marguerita", null, 4200L, false, "PIZZA", 1L, null);
