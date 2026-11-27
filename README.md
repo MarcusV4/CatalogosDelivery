@@ -71,6 +71,25 @@ O login é da Identidade (Equipe 1), pelo fluxo OAuth **Authorization Code + PKC
 redireciona o usuário para a página de login da Identidade e recebe um *access token* (JWT).
 O Catálogo não guarda senha nem dados pessoais; ele só valida esse token nas escritas.
 
+**Divisão de dados acordada com a Equipe 1** (27/11/2026). O Perfis também tem uma `Loja` com
+dados parecidos com os do nosso restaurante; para não haver duas fontes de verdade, ficou combinado:
+
+| Dado | Fonte oficial |
+|---|---|
+| Conta e empresa: razão social, CNPJ, e-mail, status da conta | Perfis (Identidade) |
+| Dados comerciais do restaurante: nome de exibição, descrição, imagem, categoria, endereço e telefone do restaurante, taxa, pedido mínimo, tempos, horários, status de funcionamento e cardápio | Catálogo |
+
+A ligação entre os dois é só o `ownerUserId` (o `sub` do token). O Catálogo não lê a `Loja` do
+Perfis, e o cliente encontra os restaurantes pela Busca do Catálogo. Uma conta pode ter mais de um
+restaurante.
+
+**Fluxo da loja:**
+
+1. A loja cria a conta na tela de cadastro da Equipe 1 (`POST /lojas` no Perfis). A conta fica
+   **ativa assim que o CNPJ é validado** (dígitos verificadores); não há aprovação manual.
+2. Faz login pelo nosso front, na página hospedada pela Identidade.
+3. Cadastra e gerencia restaurantes, horários, status e cardápio pelo nosso painel, com o token.
+
 **Quem precisa de token:** só as escritas (`POST`, `PUT`, `PATCH`, `DELETE`) de Restaurantes e
 Cardápio, no cabeçalho `Authorization: Bearer <access token>`. Todas as leituras (`GET`) e a
 validação de itens do Checkout (`POST /api/produtos/validacao`) continuam públicas.
@@ -104,7 +123,20 @@ corpo da requisição.
 | `CATALOGO_IDENTIDADE_VALIDACAO_ONLINE` | `true` | O contrato exige `true` para tokens de usuário |
 
 Sem `AUDIENCIAS` e `RBAC_URL`, os serviços sobem, as leituras funcionam e as escritas respondem
-`503` dizendo o que falta. Esses dois valores ainda precisam ser combinados com a Equipe 1.
+`503` dizendo o que falta.
+
+Valores da pilha local da Equipe 1 (o `iss` fica em `127.0.0.1`, mas o JWKS e o RBAC são chamados de
+dentro dos contêineres, por isso `host.docker.internal`; o `compose.yaml` já tem o `extra_hosts`):
+
+```env
+CATALOGO_IDENTIDADE_MODO=identidade
+CATALOGO_IDENTIDADE_EMISSOR=http://127.0.0.1:18001
+CATALOGO_IDENTIDADE_JWKS_URI=http://host.docker.internal:18001/.well-known/jwks.json
+CATALOGO_IDENTIDADE_AUDIENCIAS=delivery-api
+CATALOGO_IDENTIDADE_RBAC_URL=http://host.docker.internal:18003
+```
+
+Os valores publicados (`iss`, `aud` e URLs com HTTPS) serão enviados pela Equipe 1 no deploy.
 
 **Desenvolvendo sem a Identidade (modo mock):** suba com `CATALOGO_IDENTIDADE_MODO=mock`. Os
 serviços avisam no log e aceitam um JWT sem assinatura com `sub` (UUID) e `role`, como
@@ -116,6 +148,17 @@ da sua máquina: qualquer pessoa consegue montar um token aceito por ele.
 
 O acesso serviço a serviço da Identidade (Client Credentials) está desativado no contrato e
 não é usado pelo Catálogo.
+
+**Por que o JWKS e o RBAC não usam o `ClienteHttp`.** O `ClienteHttp` do `catalogo-common` é o
+cliente das chamadas entre os nossos serviços: faz só `GET` e `DELETE` e traduz `404` em "não
+encontrado" e qualquer outro `4xx` em falha de integração. As duas chamadas à Identidade não se
+encaixam nisso:
+
+- **JWKS:** quem busca e guarda as chaves em cache é o `NimbusJwtDecoder` do Spring, que só aceita
+  um `RestOperations`. Por isso `VerificadorJwtLocal` passa a ele um `RestTemplate` com timeout.
+- **RBAC:** é um `POST` com `Authorization: Bearer`, e `401`/`403` significam "token recusado" (vira
+  `401` para o usuário), não falha de integração. `ValidacaoOnlineRbac` usa um `RestClient` próprio
+  para tratar cada resposta como o contrato pede e nunca registra o token no log.
 
 A busca de itens continua funcionando sem o serviço de Restaurantes: os itens voltam apenas sem `restauranteNome`/`restauranteStatus`/`restauranteAbertoAgora`. Com o serviço no ar, itens de restaurantes que não existem mais são descartados. A exceção são os filtros que dependem do restaurante (`categoriaRestaurante`, `abertoAgora` e `entregaGratis` em `/api/busca/itens`): sem o serviço não há como aplicá-los, e a busca responde `503`.
 
@@ -243,7 +286,7 @@ frontend/src/
 | `VITE_API_CARDAPIO_URL` | `http://localhost:8005` | Serviço de Cardápio |
 | `VITE_API_BUSCA_URL` | `http://localhost:8006` | Serviço de Busca |
 | `VITE_API_IDENTIDADE_URL` | `http://127.0.0.1:18001` | Emissor OAuth usado para descoberta de metadados |
-| `VITE_IDENTIDADE_CLIENT_ID` | vazio | Identificador do cliente público registrado para o front |
+| `VITE_IDENTIDADE_CLIENT_ID` | `delivery-app` | Cliente público registrado para o front na Identidade |
 | `VITE_IDENTIDADE_REDIRECT_URI` | `http://localhost:5173/oauth/callback` | Callback que também precisa estar registrado no serviço |
 | `VITE_IDENTIDADE_SCOPES` | vazio | Escopos opcionais de usuário publicados pelo serviço |
 
@@ -278,11 +321,15 @@ O contêiner `frontend` só sobe depois que Restaurantes, Cardápio e Busca fica
 saudáveis e responde em <http://localhost:3000>. A porta pode ser trocada com
 `FRONTEND_PORT` no `.env`.
 
-Para habilitar o login, registre um **cliente público** para o front com Authorization
-Code + PKCE (S256) e cadastre exatamente o `redirect_uri` configurado. O contrato
-disponível não fornece o `client_id` desta aplicação; obtenha-o no provisionamento
-do cliente e configure-o no `.env`. **Não crie nem exponha `client_secret` no front.**
+O login usa o **cliente público** `delivery-app` da Identidade, com Authorization Code + PKCE
+(S256) e sem `client_secret`. Na pilha local da Equipe 1, os callbacks
+`http://localhost:3000/oauth/callback` e `http://localhost:5173/oauth/callback` já estão
+registrados, e o CORS do Auth libera essas duas origens. O `redirect_uri` configurado no front
+precisa ser exatamente um deles. **Não crie nem exponha `client_secret` no front.**
 Os valores `VITE_*` são incorporados no JavaScript durante o build; não são segredos.
+
+No deploy, a URL do front publicado precisa ser enviada à Equipe 1 (para o callback e o CORS do
+Auth) e incluída em `CATALOGO_CORS_ORIGENS_PERMITIDAS`.
 
 Os tokens ficam apenas em memória no navegador. A renovação usa refresh token
 rotativo e o logout revoga a sessão. Um refresh de página encerra a sessão local e
