@@ -126,10 +126,6 @@ function ConteudoPainel({ restauranteId }: { restauranteId: number }) {
         </Botao>
       </header>
 
-      <p className="aviso" role="note">
-        O controle de acesso do proprietário ainda não está ativo neste painel.
-      </p>
-
       {categoriasVazias ? (
         <p className="painel-cardapio__erro" role="alert">
           O serviço não retornou categorias de produto; não é possível cadastrar ou editar itens.

@@ -206,7 +206,7 @@ describe('cliente OAuth', () => {
     );
   });
 
-  it('trata LOJA e LOJISTA como conta de loja, e os outros papéis não', () => {
+  it('trata só LOJA como conta de loja, como no contrato da Identidade', () => {
     const sessao = (tipo: string): SessaoOAuth => ({
       accessToken: 'access',
       refreshToken: 'refresh',
@@ -216,7 +216,7 @@ describe('cliente OAuth', () => {
     });
 
     expect(ehContaDeLoja(sessao('LOJA'))).toBe(true);
-    expect(ehContaDeLoja(sessao('LOJISTA'))).toBe(true);
+    expect(ehContaDeLoja(sessao('LOJISTA'))).toBe(false);
     expect(ehContaDeLoja(sessao('CLIENTE'))).toBe(false);
     expect(ehContaDeLoja(sessao('GERENTE'))).toBe(false);
     expect(ehContaDeLoja(null)).toBe(false);
