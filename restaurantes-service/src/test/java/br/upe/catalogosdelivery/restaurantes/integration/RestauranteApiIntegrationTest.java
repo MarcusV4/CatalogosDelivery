@@ -223,7 +223,7 @@ class RestauranteApiIntegrationTest {
         mockMvc.perform(put("/api/restaurantes/{id}/horarios", id)
                         .contentType("application/json")
                         .content("""
-                                {"ownerUserId":42,"horarios":[
+                                {"horarios":[
                                   {"diaSemana":"SEXTA","horaAbertura":"18:00:00","horaFechamento":"23:00:00"},
                                   {"diaSemana":"SEGUNDA","horaAbertura":"09:00:00","horaFechamento":"17:00:00"},
                                   {"diaSemana":"QUARTA","horaAbertura":"10:00:00","horaFechamento":"16:00:00"},

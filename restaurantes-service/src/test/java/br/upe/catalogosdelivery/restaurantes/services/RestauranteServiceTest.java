@@ -218,7 +218,7 @@ class RestauranteServiceTest {
     @MethodSource("diasForaDeOrdem")
     void listarHorariosDevolveOsDiasNaOrdemDaSemana(String caso, List<DiaSemana> gravados,
                                                     List<DiaSemana> esperados) {
-        Restaurante restaurante = restaurante(1L, 10L, StatusRestaurante.ABERTO);
+        Restaurante restaurante = restaurante(1L, DONO, StatusRestaurante.ABERTO);
         when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante));
         when(horarioFuncRepo.findAllByIdRestauranteRestauranteId(1L)).thenReturn(
                 gravados.stream().map(dia -> horarioDoDia(dia, restaurante)).toList());
@@ -230,11 +230,12 @@ class RestauranteServiceTest {
     @MethodSource("diasForaDeOrdem")
     void substituirHorariosDevolveOsDiasNaOrdemDaSemanaSemReordenarOQueGrava(String caso, List<DiaSemana> enviados,
                                                                            List<DiaSemana> esperados) {
-        when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante(1L, 10L, StatusRestaurante.ABERTO)));
+        when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante(1L, DONO, StatusRestaurante.ABERTO)));
+        logadoComo(DONO);
         when(horarioFuncRepo.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         List<HorarioFuncionamentoDTO> resultado = restauranteService.substituirHorarios(1L,
-                new SubstituirHorariosDTO(10L, horariosDosDias(enviados)));
+                new SubstituirHorariosDTO(horariosDosDias(enviados)));
 
         assertEquals(horariosDosDias(esperados), resultado);
         verify(horarioFuncRepo).saveAll(salvos.capture());
