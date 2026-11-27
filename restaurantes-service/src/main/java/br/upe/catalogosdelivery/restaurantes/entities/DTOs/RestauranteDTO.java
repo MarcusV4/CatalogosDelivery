@@ -4,7 +4,10 @@ import br.upe.catalogosdelivery.restaurantes.entities.Enums.CategoriaRestaurante
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
 
-/** Cadastro de restaurante. O status não é informado: todo restaurante novo começa como ABERTO. */
+/**
+ * Cadastro de restaurante. O status não é informado: todo restaurante novo começa como ABERTO.
+ * O dono (ownerUserId) também não: é a conta do token, enviado em Authorization: Bearer.
+ */
 public record RestauranteDTO(
 
         @NotBlank(message = "O nome do restaurante não pode ser vazio.")
@@ -54,9 +57,6 @@ public record RestauranteDTO(
         Integer tempoEstimadoMax,
 
         String urlImagem,
-
-        @NotNull(message = "O ID do proprietário deve ser informado.")
-        Long ownerUserId,
 
         @NotNull(message = "A categoria do restaurante deve ser informada.")
         CategoriaRestaurante categoriaRestaurante

@@ -1,5 +1,7 @@
 package br.upe.catalogosdelivery.restaurantes.services;
 
+import br.upe.catalogosdelivery.common.seguranca.UsuarioAtual;
+import br.upe.catalogosdelivery.common.seguranca.UsuarioAutenticado;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.AtualizarRestauranteDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.AtualizarStatusRestauranteDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.FuncionamentoRestauranteDTO;
@@ -47,26 +49,35 @@ class RestauranteServiceTest {
     @Mock HorarioFuncRepo horarioFuncRepo;
     @Spy RestauranteMapper restauranteMapper = new RestauranteMapper();
     @Mock Clock clock;
+    @Mock UsuarioAtual usuarioAtual;
     @InjectMocks RestauranteService restauranteService;
+
+    /** Contas da Identidade: o sub do token é o UUID da conta. */
+    private static final String DONO = "6f1c2a9e-1b2d-4c3e-8f4a-5b6c7d8e9f01";
+    private static final String OUTRA_CONTA = "0a9b8c7d-6e5f-4a3b-9c2d-1e0f9a8b7c6d";
+
+    private void logadoComo(String conta) {
+        when(usuarioAtual.obterLoja()).thenReturn(new UsuarioAutenticado(conta, "LOJA"));
+    }
 
     @Test
     void cadastraRestauranteValidoComOsDadosDoDono() {
         RestauranteDTO dto = new RestauranteDTO("Pizzaria", "Pizza artesanal", "Rua A", "10", null,
-                "Centro", "Recife", "PE", "50000-000", "81999999999", 550L, 30, 45, null,
-                7L, CategoriaRestaurante.PIZZARIA);
+                "Centro", "Recife", "PE", "50000-000", "81999999999", 550L, 30, 45, null, CategoriaRestaurante.PIZZARIA);
+        logadoComo(DONO);
         when(restauranteRepo.save(any(Restaurante.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Restaurante resultado = restauranteService.cadastrarRestaurante(dto);
 
         assertEquals("Pizzaria", resultado.getRestauranteNome());
-        assertEquals(7L, resultado.getOwnerUserId());
+        assertEquals(DONO, resultado.getOwnerUserId(), "o dono é a conta do token");
         assertEquals(550L, resultado.getTaxaEntrega());
         verify(restauranteRepo).save(any(Restaurante.class));
     }
 
     @Test
     void listaRestaurantesConvertidosParaResponseDTO() {
-        Restaurante restaurante = restaurante(10L, 7L, StatusRestaurante.ABERTO);
+        Restaurante restaurante = restaurante(10L, DONO, StatusRestaurante.ABERTO);
         restaurante.setRestauranteNome("Pizzaria");
         restaurante.setRestauranteDesc("Pizza artesanal");
         restaurante.setCidade("Recife");
@@ -83,13 +94,13 @@ class RestauranteServiceTest {
         assertEquals(1, resultado.size());
         assertEquals(10L, resultado.get(0).restauranteId());
         assertEquals("Pizzaria", resultado.get(0).restauranteNome());
-        assertEquals(7L, resultado.get(0).ownerUserId());
+        assertEquals(DONO, resultado.get(0).ownerUserId());
         assertEquals(550L, resultado.get(0).taxaEntrega());
     }
 
     @Test
     void buscaRestauranteExistenteConvertidoParaResponseDTO() {
-        Restaurante restaurante = restaurante(10L, 7L, StatusRestaurante.ABERTO);
+        Restaurante restaurante = restaurante(10L, DONO, StatusRestaurante.ABERTO);
         restaurante.setRestauranteNome("Pizzaria");
         restaurante.setRestauranteDesc("Pizza artesanal");
         restaurante.setCategoriaRestaurante(CategoriaRestaurante.PIZZARIA);
@@ -106,20 +117,23 @@ class RestauranteServiceTest {
     }
 
     @Test
-    void cadastroSemOwnerUserIdRetorna400SemSalvar() {
+    void cadastroDeContaQueNaoEhDeLojaRetorna403SemSalvar() {
         RestauranteDTO dto = new RestauranteDTO("Pizzaria", null, null, null, null, null, "Recife", "PE",
-                null, null, 500L, null, null, null, null, CategoriaRestaurante.PIZZARIA);
+                null, null, 500L, null, null, null, CategoriaRestaurante.PIZZARIA);
+        when(usuarioAtual.obterLoja()).thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN,
+                "Somente contas de loja podem gerenciar restaurantes e cardápios."));
         ResponseStatusException e = assertThrows(ResponseStatusException.class,
                 () -> restauranteService.cadastrarRestaurante(dto));
-        assertEquals(HttpStatus.BAD_REQUEST, e.getStatusCode());
+        assertEquals(HttpStatus.FORBIDDEN, e.getStatusCode());
         verify(restauranteRepo, never()).save(any());
     }
 
     @Test
     void atualizarRestauranteRejeitaOutroProprietario() {
-        Restaurante restaurante = restaurante(1L, 10L, StatusRestaurante.ABERTO);
+        Restaurante restaurante = restaurante(1L, DONO, StatusRestaurante.ABERTO);
         when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante));
-        AtualizarRestauranteDTO dto = atualizar(12L);
+        logadoComo(OUTRA_CONTA);
+        AtualizarRestauranteDTO dto = atualizar();
         ResponseStatusException e = assertThrows(ResponseStatusException.class,
                 () -> restauranteService.atualizarRestaurante(1L, dto));
         assertEquals(HttpStatus.FORBIDDEN, e.getStatusCode());
@@ -128,35 +142,38 @@ class RestauranteServiceTest {
 
     @Test
     void atualizarRestauranteSalvaDadosEPreservaProprietarioCadastrado() {
-        Restaurante restaurante = restaurante(1L, 10L, StatusRestaurante.ABERTO);
+        Restaurante restaurante = restaurante(1L, DONO, StatusRestaurante.ABERTO);
         when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante));
         when(restauranteRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(horarioFuncRepo.findAllByIdRestauranteRestauranteIdOrderByDiaSemana(1L)).thenReturn(List.of());
         when(clock.withZone(any())).thenReturn(Clock.systemUTC());
-        restauranteService.atualizarRestaurante(1L, atualizar(10L));
+        logadoComo(DONO);
+        restauranteService.atualizarRestaurante(1L, atualizar());
         assertEquals("Nome", restaurante.getRestauranteNome());
-        assertEquals(10L, restaurante.getOwnerUserId());
+        assertEquals(DONO, restaurante.getOwnerUserId());
         verify(restauranteRepo).save(restaurante);
     }
 
     @Test
     void atualizarStatusAlteraEGravaStatus() {
-        Restaurante restaurante = restaurante(1L, 10L, StatusRestaurante.ABERTO);
+        Restaurante restaurante = restaurante(1L, DONO, StatusRestaurante.ABERTO);
         when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante));
         when(restauranteRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(horarioFuncRepo.findAllByIdRestauranteRestauranteIdOrderByDiaSemana(1L)).thenReturn(List.of());
         when(clock.withZone(any())).thenReturn(Clock.systemUTC());
-        restauranteService.atualizarStatus(1L, new AtualizarStatusRestauranteDTO(10L, StatusRestaurante.FECHADO));
+        logadoComo(DONO);
+        restauranteService.atualizarStatus(1L, new AtualizarStatusRestauranteDTO(StatusRestaurante.FECHADO));
         assertEquals(StatusRestaurante.FECHADO, restaurante.getStatusRestaurante());
     }
 
     @Test
     void substituirHorariosRejeitaDiaDuplicadoSemApagarHorariosAtuais() {
-        Restaurante restaurante = restaurante(1L, 10L, StatusRestaurante.ABERTO);
+        Restaurante restaurante = restaurante(1L, DONO, StatusRestaurante.ABERTO);
         when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante));
         HorarioFuncionamentoDTO horario = new HorarioFuncionamentoDTO(DiaSemana.SEGUNDA,
                 java.time.LocalTime.of(9, 0), java.time.LocalTime.of(17, 0));
-        SubstituirHorariosDTO dto = new SubstituirHorariosDTO(10L, List.of(horario, horario));
+        SubstituirHorariosDTO dto = new SubstituirHorariosDTO(List.of(horario, horario));
+        logadoComo(DONO);
         assertEquals(HttpStatus.BAD_REQUEST, assertThrows(ResponseStatusException.class,
                 () -> restauranteService.substituirHorarios(1L, dto)).getStatusCode());
         verify(horarioFuncRepo, never()).deleteAllByIdRestauranteRestauranteId(any());
@@ -164,20 +181,21 @@ class RestauranteServiceTest {
 
     @Test
     void substituirHorariosApagaESalvaSemanaInformada() {
-        Restaurante restaurante = restaurante(1L, 10L, StatusRestaurante.ABERTO);
+        Restaurante restaurante = restaurante(1L, DONO, StatusRestaurante.ABERTO);
         when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante));
         HorarioFuncionamentoDTO segunda = new HorarioFuncionamentoDTO(DiaSemana.SEGUNDA,
                 java.time.LocalTime.of(9, 0), java.time.LocalTime.of(17, 0));
         when(horarioFuncRepo.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        logadoComo(DONO);
         List<HorarioFuncionamentoDTO> resultado = restauranteService.substituirHorarios(1L,
-                new SubstituirHorariosDTO(10L, List.of(segunda)));
+                new SubstituirHorariosDTO(List.of(segunda)));
         verify(horarioFuncRepo).deleteAllByIdRestauranteRestauranteId(1L);
         assertEquals(List.of(segunda), resultado);
     }
 
     @Test
     void fechadoNaoEhAbertoAgoraMesmoDentroDoHorario() {
-        Restaurante restaurante = restaurante(1L, 10L, StatusRestaurante.FECHADO);
+        Restaurante restaurante = restaurante(1L, DONO, StatusRestaurante.FECHADO);
         when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante));
         Clock fixed = Clock.fixed(Instant.parse("2026-11-16T15:00:00Z"), ZoneOffset.UTC);
         when(clock.withZone(any())).thenReturn(fixed);
@@ -188,7 +206,7 @@ class RestauranteServiceTest {
 
     @Test
     void abertoAgoraEhTrueDentroDoHorarioLocal() {
-        Restaurante restaurante = restaurante(1L, 10L, StatusRestaurante.ABERTO);
+        Restaurante restaurante = restaurante(1L, DONO, StatusRestaurante.ABERTO);
         when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante));
         Clock fixed = Clock.fixed(Instant.parse("2026-11-16T15:00:00Z"), ZoneOffset.UTC);
         when(clock.withZone(any())).thenReturn(fixed);
@@ -199,7 +217,7 @@ class RestauranteServiceTest {
 
     @Test
     void abertoAgoraConsideraFusoRecifeEIntervaloFechadoNoHorarioDeFechamento() {
-        Restaurante restaurante = restaurante(1L, 10L, StatusRestaurante.ABERTO);
+        Restaurante restaurante = restaurante(1L, DONO, StatusRestaurante.ABERTO);
         when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante));
         Clock fixed = Clock.fixed(Instant.parse("2026-11-16T21:00:00Z"), ZoneOffset.UTC);
         when(clock.withZone(any())).thenReturn(fixed);
@@ -210,21 +228,24 @@ class RestauranteServiceTest {
 
     @Test
     void deletarFazExclusaoLogicaERejeitaUsuarioDiferente() {
-        Restaurante restaurante = restaurante(1L, 10L, StatusRestaurante.ABERTO);
+        Restaurante restaurante = restaurante(1L, DONO, StatusRestaurante.ABERTO);
         when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante));
+        when(usuarioAtual.obterLoja()).thenReturn(
+                new UsuarioAutenticado(OUTRA_CONTA, "LOJA"), new UsuarioAutenticado(DONO, "LOJA"));
         assertEquals(HttpStatus.FORBIDDEN, assertThrows(ResponseStatusException.class,
-                () -> restauranteService.deletarRestaurante(1L, 11L)).getStatusCode());
+                () -> restauranteService.deletarRestaurante(1L)).getStatusCode());
         verify(restauranteRepo, never()).save(any());
-        restauranteService.deletarRestaurante(1L, 10L);
+        restauranteService.deletarRestaurante(1L);
         assertEquals(StatusRestaurante.INDISPONIVEL, restaurante.getStatusRestaurante());
         verify(restauranteRepo).save(restaurante);
     }
 
     @Test
     void cadastroSemNomeRetorna400SemSalvar() {
+        logadoComo(DONO);
         for (String nome : new String[]{null, "  "}) {
             RestauranteDTO dto = new RestauranteDTO(nome, null, null, null, null, null, "Recife", "PE",
-                    null, null, 500L, null, null, null, 10L, CategoriaRestaurante.PIZZARIA);
+                    null, null, 500L, null, null, null, CategoriaRestaurante.PIZZARIA);
             assertEquals(HttpStatus.BAD_REQUEST, assertThrows(ResponseStatusException.class,
                     () -> restauranteService.cadastrarRestaurante(dto)).getStatusCode());
         }
@@ -234,7 +255,8 @@ class RestauranteServiceTest {
     @Test
     void cadastroComecaComStatusAbertoENormalizaEstado() {
         RestauranteDTO dto = new RestauranteDTO("Pizzaria", "Desc", "Rua A", "10", null, "Centro", "Recife", "pe",
-                "50000-000", "81999990000", 500L, 20, 40, null, 10L, CategoriaRestaurante.PIZZARIA);
+                "50000-000", "81999990000", 500L, 20, 40, null, CategoriaRestaurante.PIZZARIA);
+        logadoComo(DONO);
         when(restauranteRepo.save(any(Restaurante.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Restaurante salvo = restauranteService.cadastrarRestaurante(dto);
@@ -245,9 +267,10 @@ class RestauranteServiceTest {
 
     @Test
     void atualizarSemNomeRetorna400SemSalvar() {
-        when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante(1L, 10L, StatusRestaurante.ABERTO)));
+        logadoComo(DONO);
+        when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante(1L, DONO, StatusRestaurante.ABERTO)));
         AtualizarRestauranteDTO dto = new AtualizarRestauranteDTO(" ", null, null, null, null, null, "Recife", "PE",
-                null, null, 0L, null, null, null, 10L, CategoriaRestaurante.PIZZARIA);
+                null, null, 0L, null, null, null, CategoriaRestaurante.PIZZARIA);
         assertEquals(HttpStatus.BAD_REQUEST, assertThrows(ResponseStatusException.class,
                 () -> restauranteService.atualizarRestaurante(1L, dto)).getStatusCode());
         verify(restauranteRepo, never()).save(any());
@@ -255,8 +278,8 @@ class RestauranteServiceTest {
 
     @Test
     void listarIgnoraDesativadosEBuscaHorariosNumaUnicaConsulta() {
-        Restaurante aberto = restaurante(1L, 10L, StatusRestaurante.ABERTO);
-        Restaurante fechado = restaurante(2L, 10L, StatusRestaurante.FECHADO);
+        Restaurante aberto = restaurante(1L, DONO, StatusRestaurante.ABERTO);
+        Restaurante fechado = restaurante(2L, DONO, StatusRestaurante.FECHADO);
         when(restauranteRepo.findAllByStatusRestauranteIsNullOrStatusRestauranteNot(StatusRestaurante.INDISPONIVEL))
                 .thenReturn(List.of(aberto, fechado));
         Clock fixed = Clock.fixed(Instant.parse("2026-11-16T15:00:00Z"), ZoneOffset.UTC);
@@ -319,7 +342,7 @@ class RestauranteServiceTest {
 
     private static Stream<Arguments> operacoesPorId() {
         AtualizarRestauranteDTO dadosValidos = new AtualizarRestauranteDTO("Nome", "Descrição", "Rua A", "10",
-                null, "Centro", "Recife", "PE", "50000-000", "81999990000", 0L, 20, 30, null, 10L,
+                null, "Centro", "Recife", "PE", "50000-000", "81999990000", 0L, 20, 30, null,
                 CategoriaRestaurante.PIZZARIA);
         return Stream.of(
                 Arguments.of("buscarRestaurante",
@@ -328,15 +351,15 @@ class RestauranteServiceTest {
                         (service, id) -> service.atualizarRestaurante(id, dadosValidos)),
                 Arguments.of("atualizarStatus", (BiConsumer<RestauranteService, Long>)
                         (service, id) -> service.atualizarStatus(id,
-                                new AtualizarStatusRestauranteDTO(10L, StatusRestaurante.FECHADO))),
+                                new AtualizarStatusRestauranteDTO(StatusRestaurante.FECHADO))),
                 Arguments.of("listarHorarios",
                         (BiConsumer<RestauranteService, Long>) RestauranteService::listarHorarios),
                 Arguments.of("buscarFuncionamento",
                         (BiConsumer<RestauranteService, Long>) RestauranteService::buscarFuncionamento),
                 Arguments.of("substituirHorarios", (BiConsumer<RestauranteService, Long>)
-                        (service, id) -> service.substituirHorarios(id, new SubstituirHorariosDTO(10L, List.of()))),
+                        (service, id) -> service.substituirHorarios(id, new SubstituirHorariosDTO(List.of()))),
                 Arguments.of("deletarRestaurante", (BiConsumer<RestauranteService, Long>)
-                        (service, id) -> service.deletarRestaurante(id, 10L)));
+                        (service, id) -> service.deletarRestaurante(id)));
     }
 
     /** Segunda-feira, 16/11/2026, 15:00 no relógio dos testes. */
@@ -344,7 +367,7 @@ class RestauranteServiceTest {
 
     private FuncionamentoRestauranteDTO funcionamento(StatusRestaurante status, Instant instante,
                                                       HorarioFuncionamento... horarios) {
-        Restaurante restaurante = restaurante(1L, 10L, status);
+        Restaurante restaurante = restaurante(1L, DONO, status);
         when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante));
         when(clock.withZone(any())).thenReturn(Clock.fixed(instante, ZoneOffset.UTC));
         List<HorarioFuncionamento> lista = List.of(horarios);
@@ -395,7 +418,7 @@ class RestauranteServiceTest {
         assertTrue(resultado.horarios().isEmpty());
     }
 
-    private Restaurante restaurante(Long id, Long owner, StatusRestaurante status) {
+    private Restaurante restaurante(Long id, String owner, StatusRestaurante status) {
         Restaurante restaurante = new Restaurante();
         restaurante.setRestauranteId(id);
         restaurante.setOwnerUserId(owner);
@@ -404,9 +427,9 @@ class RestauranteServiceTest {
         return restaurante;
     }
 
-    private AtualizarRestauranteDTO atualizar(Long ownerId) {
+    private AtualizarRestauranteDTO atualizar() {
         return new AtualizarRestauranteDTO("Nome", null, null, null, null, null, "Recife", "PE", null, null,
-                0L, null, null, null, ownerId, CategoriaRestaurante.PIZZARIA);
+                0L, null, null, null, CategoriaRestaurante.PIZZARIA);
     }
 
     private HorarioFuncionamento horario(DiaSemana dia, String inicio, String fim, Restaurante restaurante) {

@@ -11,7 +11,8 @@ import java.util.Locale;
 @Component
 public class RestauranteMapper {
 
-    public Restaurante toEntity(RestauranteDTO dto) {
+    /** O dono vem do token (sub da Identidade), nunca do corpo da requisição. */
+    public Restaurante toEntity(RestauranteDTO dto, String ownerUserId) {
         Restaurante restaurante = new Restaurante();
 
         restaurante.setRestauranteNome(dto.restauranteNome());
@@ -28,7 +29,7 @@ public class RestauranteMapper {
         restaurante.setTempoEstimadoMin(dto.tempoEstimadoMin());
         restaurante.setTempoEstimadoMax(dto.tempoEstimadoMax());
         restaurante.setUrlImagem(dto.urlImagem());
-        restaurante.setOwnerUserId(dto.ownerUserId());
+        restaurante.setOwnerUserId(ownerUserId);
         // O status não vem no cadastro: todo restaurante novo começa ABERTO.
         // "abertoAgora" só fica true depois que houver horário cadastrado para o dia.
         restaurante.setStatusRestaurante(StatusRestaurante.ABERTO);

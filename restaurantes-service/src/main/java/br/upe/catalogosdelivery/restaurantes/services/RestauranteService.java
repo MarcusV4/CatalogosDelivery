@@ -1,5 +1,7 @@
 package br.upe.catalogosdelivery.restaurantes.services;
 
+import br.upe.catalogosdelivery.common.seguranca.UsuarioAtual;
+import br.upe.catalogosdelivery.common.seguranca.UsuarioAutenticado;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.AtualizarRestauranteDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.AtualizarStatusRestauranteDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.FuncionamentoRestauranteDTO;
@@ -44,24 +46,27 @@ public class RestauranteService {
     private final HorarioFuncRepo horarioFuncRepo;
     private final RestauranteMapper restauranteMapper;
     private final Clock clock;
+    private final UsuarioAtual usuarioAtual;
 
     @Value("${catalogo.horarios.zone-id:America/Recife}")
     private String zoneId;
 
     public RestauranteService(RestauranteRepo restauranteRepo, HorarioFuncRepo horarioFuncRepo,
-                              RestauranteMapper restauranteMapper, Clock clock) {
+                              RestauranteMapper restauranteMapper, Clock clock, UsuarioAtual usuarioAtual) {
         this.restauranteRepo = restauranteRepo;
         this.horarioFuncRepo = horarioFuncRepo;
         this.restauranteMapper = restauranteMapper;
         this.clock = clock;
+        this.usuarioAtual = usuarioAtual;
     }
 
+    /** Só contas LOJA cadastram; a conta do token vira a dona do restaurante. */
     public Restaurante cadastrarRestaurante(RestauranteDTO dto) {
-        if (dto.ownerUserId() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe ownerUserId.");
-        }
+        UsuarioAutenticado dono = usuarioAtual.obterLoja();
         validarDados(dto.restauranteNome(), dto.taxaEntrega(), dto.tempoEstimadoMin(), dto.tempoEstimadoMax());
-        return restauranteRepo.save(restauranteMapper.toEntity(dto));
+        Restaurante salvo = restauranteRepo.save(restauranteMapper.toEntity(dto, dono.contaId()));
+        log.info("[Restaurantes] restaurante {} cadastrado pela conta {}", salvo.getRestauranteId(), dono.contaId());
+        return salvo;
     }
 
     /** Lista os restaurantes ativos; os desativados (INDISPONIVEL) seguem acessíveis só por ID. */
@@ -95,7 +100,7 @@ public class RestauranteService {
     @Transactional
     public RestauranteResponseDTO atualizarRestaurante(Long id, AtualizarRestauranteDTO dto) {
         Restaurante restaurante = buscarEntidade(id);
-        validarProprietario(restaurante, dto.ownerUserId());
+        validarProprietario(restaurante);
         validarDados(dto.restauranteNome(), dto.taxaEntrega(), dto.tempoEstimadoMin(), dto.tempoEstimadoMax());
         restaurante.setRestauranteNome(dto.restauranteNome());
         restaurante.setRestauranteDesc(dto.restauranteDesc());
@@ -118,7 +123,7 @@ public class RestauranteService {
     @Transactional
     public RestauranteResponseDTO atualizarStatus(Long id, AtualizarStatusRestauranteDTO dto) {
         Restaurante restaurante = buscarEntidade(id);
-        validarProprietario(restaurante, dto.ownerUserId());
+        validarProprietario(restaurante);
         if (dto.statusRestaurante() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe statusRestaurante.");
         }
@@ -154,7 +159,7 @@ public class RestauranteService {
     @Transactional
     public List<HorarioFuncionamentoDTO> substituirHorarios(Long id, SubstituirHorariosDTO dto) {
         Restaurante restaurante = buscarEntidade(id);
-        validarProprietario(restaurante, dto.ownerUserId());
+        validarProprietario(restaurante);
         if (dto.horarios() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe a lista de horarios.");
         }
@@ -182,9 +187,9 @@ public class RestauranteService {
     }
 
     @Transactional
-    public void deletarRestaurante(Long id, Long ownerUserId) {
+    public void deletarRestaurante(Long id) {
         Restaurante restaurante = buscarEntidade(id);
-        validarProprietario(restaurante, ownerUserId);
+        validarProprietario(restaurante);
         restaurante.setStatusRestaurante(StatusRestaurante.INDISPONIVEL);
         restauranteRepo.save(restaurante);
     }
@@ -193,8 +198,10 @@ public class RestauranteService {
         return restauranteRepo.findById(id).orElseThrow(() -> new RestauranteNaoEncontradoException(id));
     }
 
-    private void validarProprietario(Restaurante restaurante, Long ownerUserId) {
-        if (ownerUserId == null || !ownerUserId.equals(restaurante.getOwnerUserId())) {
+    /** A conta do token precisa ser de loja e dona do restaurante; senão, 403. */
+    private void validarProprietario(Restaurante restaurante) {
+        String conta = usuarioAtual.obterLoja().contaId();
+        if (!conta.equalsIgnoreCase(restaurante.getOwnerUserId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Usuário não é proprietário do restaurante.");
         }
     }

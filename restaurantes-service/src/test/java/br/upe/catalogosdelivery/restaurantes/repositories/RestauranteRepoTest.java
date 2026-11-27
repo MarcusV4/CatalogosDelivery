@@ -40,7 +40,7 @@ class RestauranteRepoTest {
         restaurante.setRestauranteNome("Pizzaria Recife");
         restaurante.setCidade("Recife");
         restaurante.setEstado("PE");
-        restaurante.setOwnerUserId(7L);
+        restaurante.setOwnerUserId("6f1c2a9e-1b2d-4c3e-8f4a-5b6c7d8e9f01");
         restaurante.setTaxaEntrega(550L);
         restaurante.setStatusRestaurante(StatusRestaurante.ABERTO);
         restaurante.setCategoriaRestaurante(CategoriaRestaurante.PIZZARIA);
@@ -50,7 +50,7 @@ class RestauranteRepoTest {
 
         assertTrue(salvo.getRestauranteId() > 0);
         assertEquals("Pizzaria Recife", encontrado.getRestauranteNome());
-        assertEquals(7L, encontrado.getOwnerUserId());
+        assertEquals("6f1c2a9e-1b2d-4c3e-8f4a-5b6c7d8e9f01", encontrado.getOwnerUserId());
         assertEquals(550L, encontrado.getTaxaEntrega());
     }
 }

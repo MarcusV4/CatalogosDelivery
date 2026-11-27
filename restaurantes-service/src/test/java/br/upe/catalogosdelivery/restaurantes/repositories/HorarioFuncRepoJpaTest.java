@@ -43,7 +43,7 @@ class HorarioFuncRepoJpaTest {
     void persisteCategoriasSemAcentosEConsultaEApagaHorariosDoRestaurante() {
         Restaurante restaurante = new Restaurante();
         restaurante.setRestauranteNome("Restaurante de teste");
-        restaurante.setOwnerUserId(15L);
+        restaurante.setOwnerUserId("6f1c2a9e-1b2d-4c3e-8f4a-5b6c7d8e9f01");
         restaurante.setTaxaEntrega(0L);
         restaurante.setStatusRestaurante(StatusRestaurante.ABERTO);
         restaurante.setCategoriaRestaurante(CategoriaRestaurante.ACAI);

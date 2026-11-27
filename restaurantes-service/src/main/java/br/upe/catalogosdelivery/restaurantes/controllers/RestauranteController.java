@@ -34,9 +34,11 @@ public class RestauranteController {
     }
 
     @PostMapping
-    @Operation(summary = "Cadastrar restaurante")
+    @Operation(summary = "Cadastrar restaurante",
+            description = "Exige o token de uma conta LOJA, que passa a ser a dona do restaurante (ownerUserId = sub do token).")
     @ApiResponses({@ApiResponse(responseCode = "201", description = "Restaurante cadastrado"),
-            @ApiResponse(responseCode = "400", description = "Dados inválidos")})
+            @ApiResponse(responseCode = "400", description = "Dados inválidos"),
+            @ApiResponse(responseCode = "403", description = "A conta não é de loja")})
     public ResponseEntity<RestauranteResponseDTO> cadastrarRestaurante(@Valid @RequestBody RestauranteDTO dto) {
         Restaurante restaurante = restauranteService.cadastrarRestaurante(dto);
         return ResponseEntity.status(201).body(restauranteMapper.toResponseDTO(restaurante));
@@ -58,7 +60,7 @@ public class RestauranteController {
     }
 
     @PutMapping("/{idRestaurante}")
-    @Operation(summary = "Atualizar dados do restaurante", description = "Substitui os dados cadastrais. ownerUserId identifica o proprietário nesta etapa de integração.")
+    @Operation(summary = "Atualizar dados do restaurante", description = "Substitui os dados cadastrais. Exige o token de uma conta LOJA dona do restaurante.")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "Restaurante atualizado"),
             @ApiResponse(responseCode = "400", description = "Dados inválidos"),
             @ApiResponse(responseCode = "403", description = "Usuário não é proprietário"),
@@ -117,9 +119,8 @@ public class RestauranteController {
     @ApiResponses({@ApiResponse(responseCode = "204", description = "Restaurante desativado"),
             @ApiResponse(responseCode = "403", description = "Usuário não é proprietário"),
             @ApiResponse(responseCode = "404", description = "Restaurante inexistente")})
-    public ResponseEntity<Void> deletarRestaurante(@PathVariable Long idRestaurante,
-                                                    @RequestParam Long ownerUserId) {
-        restauranteService.deletarRestaurante(idRestaurante, ownerUserId);
+    public ResponseEntity<Void> deletarRestaurante(@PathVariable Long idRestaurante) {
+        restauranteService.deletarRestaurante(idRestaurante);
         return ResponseEntity.noContent().build();
     }
 }
