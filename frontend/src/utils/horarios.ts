@@ -131,8 +131,12 @@ export type Previsao =
 /**
  * Previsão como a do protótipo. Quem diz se está aberto é o `abertoAgora` do back; os horários
  * só completam o texto. Aberto: fecha no horário de hoje. Fechado: abre ainda hoje, se o horário
- * de hoje não começou, ou no próximo dia com horário (até o mesmo dia da semana seguinte).
+ * de hoje não terminou, ou no próximo dia com horário (até o mesmo dia da semana seguinte).
  * `null` quando os horários não permitem prever (por exemplo, nenhum dia cadastrado).
+ *
+ * "Não terminou", e não "não começou": o `abertoAgora` usa o relógio do servidor e o `agora`, o do
+ * aparelho. Se o aparelho estiver um pouco adiantado na hora de abrir, o back ainda diz fechado e o
+ * horário de hoje já parece ter começado; o texto deve ser "abre hoje", não "abre amanhã".
  */
 export function previsaoDeFuncionamento(
   horarios: readonly HorarioFuncionamento[],
@@ -149,7 +153,7 @@ export function previsaoDeFuncionamento(
   if (abertoAgora) {
     return deHoje ? { tipo: 'fecha', hora: deHoje.fechamento } : null;
   }
-  if (deHoje && minutosDe(deHoje.abertura) > minutos) {
+  if (deHoje && minutos < minutosDe(deHoje.fechamento)) {
     return { tipo: 'abre', quando: 'hoje', hora: deHoje.abertura };
   }
   const indiceDeHoje = DIAS_DA_SEMANA.indexOf(hoje);

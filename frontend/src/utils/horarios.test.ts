@@ -142,6 +142,12 @@ describe('previsaoDeFuncionamento', () => {
     );
   });
 
+  it('fechado com o relógio do aparelho já dentro do horário de hoje: abre hoje, não amanhã', () => {
+    // O back calculou às 11:59 (fechado); o aparelho, adiantado, já marca 12:00.
+    const horarios = [horario('TERCA', '12:00', '15:00'), horario('QUARTA', '12:00', '15:00')];
+    expect(previsao(horarios, false, TERCA_12H)).toBe('abre hoje às 12:00');
+  });
+
   it('fechado depois do horário de hoje: abre amanhã', () => {
     const horarios = [horario('TERCA', '11:00', '15:00'), horario('QUARTA', '10:00', '15:00')];
     expect(previsao(horarios, false, TERCA_16H)).toBe('abre amanhã às 10:00');
