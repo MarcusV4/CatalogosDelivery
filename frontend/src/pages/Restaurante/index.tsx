@@ -7,6 +7,7 @@ import { useRestaurante } from '../../hooks/useRestaurante';
 import { useTituloPagina } from '../../hooks/useTituloPagina';
 import { mensagemDoErro } from '../../services/consultas';
 import { ApiError } from '../../services/http';
+import { previsaoDeFuncionamento } from '../../utils/horarios';
 import { lerIdDaRota } from '../../utils/identificador';
 import { NaoEncontrada } from '../NaoEncontrada';
 import { CabecalhoRestaurante } from './components/CabecalhoRestaurante';
@@ -72,9 +73,23 @@ function ConteudoRestaurante({ id }: ConteudoRestauranteProps) {
     );
   }
 
+  // "Agora" é o instante em que o restaurante foi carregado: o mesmo em que o back calculou o
+  // abertoAgora. Assim o texto não diverge dele quando os dados são recarregados mais tarde.
+  const previsao = horarios.data
+    ? previsaoDeFuncionamento(
+        horarios.data,
+        restaurante.data.abertoAgora,
+        new Date(restaurante.dataUpdatedAt),
+      )
+    : null;
+
   return (
     <article className="pagina-restaurante" aria-labelledby="restaurante-nome">
-      <CabecalhoRestaurante restaurante={restaurante.data} idTitulo="restaurante-nome" />
+      <CabecalhoRestaurante
+        restaurante={restaurante.data}
+        previsao={previsao}
+        idTitulo="restaurante-nome"
+      />
       <InfoRestaurante restaurante={restaurante.data} horarios={horarios} />
       <CardapioRestaurante cardapio={cardapio} />
     </article>

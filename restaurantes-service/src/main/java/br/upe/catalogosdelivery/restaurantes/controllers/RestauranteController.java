@@ -82,7 +82,7 @@ public class RestauranteController {
 
     @GetMapping("/{idRestaurante}/horarios")
     @Operation(summary = "Consultar horários de funcionamento")
-    @ApiResponses({@ApiResponse(responseCode = "200", description = "Horários da semana; dias ausentes estão fechados"),
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "Horários da semana, de DOMINGO a SABADO; dias ausentes estão fechados"),
             @ApiResponse(responseCode = "404", description = "Restaurante inexistente")})
     public ResponseEntity<List<HorarioFuncionamentoDTO>> listarHorarios(@PathVariable Long idRestaurante) {
         return ResponseEntity.ok(restauranteService.listarHorarios(idRestaurante));
@@ -105,7 +105,7 @@ public class RestauranteController {
 
     @PutMapping("/{idRestaurante}/horarios")
     @Operation(summary = "Substituir horários de funcionamento", description = "Substitui a semana completa. Dias omitidos ficam fechados; não são aceitos intervalos que cruzam a meia-noite.")
-    @ApiResponses({@ApiResponse(responseCode = "200", description = "Horários atualizados"),
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "Horários gravados, devolvidos de DOMINGO a SABADO, seja qual for a ordem de envio"),
             @ApiResponse(responseCode = "400", description = "Horários inválidos"),
             @ApiResponse(responseCode = "403", description = "Usuário não é proprietário"),
             @ApiResponse(responseCode = "404", description = "Restaurante inexistente")})
