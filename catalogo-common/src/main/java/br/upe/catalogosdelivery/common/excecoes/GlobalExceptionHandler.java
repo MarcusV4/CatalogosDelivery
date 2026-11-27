@@ -49,6 +49,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .body(ErroResponse.de(e.getMessage()));
     }
 
+    /** Usuário autenticado sem permissão: não é conta de loja ou não é dono do restaurante. */
+    @ExceptionHandler(AcessoNegadoException.class)
+    public ResponseEntity<ErroResponse> acessoNegado(AcessoNegadoException e) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ErroResponse.de(e.getMessage()));
+    }
+
     /** Outro serviço fora do ar, em timeout ou com erro 5xx. */
     @ExceptionHandler(ServicoIndisponivelException.class)
     public ResponseEntity<ErroResponse> indisponivel(ServicoIndisponivelException e) {

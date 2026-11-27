@@ -1,5 +1,6 @@
 package br.upe.catalogosdelivery.restaurantes.services;
 
+import br.upe.catalogosdelivery.common.excecoes.AcessoNegadoException;
 import br.upe.catalogosdelivery.common.seguranca.UsuarioAtual;
 import br.upe.catalogosdelivery.common.seguranca.UsuarioAutenticado;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.AtualizarRestauranteDTO;
@@ -214,7 +215,7 @@ public class RestauranteService {
     private void validarProprietario(Restaurante restaurante) {
         String conta = usuarioAtual.obterLoja().contaId();
         if (!conta.equalsIgnoreCase(restaurante.getOwnerUserId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Usuário não é proprietário do restaurante.");
+            throw new AcessoNegadoException("Usuário não é proprietário do restaurante.");
         }
     }
 

@@ -1,11 +1,10 @@
 package br.upe.catalogosdelivery.common.seguranca;
 
+import br.upe.catalogosdelivery.common.excecoes.AcessoNegadoException;
 import br.upe.catalogosdelivery.common.excecoes.NaoAutenticadoException;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -33,7 +32,7 @@ public class UsuarioAtual {
     public UsuarioAutenticado obterLoja() {
         UsuarioAutenticado usuario = obter();
         if (!usuario.possuiAlgumPapel(papeisLoja)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+            throw new AcessoNegadoException(
                     "Somente contas de loja podem gerenciar restaurantes e cardápios.");
         }
         return usuario;

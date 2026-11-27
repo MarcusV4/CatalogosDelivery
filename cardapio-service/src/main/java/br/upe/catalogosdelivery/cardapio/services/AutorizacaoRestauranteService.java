@@ -2,12 +2,11 @@ package br.upe.catalogosdelivery.cardapio.services;
 
 import br.upe.catalogosdelivery.cardapio.clients.RestauranteClient;
 import br.upe.catalogosdelivery.cardapio.clients.RestauranteResumoDTO;
+import br.upe.catalogosdelivery.common.excecoes.AcessoNegadoException;
 import br.upe.catalogosdelivery.common.seguranca.UsuarioAtual;
 import br.upe.catalogosdelivery.common.seguranca.UsuarioAutenticado;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Propriedade nas escritas do cardápio: só a conta LOJA dona do restaurante altera seus
@@ -31,7 +30,7 @@ public class AutorizacaoRestauranteService {
         UsuarioAutenticado usuario = usuarioAtual.obterLoja();
         if (restaurante == null || restaurante.ownerUserId() == null
                 || !restaurante.ownerUserId().equalsIgnoreCase(usuario.contaId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Usuário não é proprietário do restaurante.");
+            throw new AcessoNegadoException("Usuário não é proprietário do restaurante.");
         }
     }
 }

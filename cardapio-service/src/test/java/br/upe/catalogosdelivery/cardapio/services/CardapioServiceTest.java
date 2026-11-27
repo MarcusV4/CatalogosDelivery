@@ -2,13 +2,12 @@ package br.upe.catalogosdelivery.cardapio.services;
 
 import br.upe.catalogosdelivery.cardapio.entities.Cardapio;
 import br.upe.catalogosdelivery.cardapio.repositories.CardapioRepo;
+import br.upe.catalogosdelivery.common.excecoes.AcessoNegadoException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -37,10 +36,10 @@ class CardapioServiceTest {
 
     @Test
     void quemNaoEhDonoNaoExcluiOCardapio() {
-        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Usuário não é proprietário do restaurante."))
+        doThrow(new AcessoNegadoException("Usuário não é proprietário do restaurante."))
                 .when(autorizacaoRestauranteService).validarPermissao(1L);
 
-        assertThrows(ResponseStatusException.class, () -> cardapioService.excluirCardapioDoRestaurante(1L));
+        assertThrows(AcessoNegadoException.class, () -> cardapioService.excluirCardapioDoRestaurante(1L));
         verifyNoInteractions(cardapioRepo);
     }
 

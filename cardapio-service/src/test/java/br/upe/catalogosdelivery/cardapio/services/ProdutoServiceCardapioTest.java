@@ -6,6 +6,7 @@ import br.upe.catalogosdelivery.cardapio.entities.Cardapio;
 import br.upe.catalogosdelivery.cardapio.entities.Produto;
 import br.upe.catalogosdelivery.cardapio.repositories.CardapioRepo;
 import br.upe.catalogosdelivery.cardapio.repositories.ProdutoRepo;
+import br.upe.catalogosdelivery.common.excecoes.AcessoNegadoException;
 import br.upe.catalogosdelivery.common.excecoes.RecursoNaoEncontradoException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -107,13 +108,12 @@ class ProdutoServiceCardapioTest {
     void quemNaoEhDonoNaoCadastraProdutoNemCriaOCardapio() {
         when(restauranteClient.buscarRestaurante(10L))
                 .thenReturn(new RestauranteResumoDTO(10L, "Pizzaria", "ABERTO", 0L, "6f1c2a9e-1b2d-4c3e-8f4a-5b6c7d8e9f01"));
-        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Usuário não é proprietário do restaurante."))
+        doThrow(new AcessoNegadoException("Usuário não é proprietário do restaurante."))
                 .when(autorizacaoRestauranteService).validarDono(any());
 
-        ResponseStatusException erro = assertThrows(ResponseStatusException.class,
+        assertThrows(AcessoNegadoException.class,
                 () -> produtoService.cadastrarProduto(produtoComPreco(2590L), 10L));
 
-        assertEquals(HttpStatus.FORBIDDEN, erro.getStatusCode());
         verifyNoInteractions(cardapioRepo, produtoRepo);
     }
 

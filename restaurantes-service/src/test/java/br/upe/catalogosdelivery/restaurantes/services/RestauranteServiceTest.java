@@ -1,5 +1,6 @@
 package br.upe.catalogosdelivery.restaurantes.services;
 
+import br.upe.catalogosdelivery.common.excecoes.AcessoNegadoException;
 import br.upe.catalogosdelivery.common.seguranca.UsuarioAtual;
 import br.upe.catalogosdelivery.common.seguranca.UsuarioAutenticado;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.AtualizarRestauranteDTO;
@@ -127,11 +128,9 @@ class RestauranteServiceTest {
     void cadastroDeContaQueNaoEhDeLojaRetorna403SemSalvar() {
         RestauranteDTO dto = new RestauranteDTO("Pizzaria", null, null, null, null, null, "Recife", "PE",
                 null, null, 500L, null, null, null, CategoriaRestaurante.PIZZARIA);
-        when(usuarioAtual.obterLoja()).thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN,
-                "Somente contas de loja podem gerenciar restaurantes e cardápios."));
-        ResponseStatusException e = assertThrows(ResponseStatusException.class,
-                () -> restauranteService.cadastrarRestaurante(dto));
-        assertEquals(HttpStatus.FORBIDDEN, e.getStatusCode());
+        when(usuarioAtual.obterLoja()).thenThrow(
+                new AcessoNegadoException("Somente contas de loja podem gerenciar restaurantes e cardápios."));
+        assertThrows(AcessoNegadoException.class, () -> restauranteService.cadastrarRestaurante(dto));
         verify(restauranteRepo, never()).save(any());
     }
 
@@ -141,9 +140,9 @@ class RestauranteServiceTest {
         when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante));
         logadoComo(OUTRA_CONTA);
         AtualizarRestauranteDTO dto = atualizar();
-        ResponseStatusException e = assertThrows(ResponseStatusException.class,
+        AcessoNegadoException e = assertThrows(AcessoNegadoException.class,
                 () -> restauranteService.atualizarRestaurante(1L, dto));
-        assertEquals(HttpStatus.FORBIDDEN, e.getStatusCode());
+        assertEquals("Usuário não é proprietário do restaurante.", e.getMessage());
         verify(restauranteRepo, never()).save(any());
     }
 
@@ -281,8 +280,7 @@ class RestauranteServiceTest {
         when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante));
         when(usuarioAtual.obterLoja()).thenReturn(
                 new UsuarioAutenticado(OUTRA_CONTA, "LOJA"), new UsuarioAutenticado(DONO, "LOJA"));
-        assertEquals(HttpStatus.FORBIDDEN, assertThrows(ResponseStatusException.class,
-                () -> restauranteService.deletarRestaurante(1L)).getStatusCode());
+        assertThrows(AcessoNegadoException.class, () -> restauranteService.deletarRestaurante(1L));
         verify(restauranteRepo, never()).save(any());
         restauranteService.deletarRestaurante(1L);
         assertEquals(StatusRestaurante.INDISPONIVEL, restaurante.getStatusRestaurante());

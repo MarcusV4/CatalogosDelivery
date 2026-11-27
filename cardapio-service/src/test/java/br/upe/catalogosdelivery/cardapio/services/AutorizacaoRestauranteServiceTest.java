@@ -2,12 +2,11 @@ package br.upe.catalogosdelivery.cardapio.services;
 
 import br.upe.catalogosdelivery.cardapio.clients.RestauranteClient;
 import br.upe.catalogosdelivery.cardapio.clients.RestauranteResumoDTO;
+import br.upe.catalogosdelivery.common.excecoes.AcessoNegadoException;
 import br.upe.catalogosdelivery.common.excecoes.RecursoNaoEncontradoException;
 import br.upe.catalogosdelivery.common.seguranca.UsuarioAtual;
 import br.upe.catalogosdelivery.common.seguranca.UsuarioAutenticado;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -38,24 +37,23 @@ class AutorizacaoRestauranteServiceTest {
         logadoComo(OUTRA_CONTA);
         when(restauranteClient.buscarRestaurante(10L)).thenReturn(restaurante(DONO));
 
-        ResponseStatusException erro = assertThrows(ResponseStatusException.class, () -> service.validarPermissao(10L));
-        assertEquals(HttpStatus.FORBIDDEN, erro.getStatusCode());
-        assertEquals("Usuário não é proprietário do restaurante.", erro.getReason());
+        AcessoNegadoException erro = assertThrows(AcessoNegadoException.class, () -> service.validarPermissao(10L));
+        assertEquals("Usuário não é proprietário do restaurante.", erro.getMessage());
     }
 
     @Test
     void restauranteSemDonoNaoPodeSerAlterado() {
         logadoComo(DONO);
 
-        assertThrows(ResponseStatusException.class, () -> service.validarDono(restaurante(null)));
-        assertThrows(ResponseStatusException.class, () -> service.validarDono(null));
+        assertThrows(AcessoNegadoException.class, () -> service.validarDono(restaurante(null)));
+        assertThrows(AcessoNegadoException.class, () -> service.validarDono(null));
     }
 
     @Test
     void contaQueNaoEhDeLojaRecebe403DoUsuarioAtual() {
-        when(usuarioAtual.obterLoja()).thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Somente lojas."));
+        when(usuarioAtual.obterLoja()).thenThrow(new AcessoNegadoException("Somente lojas."));
 
-        assertThrows(ResponseStatusException.class, () -> service.validarDono(restaurante(DONO)));
+        assertThrows(AcessoNegadoException.class, () -> service.validarDono(restaurante(DONO)));
     }
 
     @Test
