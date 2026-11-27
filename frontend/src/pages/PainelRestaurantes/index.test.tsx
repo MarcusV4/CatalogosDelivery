@@ -12,8 +12,11 @@ import type { Restaurante } from '../../services/restaurantes';
 import { PainelRestaurantes } from './index';
 
 const ORIGEM = 'http://localhost:8004';
+/** Contas da Identidade: o `sub` do token é o UUID da conta. */
+const DONO = '6f1c2a9e-1b2d-4c3e-8f4a-5b6c7d8e9f01';
+const OUTRA_CONTA = '0a9b8c7d-6e5f-4a3b-9c2d-1e0f9a8b7c6d';
 
-function restaurante(id: number, dono: number, nome: string): Restaurante {
+function restaurante(id: number, dono: string, nome: string): Restaurante {
   return {
     restauranteId: id,
     restauranteNome: nome,
@@ -60,12 +63,12 @@ describe('PainelRestaurantes', () => {
       accessToken: 'token-loja',
       refreshToken: 'refresh',
       tipo: 'LOJA',
-      usuarioId: '57',
+      usuarioId: DONO,
       expiraEm: Date.now() + 60_000,
     });
     restaurantesServidor = [
-      restaurante(1, 57, 'Cantina da Praça'),
-      restaurante(2, 99, 'Loja de outra pessoa'),
+      restaurante(1, DONO, 'Cantina da Praça'),
+      restaurante(2, OUTRA_CONTA, 'Loja de outra pessoa'),
     ];
     negarStatus = false;
     falharCadastro = false;
@@ -89,7 +92,7 @@ describe('PainelRestaurantes', () => {
           Restaurante,
           'restauranteId' | 'ownerUserId' | 'statusRestaurante' | 'abertoAgora'
         >;
-        const novo = { ...restaurante(3, 57, dados.restauranteNome), ...dados };
+        const novo = { ...restaurante(3, DONO, dados.restauranteNome), ...dados };
         restaurantesServidor = [...restaurantesServidor, novo];
         return resposta(novo, 201);
       }
@@ -148,7 +151,7 @@ describe('PainelRestaurantes', () => {
             accessToken: 'token-loja',
             refreshToken: 'refresh',
             tipo: 'LOJA',
-            usuarioId: '57',
+            usuarioId: DONO,
             expiraEm: Date.now() + 60_000,
           },
           erro: null,

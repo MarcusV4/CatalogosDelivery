@@ -1,5 +1,7 @@
 package br.upe.catalogosdelivery.restaurantes.controllers;
 
+import br.upe.catalogosdelivery.common.seguranca.UsuarioAutenticado;
+import br.upe.catalogosdelivery.common.seguranca.ValidadorDeTokens;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.AtualizarRestauranteDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.AtualizarStatusRestauranteDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.HorarioFuncionamentoDTO;
@@ -13,15 +15,19 @@ import br.upe.catalogosdelivery.restaurantes.entities.Restaurante;
 import br.upe.catalogosdelivery.restaurantes.exceptions.RestauranteNaoEncontradoException;
 import br.upe.catalogosdelivery.restaurantes.mappers.RestauranteMapper;
 import br.upe.catalogosdelivery.restaurantes.services.RestauranteService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import java.time.LocalTime;
@@ -45,8 +51,28 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(RestauranteController.class)
 class RestauranteControllerTest {
 
+    /** Sem cabeçalho Authorization: testa o 401 das escritas. */
     @Autowired
+    private MockMvc semToken;
+
+    @Autowired
+    private WebApplicationContext contexto;
+
+    /** Envia o token de uma conta LOJA em toda requisição (as leituras o ignoram). */
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private ValidadorDeTokens validadorDeTokens;
+
+    private static final String CONTA_LOJA = "6f1c2a9e-1b2d-4c3e-8f4a-5b6c7d8e9f01";
+
+    @BeforeEach
+    void autenticarComoLoja() {
+        when(validadorDeTokens.validar("token-loja")).thenReturn(new UsuarioAutenticado(CONTA_LOJA, "LOJA"));
+        mockMvc = MockMvcBuilders.webAppContextSetup(contexto)
+                .defaultRequest(get("/").header(HttpHeaders.AUTHORIZATION, "Bearer token-loja"))
+                .build();
+    }
 
     @MockitoBean
     private RestauranteService restauranteService;
@@ -63,17 +89,17 @@ class RestauranteControllerTest {
                 {"restauranteNome":"Pizzaria","restauranteDesc":"Massas","logradouro":"Rua A","numero":"10",
                  "bairro":"Centro","cidade":"Recife","estado":"PE","cep":"50000-000",
                  "restauranteTelefone":"81999990000","taxaEntrega":500,"tempoEstimadoMin":20,
-                 "tempoEstimadoMax":40,"ownerUserId":10,"categoriaRestaurante":"PIZZARIA"}
+                 "tempoEstimadoMax":40,"categoriaRestaurante":"PIZZARIA"}
                 """;
         return Stream.of(
                 Arguments.of("GET /{id}", get(url)),
                 Arguments.of("PUT /{id}", put(url).contentType("application/json").content(dadosValidos)),
-                Arguments.of("DELETE /{id}", delete(url).param("ownerUserId", "10")),
+                Arguments.of("DELETE /{id}", delete(url)),
                 Arguments.of("PATCH /{id}/status", patch(url + "/status").contentType("application/json")
-                        .content("{\"ownerUserId\":10,\"statusRestaurante\":\"FECHADO\"}")),
+                        .content("{\"statusRestaurante\":\"FECHADO\"}")),
                 Arguments.of("GET /{id}/horarios", get(url + "/horarios")),
                 Arguments.of("PUT /{id}/horarios", put(url + "/horarios").contentType("application/json")
-                        .content("{\"ownerUserId\":10,\"horarios\":[]}")));
+                        .content("{\"horarios\":[]}")));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -89,7 +115,7 @@ class RestauranteControllerTest {
         when(restauranteService.listarHorarios(ID_INEXISTENTE)).thenThrow(naoEncontrado);
         when(restauranteService.substituirHorarios(eq(ID_INEXISTENTE), any(SubstituirHorariosDTO.class)))
                 .thenThrow(naoEncontrado);
-        doThrow(naoEncontrado).when(restauranteService).deletarRestaurante(eq(ID_INEXISTENTE), any());
+        doThrow(naoEncontrado).when(restauranteService).deletarRestaurante(ID_INEXISTENTE);
 
         mockMvc.perform(requisicao)
                 .andExpect(status().isNotFound())
@@ -103,11 +129,10 @@ class RestauranteControllerTest {
         return Stream.of(
                 Arguments.of("PUT /{id} com corpo inválido", put(url).contentType("application/json")
                         .content("{\"restauranteNome\":\" \",\"estado\":\"Pernambuco\"}")),
-                Arguments.of("DELETE /{id} sem ownerUserId", delete(url)),
                 Arguments.of("PATCH /{id}/status sem status", patch(url + "/status")
-                        .contentType("application/json").content("{\"ownerUserId\":10}")),
+                        .contentType("application/json").content("{}")),
                 Arguments.of("PUT /{id}/horarios sem horarios", put(url + "/horarios")
-                        .contentType("application/json").content("{\"ownerUserId\":10}")));
+                        .contentType("application/json").content("{}")));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -124,7 +149,7 @@ class RestauranteControllerTest {
         verify(restauranteService, never()).atualizarRestaurante(any(), any());
         verify(restauranteService, never()).atualizarStatus(any(), any());
         verify(restauranteService, never()).substituirHorarios(any(), any());
-        verify(restauranteService, never()).deletarRestaurante(any(), any());
+        verify(restauranteService, never()).deletarRestaurante(any());
     }
 
     @Test
@@ -169,7 +194,7 @@ class RestauranteControllerTest {
                                  "logradouro":"Rua A","numero":"10","bairro":"Centro","cidade":"Recife",
                                  "estado":"PE","cep":"50000-000","restauranteTelefone":"81999999999",
                                  "taxaEntrega":550,"tempoEstimadoMin":30,"tempoEstimadoMax":45,
-                                 "ownerUserId":7,"categoriaRestaurante":"PIZZARIA"}
+                                 "categoriaRestaurante":"PIZZARIA"}
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.restauranteNome").value("Pizzaria Recife"));
@@ -179,15 +204,38 @@ class RestauranteControllerTest {
 
     @Test
     void excluiRestauranteLogicamenteERetorna204() throws Exception {
-        mockMvc.perform(delete("/api/restaurantes/10").param("ownerUserId", "7"))
+        mockMvc.perform(delete("/api/restaurantes/10"))
                 .andExpect(status().isNoContent());
 
-        verify(restauranteService).deletarRestaurante(10L, 7L);
+        verify(restauranteService).deletarRestaurante(10L);
     }
 
     @Test
-    void deleteSemOwnerUserIdRetorna400() throws Exception {
-        mockMvc.perform(delete("/api/restaurantes/5")).andExpect(status().isBadRequest());
+    void escritaSemTokenRetorna401SemChamarService() throws Exception {
+        semToken.perform(delete("/api/restaurantes/5"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.erro").value(true));
+        semToken.perform(post("/api/restaurantes").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isUnauthorized());
+
+        verify(restauranteService, never()).deletarRestaurante(any());
+        verify(restauranteService, never()).cadastrarRestaurante(any());
+    }
+
+    @Test
+    void escritaSemTokenEmRestauranteInexistenteResponde401AntesDo404() throws Exception {
+        semToken.perform(put("/api/restaurantes/" + ID_INEXISTENTE + "/horarios")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"horarios\":[]}"))
+                .andExpect(status().isUnauthorized());
+
+        verify(restauranteService, never()).verificarExistencia(any());
+    }
+
+    @Test
+    void leituraContinuaPublicaSemToken() throws Exception {
+        when(restauranteService.listarRestaurante()).thenReturn(List.of(restauranteDTO()));
+
+        semToken.perform(get("/api/restaurantes")).andExpect(status().isOk());
     }
 
     @Test
@@ -197,7 +245,7 @@ class RestauranteControllerTest {
 
         mockMvc.perform(patch("/api/restaurantes/5/status")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"ownerUserId\":10,\"statusRestaurante\":\"FECHADO\"}"))
+                        .content("{\"statusRestaurante\":\"FECHADO\"}"))
                 .andExpect(status().isOk());
 
         verify(restauranteService).atualizarStatus(eq(5L), any(AtualizarStatusRestauranteDTO.class));
@@ -207,7 +255,7 @@ class RestauranteControllerTest {
     void cadastroInvalidoRetorna400SemChamarService() throws Exception {
         mockMvc.perform(post("/api/restaurantes")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"restauranteNome\":\" \",\"estado\":\"Pernambuco\",\"ownerUserId\":10}"))
+                        .content("{\"restauranteNome\":\" \",\"estado\":\"Pernambuco\"}"))
                 .andExpect(status().isBadRequest());
 
         verify(restauranteService, never()).cadastrarRestaurante(any());
@@ -217,7 +265,7 @@ class RestauranteControllerTest {
     void statusSemValorRetorna400SemChamarService() throws Exception {
         mockMvc.perform(patch("/api/restaurantes/5/status")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"ownerUserId\":10}"))
+                        .content("{}"))
                 .andExpect(status().isBadRequest());
 
         verify(restauranteService, never()).atualizarStatus(any(), any());
@@ -237,13 +285,13 @@ class RestauranteControllerTest {
 
     private static RestauranteResponseDTO restauranteDTO() {
         return new RestauranteResponseDTO(10L, "Pizzaria Recife", "Pizza artesanal", "Rua A", "10", null,
-                "Centro", "Recife", "PE", "50000-000", "81999999999", null, 7L,
+                "Centro", "Recife", "PE", "50000-000", "81999999999", null, CONTA_LOJA,
                 StatusRestaurante.ABERTO, CategoriaRestaurante.PIZZARIA, 550L, 30, 45, true);
     }
 
     private static RestauranteResponseDTO resposta() {
         return new RestauranteResponseDTO(5L, "Pizzaria", null, null, null, null, null, null, null, null,
-                null, null, 10L, StatusRestaurante.FECHADO, CategoriaRestaurante.PIZZARIA, 0L,
+                null, null, CONTA_LOJA, StatusRestaurante.FECHADO, CategoriaRestaurante.PIZZARIA, 0L,
                 null, null, false);
     }
 }

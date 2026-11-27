@@ -25,6 +25,14 @@
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
 		</dependency>
+		<!--
+			Validação local dos access tokens da Identidade (RS256 + JWKS): NimbusJwtDecoder.
+			Só a biblioteca de JWT; sem o starter, o Spring Security não liga filtros nem login.
+		-->
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-oauth2-jose</artifactId>
+		</dependency>
 		<!-- DataIntegrityViolationException (tratada no GlobalExceptionHandler) -->
 		<dependency>
 			<groupId>org.springframework</groupId>

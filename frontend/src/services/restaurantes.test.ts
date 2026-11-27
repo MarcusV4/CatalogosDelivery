@@ -12,6 +12,9 @@ import {
   substituirHorarios,
 } from './restaurantes';
 
+const DONO = '6f1c2a9e-1b2d-4c3e-8f4a-5b6c7d8e9f01';
+const OUTRA_CONTA = '0a9b8c7d-6e5f-4a3b-9c2d-1e0f9a8b7c6d';
+
 const ORIGEM = 'http://localhost:8004';
 
 function respostaJson(status: number, corpo: unknown): Response {
@@ -68,18 +71,18 @@ describe('serviço de Restaurantes', () => {
       accessToken: 'token-loja',
       refreshToken: 'refresh',
       tipo: 'LOJA',
-      usuarioId: '57',
+      usuarioId: DONO,
       expiraEm: Date.now() + 60_000,
     });
     fetchFalso.mockResolvedValue(
       respostaJson(200, [
-        { restauranteId: 1, ownerUserId: 57 },
-        { restauranteId: 2, ownerUserId: 99 },
+        { restauranteId: 1, ownerUserId: DONO },
+        { restauranteId: 2, ownerUserId: OUTRA_CONTA },
       ]),
     );
 
-    await expect(listarRestaurantesDoUsuario(57)).resolves.toEqual([
-      { restauranteId: 1, ownerUserId: 57 },
+    await expect(listarRestaurantesDoUsuario(DONO)).resolves.toEqual([
+      { restauranteId: 1, ownerUserId: DONO },
     ]);
     expect(fetchFalso.mock.calls[0]?.[1]?.headers).toMatchObject({
       Authorization: 'Bearer token-loja',
@@ -91,7 +94,7 @@ describe('serviço de Restaurantes', () => {
       accessToken: 'token-loja',
       refreshToken: 'refresh',
       tipo: 'LOJA',
-      usuarioId: '57',
+      usuarioId: DONO,
       expiraEm: Date.now() + 60_000,
     });
     fetchFalso.mockResolvedValue(respostaJson(201, { restauranteId: 3 }));
@@ -124,7 +127,7 @@ describe('serviço de Restaurantes', () => {
       accessToken: 'token-loja',
       refreshToken: 'refresh',
       tipo: 'LOJA',
-      usuarioId: '57',
+      usuarioId: DONO,
       expiraEm: Date.now() + 60_000,
     });
     fetchFalso

@@ -50,8 +50,9 @@ public class Restaurante {
 
     private String urlImagem;
 
-    @Column(nullable = false)
-    private Long ownerUserId;
+    /** UUID da conta dona (sub do token da Identidade). Ver V2__owner_user_id_uuid.sql. */
+    @Column(nullable = false, length = 36)
+    private String ownerUserId;
 
     @Enumerated(EnumType.STRING)
     private StatusRestaurante statusRestaurante;

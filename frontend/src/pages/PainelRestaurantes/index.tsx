@@ -38,7 +38,7 @@ export function PainelRestaurantes() {
         <EstadoMensagem
           tipo="erro"
           titulo="Não foi possível carregar seus restaurantes."
-          descricao="O serviço precisa fornecer o identificador numérico da conta para relacioná-la aos restaurantes."
+          descricao="O token da sua conta não traz um identificador válido. Entre novamente."
         />
       </section>
     );
@@ -70,7 +70,7 @@ function ConteudoPainel({
   errosStatus,
   setErrosStatus,
 }: {
-  usuarioId: number;
+  usuarioId: string;
   mostrarCadastro: boolean;
   setMostrarCadastro: (mostrar: boolean) => void;
   restauranteEditando: Restaurante | null;
@@ -321,8 +321,10 @@ function PainelHorarios({ restaurante }: { restaurante: Restaurante }) {
   );
 }
 
-function lerUsuarioId(usuarioId?: string): number | null {
-  if (!usuarioId || !/^\d+$/.test(usuarioId)) return null;
-  const numero = Number(usuarioId);
-  return Number.isSafeInteger(numero) && numero > 0 ? numero : null;
+/** O `sub` do token da Identidade é o UUID da conta (`conta_id`), igual ao `ownerUserId`. */
+const UUID_CONTA = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function lerUsuarioId(usuarioId?: string): string | null {
+  const conta = usuarioId?.trim();
+  return conta && UUID_CONTA.test(conta) ? conta.toLowerCase() : null;
 }

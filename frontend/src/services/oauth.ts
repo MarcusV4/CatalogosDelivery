@@ -2,10 +2,10 @@
 export type Papel = string;
 
 /**
- * Papéis que abrem o painel do dono. O contrato da Identidade usa `LOJA` e o back-end do
- * Catálogo (#31) usa `LOJISTA` por padrão; os dois valem até o contrato ser fechado.
+ * Papéis que abrem o painel do dono. O contrato da Identidade define `CLIENTE`, `LOJA`,
+ * `ENTREGADOR` e `ADMIN`; o back-end do Catálogo aceita escritas só de `LOJA`.
  */
-export const PAPEIS_DE_LOJA: readonly Papel[] = ['LOJA', 'LOJISTA'];
+export const PAPEIS_DE_LOJA: readonly Papel[] = ['LOJA'];
 
 export interface ConfiguracaoOAuth {
   emissor: string;

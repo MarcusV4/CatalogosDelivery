@@ -11,7 +11,7 @@ import {
 } from '../services/restaurantes';
 
 /** Consultas e gravações usadas pelo painel de gerenciamento de restaurantes. */
-export function useRestaurantesAdmin(usuarioId: number) {
+export function useRestaurantesAdmin(usuarioId: string) {
   const cliente = useQueryClient();
   const { notificar } = useNotificacao();
   const chave = chavesRestaurantes.doUsuario(usuarioId);

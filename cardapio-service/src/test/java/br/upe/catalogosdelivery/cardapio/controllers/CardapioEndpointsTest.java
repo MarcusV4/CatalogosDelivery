@@ -1,5 +1,11 @@
 package br.upe.catalogosdelivery.cardapio.controllers;
 
+import br.upe.catalogosdelivery.common.seguranca.UsuarioAutenticado;
+import br.upe.catalogosdelivery.common.seguranca.ValidadorDeTokens;
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.http.HttpHeaders;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
 import br.upe.catalogosdelivery.cardapio.entities.DTOs.AdicionalResponseDTO;
 import br.upe.catalogosdelivery.cardapio.entities.DTOs.ProdutoResponseDTO;
 import br.upe.catalogosdelivery.cardapio.entities.Enums.CategoriaProduto;
@@ -28,7 +34,23 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest({ProdutoController.class, CardapioController.class, AdicionalController.class, CategoriaController.class})
 @Import({GlobalExceptionHandler.class, ProdutoMapper.class})
 class CardapioEndpointsTest {
-    @Autowired MockMvc mvc;
+    /** Envia o token de uma conta LOJA em toda requisição. */
+    MockMvc mvc;
+
+    @Autowired
+    private WebApplicationContext contexto;
+
+    @MockitoBean
+    private ValidadorDeTokens validadorDeTokens;
+
+    @BeforeEach
+    void autenticarComoLoja() {
+        when(validadorDeTokens.validar("token-loja"))
+                .thenReturn(new UsuarioAutenticado("6f1c2a9e-1b2d-4c3e-8f4a-5b6c7d8e9f01", "LOJA"));
+        mvc = MockMvcBuilders.webAppContextSetup(contexto)
+                .defaultRequest(get("/").header(HttpHeaders.AUTHORIZATION, "Bearer token-loja"))
+                .build();
+    }
     @MockitoBean ProdutoService produtoService;
     @MockitoBean AdicionalService adicionalService;
     @MockitoBean CardapioService cardapioService;

@@ -3,6 +3,7 @@ package br.upe.catalogosdelivery.cardapio.controllers;
 import br.upe.catalogosdelivery.cardapio.entities.DTOs.*;
 import br.upe.catalogosdelivery.cardapio.mappers.ProdutoMapper;
 import br.upe.catalogosdelivery.cardapio.services.ProdutoService;
+import br.upe.catalogosdelivery.common.seguranca.RotaPublica;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -24,6 +25,9 @@ public class ProdutoController {
     private final ProdutoService produtoService;
     private final ProdutoMapper produtoMapper;
 
+    // Pública: o Checkout consulta itens sem token de usuário. O acesso M2M (Client Credentials)
+    // da Identidade ainda está desativado e não foi contratado para esta rota.
+    @RotaPublica
     @PostMapping("/validacao")
     @Operation(summary = "Validar itens para o Checkout", description = "Confere existência, disponibilidade e preço em centavos dos itens de um restaurante.")
     @ApiResponses({

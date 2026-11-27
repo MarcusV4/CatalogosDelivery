@@ -5,6 +5,7 @@ existem (mesmo nome dentro do respectivo restaurante ou produto) são mantidos,
 e só o que falta é cadastrado.
 """
 
+import base64
 import json
 import os
 import sys
@@ -25,9 +26,10 @@ LOCAL_DATABASES = {
 CAMPO_ID = "restauranteId"
 CAMPO_NOME = "restauranteNome"
 
-# TODO(#31): quando as rotas de escrita exigirem JWT, enviar um token do mock
-# da Identidade e remover ownerUserId do body (ele passará a vir do token).
-OWNER_USER_ID = 1
+# As escritas exigem o access token de uma conta LOJA (Authorization: Bearer). O dono
+# dos restaurantes é a conta do token. Com a Identidade de verdade, informe SEED_TOKEN;
+# no modo mock (CATALOGO_IDENTIDADE_MODO=mock) a seed gera um token de dev para esta conta.
+CONTA_SEED = "5eed0000-0000-4000-8000-000000000001"
 
 # Valores monetários em centavos (2590 = R$ 25,90).
 RESTAURANTES = [
@@ -45,7 +47,6 @@ RESTAURANTES = [
             "taxaEntrega": 500,
             "tempoEstimadoMin": 30,
             "tempoEstimadoMax": 45,
-            "ownerUserId": OWNER_USER_ID,
             "categoriaRestaurante": "PIZZARIA",
         },
         "status": "ABERTO",
@@ -102,7 +103,6 @@ RESTAURANTES = [
             "taxaEntrega": 300,
             "tempoEstimadoMin": 20,
             "tempoEstimadoMax": 30,
-            "ownerUserId": OWNER_USER_ID,
             "categoriaRestaurante": "ACAI",
         },
         "status": "FECHADO",
@@ -130,14 +130,32 @@ RESTAURANTES = [
 ]
 
 
+def token_de_dev(conta, papel="LOJA"):
+    """JWT sem assinatura, aceito só pelo modo mock dos serviços."""
+    def b64(dados):
+        return base64.urlsafe_b64encode(json.dumps(dados).encode("utf-8")).rstrip(b"=").decode("ascii")
+
+    return f"{b64({'alg': 'none'})}.{b64({'sub': conta, 'role': papel})}."
+
+
+def token_da_seed():
+    token = os.getenv("SEED_TOKEN", "").strip()
+    if token:
+        return token
+    if os.getenv("CATALOGO_IDENTIDADE_MODO", "identidade").lower() == "mock":
+        return token_de_dev(CONTA_SEED)
+    return None
+
+
+TOKEN = None
+
+
 def api_json(base_url, path, method="GET", data=None):
     body = json.dumps(data).encode("utf-8") if data is not None else None
-    request = Request(
-        base_url + path,
-        data=body,
-        headers={"Content-Type": "application/json"} if body else {},
-        method=method,
-    )
+    headers = {"Content-Type": "application/json"} if body else {}
+    if method != "GET" and TOKEN:
+        headers["Authorization"] = f"Bearer {TOKEN}"
+    request = Request(base_url + path, data=body, headers=headers, method=method)
     try:
         with urlopen(request, timeout=10) as response:
             return json.load(response)
@@ -162,7 +180,7 @@ def obter_ou_criar_restaurante(dados, status, existentes):
             RESTAURANTES_URL,
             f"/api/restaurantes/{restaurante[CAMPO_ID]}/status",
             "PATCH",
-            {"ownerUserId": dados["ownerUserId"], "statusRestaurante": status},
+            {"statusRestaurante": status},
         )
         print(f"  Status alterado para {status}")
     return restaurante
@@ -209,6 +227,15 @@ def main():
     )
     if external_database and os.getenv("SEED_ALLOW_EXTERNAL", "false").lower() != "true":
         print("Seed ignorada: banco externo configurado. Use SEED_ALLOW_EXTERNAL=true para autorizar.")
+        return
+
+    global TOKEN
+    TOKEN = token_da_seed()
+    if TOKEN is None:
+        print(
+            "Seed ignorada: as escritas exigem o token de uma conta LOJA. Informe SEED_TOKEN "
+            "ou rode os serviços com CATALOGO_IDENTIDADE_MODO=mock."
+        )
         return
 
     existentes = api_json(RESTAURANTES_URL, "/api/restaurantes")

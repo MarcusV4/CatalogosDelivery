@@ -51,6 +51,11 @@ class GlobalExceptionHandlerTest {
             throw new RecursoNaoEncontradoException("Restaurante não encontrado");
         }
 
+        @GetMapping("/acesso-negado")
+        void acessoNegado() {
+            throw new AcessoNegadoException("Usuário não é proprietário do restaurante.");
+        }
+
         @GetMapping("/indisponivel")
         void indisponivel() {
             throw new ServicoIndisponivelException("Cardápio fora do ar", null);
@@ -82,6 +87,14 @@ class GlobalExceptionHandlerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.erro").value(true))
                 .andExpect(jsonPath("$.mensagem").value("Restaurante não encontrado"));
+    }
+
+    @Test
+    void acessoNegadoRetorna403NoFormatoPadrao() throws Exception {
+        mockMvc.perform(get("/acesso-negado"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.erro").value(true))
+                .andExpect(jsonPath("$.mensagem").value("Usuário não é proprietário do restaurante."));
     }
 
     @Test

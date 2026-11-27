@@ -37,7 +37,8 @@ export interface Restaurante {
   cep: string | null;
   restauranteTelefone: string | null;
   urlImagem: string | null;
-  ownerUserId: number;
+  /** Conta dona: UUID do `sub` do token da Identidade. */
+  ownerUserId: string;
   statusRestaurante: StatusRestaurante;
   categoriaRestaurante: CategoriaRestaurante;
   taxaEntrega: number;
@@ -65,21 +66,22 @@ export interface HorarioFuncionamento {
 /** Chaves de cache. Invalidar `todos` invalida o detalhe e os horários de todos os restaurantes. */
 export const chavesRestaurantes = {
   todos: ['restaurantes'] as const,
-  doUsuario: (usuarioId: number) => [...chavesRestaurantes.todos, 'usuario', usuarioId] as const,
+  doUsuario: (usuarioId: string) => [...chavesRestaurantes.todos, 'usuario', usuarioId] as const,
   detalhe: (id: number) => [...chavesRestaurantes.todos, id] as const,
   horarios: (id: number) => [...chavesRestaurantes.detalhe(id), 'horarios'] as const,
 };
 
 /** Lista os restaurantes ativos e filtra os do usuário autenticado para a interface do painel. */
 export async function listarRestaurantesDoUsuario(
-  usuarioId: number,
+  usuarioId: string,
   signal?: AbortSignal,
 ): Promise<Restaurante[]> {
   const restaurantes = await requisitar<Restaurante[]>('restaurantes', '/api/restaurantes', {
     signal,
     exigirAutenticacao: true,
   });
-  return restaurantes.filter((restaurante) => restaurante.ownerUserId === usuarioId);
+  const conta = usuarioId.toLowerCase();
+  return restaurantes.filter((restaurante) => restaurante.ownerUserId?.toLowerCase() === conta);
 }
 
 /** Cadastra restaurante; o serviço deve obter o proprietário do token, nunca do corpo. */

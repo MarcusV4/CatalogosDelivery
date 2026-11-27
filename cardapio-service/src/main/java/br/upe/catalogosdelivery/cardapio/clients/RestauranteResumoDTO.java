@@ -8,6 +8,8 @@ public record RestauranteResumoDTO(
         Long restauranteId,
         String restauranteNome,
         String statusRestaurante,
-        Long taxaEntrega
+        Long taxaEntrega,
+        /** Conta dona do restaurante (UUID do sub do token da Identidade). */
+        String ownerUserId
 ) {
 }

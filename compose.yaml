@@ -18,6 +18,18 @@ x-app: &app
 x-cors-env: &cors-env
   CATALOGO_CORS_ORIGENS_PERMITIDAS: ${CATALOGO_CORS_ORIGENS_PERMITIDAS:-http://localhost:5173,http://localhost:${FRONTEND_PORT:-3000}}
 
+# Integração com a Identidade (escritas exigem token). O iss precisa ser exatamente o do token
+# (127.0.0.1:18001 no ambiente local da Equipe 1), mas de dentro do contêiner a máquina é
+# host.docker.internal: por isso o JWKS tem endereço próprio. Sem AUDIENCIAS e RBAC_URL, as
+# escritas respondem 503. Para desenvolver sem a Identidade: CATALOGO_IDENTIDADE_MODO=mock.
+x-identidade-env: &identidade-env
+  CATALOGO_IDENTIDADE_MODO: ${CATALOGO_IDENTIDADE_MODO:-identidade}
+  CATALOGO_IDENTIDADE_EMISSOR: ${CATALOGO_IDENTIDADE_EMISSOR:-http://127.0.0.1:18001}
+  CATALOGO_IDENTIDADE_JWKS_URI: ${CATALOGO_IDENTIDADE_JWKS_URI:-http://host.docker.internal:18001/.well-known/jwks.json}
+  CATALOGO_IDENTIDADE_AUDIENCIAS: ${CATALOGO_IDENTIDADE_AUDIENCIAS:-}
+  CATALOGO_IDENTIDADE_RBAC_URL: ${CATALOGO_IDENTIDADE_RBAC_URL:-}
+  CATALOGO_IDENTIDADE_VALIDACAO_ONLINE: ${CATALOGO_IDENTIDADE_VALIDACAO_ONLINE:-true}
+
 x-db-healthcheck: &db-healthcheck
   interval: 5s
   timeout: 5s
@@ -59,12 +71,14 @@ services:
       args:
         SERVICE: restaurantes-service
     environment:
-      <<: *cors-env
+      <<: [*cors-env, *identidade-env]
       SERVER_PORT: 8004
       RESTAURANTES_DB_URL: ${RESTAURANTES_DB_URL:-jdbc:postgresql://db-restaurantes:5432/restaurantes}
       RESTAURANTES_DB_USERNAME: ${RESTAURANTES_DB_USERNAME:-catalogo}
       RESTAURANTES_DB_PASSWORD: ${RESTAURANTES_DB_PASSWORD:-catalogo}
       CARDAPIO_URL: http://cardapio:8005
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${RESTAURANTES_PORT:-8004}:8004"
     depends_on:
@@ -81,12 +95,14 @@ services:
       args:
         SERVICE: cardapio-service
     environment:
-      <<: *cors-env
+      <<: [*cors-env, *identidade-env]
       SERVER_PORT: 8005
       CARDAPIO_DB_URL: ${CARDAPIO_DB_URL:-jdbc:postgresql://db-cardapio:5432/cardapio}
       CARDAPIO_DB_USERNAME: ${CARDAPIO_DB_USERNAME:-catalogo}
       CARDAPIO_DB_PASSWORD: ${CARDAPIO_DB_PASSWORD:-catalogo}
       RESTAURANTES_URL: http://restaurantes:8004
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${CARDAPIO_PORT:-8005}:8005"
     # Depende só do próprio banco: se Restaurantes cair, o Cardápio continua no ar
@@ -155,6 +171,9 @@ services:
       CARDAPIO_DB_URL: ${CARDAPIO_DB_URL:-jdbc:postgresql://db-cardapio:5432/cardapio}
       SEED_ENABLED: ${SEED_ENABLED:-true}
       SEED_ALLOW_EXTERNAL: ${SEED_ALLOW_EXTERNAL:-false}
+      # As escritas exigem token: no modo mock a seed gera um de dev; com a Identidade, informe SEED_TOKEN.
+      CATALOGO_IDENTIDADE_MODO: ${CATALOGO_IDENTIDADE_MODO:-identidade}
+      SEED_TOKEN: ${SEED_TOKEN:-}
     command: ["python", "/app/seed.py"]
     depends_on:
       restaurantes:
