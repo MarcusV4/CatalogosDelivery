@@ -34,6 +34,7 @@ function restaurante(id: number, dono: string, nome: string): Restaurante {
     statusRestaurante: 'ABERTO',
     categoriaRestaurante: 'PIZZARIA',
     taxaEntrega: 500,
+    pedidoMinimo: 2000,
     tempoEstimadoMin: 30,
     tempoEstimadoMax: 50,
     abertoAgora: true,
@@ -229,6 +230,7 @@ describe('PainelRestaurantes', () => {
       restauranteNome: 'Bistrô do Recife',
       estado: 'PE',
       taxaEntrega: 450,
+      pedidoMinimo: null,
       categoriaRestaurante: 'COMIDA_REGIONAL',
     });
     expect(JSON.parse(String(chamada?.[1]?.body))).not.toHaveProperty('ownerUserId');
@@ -323,6 +325,7 @@ describe('PainelRestaurantes', () => {
     expect(JSON.parse(String(chamada?.[1]?.body))).toMatchObject({
       restauranteNome: 'Cantina Atualizada',
       taxaEntrega: 500,
+      pedidoMinimo: 2000,
     });
     expect(JSON.parse(String(chamada?.[1]?.body))).not.toHaveProperty('ownerUserId');
   });

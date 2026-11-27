@@ -51,9 +51,45 @@ describe('FormularioRestaurante', () => {
         tempoEstimadoMax: 45,
         complemento: null,
         urlImagem: null,
+        pedidoMinimo: null,
         categoriaRestaurante: 'PIZZARIA',
       }),
     );
+  });
+
+  it('envia o pedido mínimo em centavos e recusa um valor inválido', async () => {
+    const usuario = userEvent.setup();
+    const aoSalvar = vi.fn();
+    render(<FormularioRestaurante salvando={false} aoSalvar={aoSalvar} aoCancelar={vi.fn()} />);
+    const valores: Record<string, string> = {
+      'restaurante-nome': 'Cantina',
+      'restaurante-descricao': 'Massas',
+      'restaurante-telefone': '81999990000',
+      'restaurante-logradouro': 'Rua A',
+      'restaurante-numero': '1',
+      'restaurante-bairro': 'Centro',
+      'restaurante-cidade': 'Recife',
+      'restaurante-estado': 'PE',
+      'restaurante-cep': '50000-000',
+      'restaurante-taxa': '0',
+      'restaurante-pedido-minimo': '-5',
+      'restaurante-tempo-min': '20',
+      'restaurante-tempo-max': '30',
+    };
+    for (const [id, valor] of Object.entries(valores)) {
+      await usuario.type(document.getElementById(id) as HTMLElement, valor);
+    }
+    await usuario.click(screen.getByRole('button', { name: 'Cadastrar restaurante' }));
+
+    expect(screen.getByRole('alert').textContent).toContain('pedido mínimo válido');
+    expect(aoSalvar).not.toHaveBeenCalled();
+
+    const campo = screen.getByLabelText('Pedido mínimo (R$, opcional)');
+    await usuario.clear(campo);
+    await usuario.type(campo, '20,50');
+    await usuario.click(screen.getByRole('button', { name: 'Cadastrar restaurante' }));
+
+    expect(aoSalvar).toHaveBeenCalledWith(expect.objectContaining({ pedidoMinimo: 2050 }));
   });
 
   it('não permite tempo máximo menor que o mínimo', async () => {

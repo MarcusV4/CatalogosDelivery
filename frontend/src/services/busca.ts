@@ -22,6 +22,8 @@ export interface RestauranteBusca {
   categoriaRestaurante: CategoriaRestaurante;
   /** Em centavos. */
   taxaEntrega: number;
+  /** Em centavos, sem a taxa de entrega; `null` quando não há mínimo. */
+  pedidoMinimo: number | null;
   tempoEstimadoMin: number | null;
   tempoEstimadoMax: number | null;
   abertoAgora: boolean;
