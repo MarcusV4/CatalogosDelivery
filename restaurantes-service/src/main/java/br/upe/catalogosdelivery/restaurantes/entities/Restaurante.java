@@ -44,6 +44,10 @@ public class Restaurante {
     @Schema(description = "Taxa fixa informada pelo restaurante, em centavos; não é cálculo de frete", example = "550", minimum = "0")
     private Long taxaEntrega;
 
+    /** Ver V3__pedido_minimo.sql. Nulo: o restaurante não exige valor mínimo. */
+    @Schema(description = "Valor mínimo do pedido, em centavos, sem a taxa de entrega; nulo quando não há mínimo", example = "2000", minimum = "0")
+    private Long pedidoMinimo;
+
     private Integer tempoEstimadoMin;
 
     private Integer tempoEstimadoMax;

@@ -21,6 +21,7 @@ public record RestauranteResponseDTO(
         StatusRestaurante statusRestaurante,
         CategoriaRestaurante categoriaRestaurante,
         @Schema(description = "Taxa fixa informada pelo restaurante, em centavos", example = "550", minimum = "0") Long taxaEntrega,
+        @Schema(description = "Valor mínimo do pedido, em centavos, sem a taxa de entrega; nulo quando não há mínimo", example = "2000", minimum = "0") Long pedidoMinimo,
         Integer tempoEstimadoMin,
         Integer tempoEstimadoMax,
         boolean abertoAgora

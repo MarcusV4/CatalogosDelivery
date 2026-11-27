@@ -71,7 +71,8 @@ class RestauranteServiceTest {
     @Test
     void cadastraRestauranteValidoComOsDadosDoDono() {
         RestauranteDTO dto = new RestauranteDTO("Pizzaria", "Pizza artesanal", "Rua A", "10", null,
-                "Centro", "Recife", "PE", "50000-000", "81999999999", 550L, 30, 45, null, CategoriaRestaurante.PIZZARIA);
+                "Centro", "Recife", "PE", "50000-000", "81999999999", 550L, 2000L, 30, 45, null,
+                CategoriaRestaurante.PIZZARIA);
         logadoComo(DONO);
         when(restauranteRepo.save(any(Restaurante.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -80,7 +81,22 @@ class RestauranteServiceTest {
         assertEquals("Pizzaria", resultado.getRestauranteNome());
         assertEquals(DONO, resultado.getOwnerUserId(), "o dono é a conta do token");
         assertEquals(550L, resultado.getTaxaEntrega());
+        assertEquals(2000L, resultado.getPedidoMinimo());
         verify(restauranteRepo).save(any(Restaurante.class));
+    }
+
+    @Test
+    void cadastroComPedidoMinimoNegativoRetorna400SemSalvar() {
+        RestauranteDTO dto = new RestauranteDTO("Pizzaria", null, null, null, null, null, "Recife", "PE",
+                null, null, 500L, -1L, null, null, null, CategoriaRestaurante.PIZZARIA);
+        logadoComo(DONO);
+
+        ResponseStatusException e = assertThrows(ResponseStatusException.class,
+                () -> restauranteService.cadastrarRestaurante(dto));
+
+        assertEquals(HttpStatus.BAD_REQUEST, e.getStatusCode());
+        assertEquals("O pedido mínimo não pode ser negativo.", e.getReason());
+        verify(restauranteRepo, never()).save(any());
     }
 
     @Test
@@ -127,7 +143,7 @@ class RestauranteServiceTest {
     @Test
     void cadastroDeContaQueNaoEhDeLojaRetorna403SemSalvar() {
         RestauranteDTO dto = new RestauranteDTO("Pizzaria", null, null, null, null, null, "Recife", "PE",
-                null, null, 500L, null, null, null, CategoriaRestaurante.PIZZARIA);
+                null, null, 500L, null, null, null, null, CategoriaRestaurante.PIZZARIA);
         when(usuarioAtual.obterLoja()).thenThrow(
                 new AcessoNegadoException("Somente contas de loja podem gerenciar restaurantes e cardápios."));
         assertThrows(AcessoNegadoException.class, () -> restauranteService.cadastrarRestaurante(dto));
@@ -158,6 +174,24 @@ class RestauranteServiceTest {
         assertEquals("Nome", restaurante.getRestauranteNome());
         assertEquals(DONO, restaurante.getOwnerUserId());
         verify(restauranteRepo).save(restaurante);
+    }
+
+    @Test
+    void atualizarRestauranteGravaERemoveOPedidoMinimo() {
+        Restaurante restaurante = restaurante(1L, DONO, StatusRestaurante.ABERTO);
+        when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante));
+        when(restauranteRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(horarioFuncRepo.findAllByIdRestauranteRestauranteId(1L)).thenReturn(List.of());
+        when(clock.withZone(any())).thenReturn(Clock.systemUTC());
+        logadoComo(DONO);
+
+        RestauranteResponseDTO comMinimo = restauranteService.atualizarRestaurante(1L, atualizarComPedidoMinimo(2500L));
+        assertEquals(2500L, restaurante.getPedidoMinimo());
+        assertEquals(2500L, comMinimo.pedidoMinimo());
+
+        RestauranteResponseDTO semMinimo = restauranteService.atualizarRestaurante(1L, atualizarComPedidoMinimo(null));
+        assertNull(restaurante.getPedidoMinimo(), "nulo remove o pedido mínimo");
+        assertNull(semMinimo.pedidoMinimo());
     }
 
     @Test
@@ -292,7 +326,7 @@ class RestauranteServiceTest {
         logadoComo(DONO);
         for (String nome : new String[]{null, "  "}) {
             RestauranteDTO dto = new RestauranteDTO(nome, null, null, null, null, null, "Recife", "PE",
-                    null, null, 500L, null, null, null, CategoriaRestaurante.PIZZARIA);
+                    null, null, 500L, null, null, null, null, CategoriaRestaurante.PIZZARIA);
             assertEquals(HttpStatus.BAD_REQUEST, assertThrows(ResponseStatusException.class,
                     () -> restauranteService.cadastrarRestaurante(dto)).getStatusCode());
         }
@@ -302,7 +336,7 @@ class RestauranteServiceTest {
     @Test
     void cadastroComecaComStatusAbertoENormalizaEstado() {
         RestauranteDTO dto = new RestauranteDTO("Pizzaria", "Desc", "Rua A", "10", null, "Centro", "Recife", "pe",
-                "50000-000", "81999990000", 500L, 20, 40, null, CategoriaRestaurante.PIZZARIA);
+                "50000-000", "81999990000", 500L, null, 20, 40, null, CategoriaRestaurante.PIZZARIA);
         logadoComo(DONO);
         when(restauranteRepo.save(any(Restaurante.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -317,7 +351,7 @@ class RestauranteServiceTest {
         logadoComo(DONO);
         when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante(1L, DONO, StatusRestaurante.ABERTO)));
         AtualizarRestauranteDTO dto = new AtualizarRestauranteDTO(" ", null, null, null, null, null, "Recife", "PE",
-                null, null, 0L, null, null, null, CategoriaRestaurante.PIZZARIA);
+                null, null, 0L, null, null, null, null, CategoriaRestaurante.PIZZARIA);
         assertEquals(HttpStatus.BAD_REQUEST, assertThrows(ResponseStatusException.class,
                 () -> restauranteService.atualizarRestaurante(1L, dto)).getStatusCode());
         verify(restauranteRepo, never()).save(any());
@@ -389,7 +423,7 @@ class RestauranteServiceTest {
 
     private static Stream<Arguments> operacoesPorId() {
         AtualizarRestauranteDTO dadosValidos = new AtualizarRestauranteDTO("Nome", "Descrição", "Rua A", "10",
-                null, "Centro", "Recife", "PE", "50000-000", "81999990000", 0L, 20, 30, null,
+                null, "Centro", "Recife", "PE", "50000-000", "81999990000", 0L, null, 20, 30, null,
                 CategoriaRestaurante.PIZZARIA);
         return Stream.of(
                 Arguments.of("buscarRestaurante",
@@ -434,6 +468,18 @@ class RestauranteServiceTest {
         assertEquals(DiaSemana.SEGUNDA, resultado.diaSemana());
         assertEquals(List.of(new HorarioFuncionamentoDTO(DiaSemana.SEGUNDA,
                 java.time.LocalTime.of(9, 0), java.time.LocalTime.of(18, 0))), resultado.horarios());
+        assertNull(resultado.pedidoMinimo(), "sem pedido mínimo cadastrado");
+    }
+
+    @Test
+    void funcionamentoTrazOPedidoMinimoParaOCheckout() {
+        Restaurante restaurante = restaurante(1L, DONO, StatusRestaurante.ABERTO);
+        restaurante.setPedidoMinimo(2000L);
+        when(restauranteRepo.findById(1L)).thenReturn(Optional.of(restaurante));
+        when(clock.withZone(any())).thenReturn(Clock.fixed(SEGUNDA_15H, ZoneOffset.UTC));
+        when(horarioFuncRepo.findAllByIdRestauranteRestauranteId(1L)).thenReturn(List.of());
+
+        assertEquals(2000L, restauranteService.buscarFuncionamento(1L).pedidoMinimo());
     }
 
     @Test
@@ -475,8 +521,12 @@ class RestauranteServiceTest {
     }
 
     private AtualizarRestauranteDTO atualizar() {
+        return atualizarComPedidoMinimo(null);
+    }
+
+    private AtualizarRestauranteDTO atualizarComPedidoMinimo(Long pedidoMinimo) {
         return new AtualizarRestauranteDTO("Nome", null, null, null, null, null, "Recife", "PE", null, null,
-                0L, null, null, null, CategoriaRestaurante.PIZZARIA);
+                0L, pedidoMinimo, null, null, null, CategoriaRestaurante.PIZZARIA);
     }
 
     private HorarioFuncionamento horario(DiaSemana dia, String inicio, String fim, Restaurante restaurante) {

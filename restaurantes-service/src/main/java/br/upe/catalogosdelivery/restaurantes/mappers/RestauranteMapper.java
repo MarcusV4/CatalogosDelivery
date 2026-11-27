@@ -26,6 +26,7 @@ public class RestauranteMapper {
         restaurante.setCep(dto.cep());
         restaurante.setRestauranteTelefone(dto.restauranteTelefone());
         restaurante.setTaxaEntrega(dto.taxaEntrega());
+        restaurante.setPedidoMinimo(dto.pedidoMinimo());
         restaurante.setTempoEstimadoMin(dto.tempoEstimadoMin());
         restaurante.setTempoEstimadoMax(dto.tempoEstimadoMax());
         restaurante.setUrlImagem(dto.urlImagem());
@@ -57,6 +58,7 @@ public class RestauranteMapper {
                 restaurante.getStatusRestaurante(),
                 restaurante.getCategoriaRestaurante(),
                 restaurante.getTaxaEntrega(),
+                restaurante.getPedidoMinimo(),
                 restaurante.getTempoEstimadoMin(),
                 restaurante.getTempoEstimadoMax(),
                 false

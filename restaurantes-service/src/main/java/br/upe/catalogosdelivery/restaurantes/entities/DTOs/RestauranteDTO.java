@@ -48,6 +48,10 @@ public record RestauranteDTO(
         @PositiveOrZero(message = "A taxa de entrega não pode ser negativa.")
         Long taxaEntrega,
 
+        @Schema(description = "Valor mínimo do pedido, em centavos, sem a taxa de entrega. Opcional: nulo quando não há mínimo", example = "2000", minimum = "0")
+        @PositiveOrZero(message = "O pedido mínimo não pode ser negativo.")
+        Long pedidoMinimo,
+
         @NotNull(message = "O tempo mínimo estimado deve ser informado.")
         @Positive(message = "O tempo mínimo estimado deve ser maior que zero.")
         Integer tempoEstimadoMin,

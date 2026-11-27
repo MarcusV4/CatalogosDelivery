@@ -4,6 +4,7 @@ import br.upe.catalogosdelivery.common.seguranca.UsuarioAutenticado;
 import br.upe.catalogosdelivery.common.seguranca.ValidadorDeTokens;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.AtualizarRestauranteDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.AtualizarStatusRestauranteDTO;
+import br.upe.catalogosdelivery.restaurantes.entities.DTOs.FuncionamentoRestauranteDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.HorarioFuncionamentoDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.RestauranteDTO;
 import br.upe.catalogosdelivery.restaurantes.entities.DTOs.RestauranteResponseDTO;
@@ -176,7 +177,8 @@ class RestauranteControllerTest {
         mockMvc.perform(get("/api/restaurantes/10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.restauranteId").value(10))
-                .andExpect(jsonPath("$.categoriaRestaurante").value("PIZZARIA"));
+                .andExpect(jsonPath("$.categoriaRestaurante").value("PIZZARIA"))
+                .andExpect(jsonPath("$.pedidoMinimo").value(2000));
     }
 
     @Test
@@ -262,6 +264,34 @@ class RestauranteControllerTest {
     }
 
     @Test
+    void cadastroComPedidoMinimoNegativoRetorna400SemChamarService() throws Exception {
+        mockMvc.perform(post("/api/restaurantes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"restauranteNome":"Pizzaria Recife","restauranteDesc":"Pizza artesanal",
+                                 "logradouro":"Rua A","numero":"10","bairro":"Centro","cidade":"Recife",
+                                 "estado":"PE","cep":"50000-000","restauranteTelefone":"81999999999",
+                                 "taxaEntrega":550,"pedidoMinimo":-100,"tempoEstimadoMin":30,"tempoEstimadoMax":45,
+                                 "categoriaRestaurante":"PIZZARIA"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensagem").value(org.hamcrest.Matchers.containsString(
+                        "O pedido mínimo não pode ser negativo.")));
+
+        verify(restauranteService, never()).cadastrarRestaurante(any());
+    }
+
+    @Test
+    void funcionamentoTrazOPedidoMinimo() throws Exception {
+        when(restauranteService.buscarFuncionamento(5L)).thenReturn(new FuncionamentoRestauranteDTO(
+                StatusRestaurante.ABERTO, true, DiaSemana.SEGUNDA, List.of(), 2000L));
+
+        mockMvc.perform(get("/api/restaurantes/5/funcionamento"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pedidoMinimo").value(2000));
+    }
+
+    @Test
     void statusSemValorRetorna400SemChamarService() throws Exception {
         mockMvc.perform(patch("/api/restaurantes/5/status")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -286,12 +316,12 @@ class RestauranteControllerTest {
     private static RestauranteResponseDTO restauranteDTO() {
         return new RestauranteResponseDTO(10L, "Pizzaria Recife", "Pizza artesanal", "Rua A", "10", null,
                 "Centro", "Recife", "PE", "50000-000", "81999999999", null, CONTA_LOJA,
-                StatusRestaurante.ABERTO, CategoriaRestaurante.PIZZARIA, 550L, 30, 45, true);
+                StatusRestaurante.ABERTO, CategoriaRestaurante.PIZZARIA, 550L, 2000L, 30, 45, true);
     }
 
     private static RestauranteResponseDTO resposta() {
         return new RestauranteResponseDTO(5L, "Pizzaria", null, null, null, null, null, null, null, null,
                 null, null, CONTA_LOJA, StatusRestaurante.FECHADO, CategoriaRestaurante.PIZZARIA, 0L,
-                null, null, false);
+                null, null, null, false);
     }
 }
