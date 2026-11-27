@@ -1,5 +1,11 @@
 package br.upe.catalogosdelivery.cardapio.controllers;
 
+import br.upe.catalogosdelivery.common.seguranca.UsuarioAutenticado;
+import br.upe.catalogosdelivery.common.seguranca.ValidadorDeTokens;
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.http.HttpHeaders;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
 import br.upe.catalogosdelivery.cardapio.entities.DTOs.ProdutoResponseDTO;
 import br.upe.catalogosdelivery.cardapio.entities.DTOs.ValidacaoItemResponseDTO;
 import br.upe.catalogosdelivery.cardapio.entities.DTOs.ValidacaoItensRequestDTO;
@@ -21,6 +27,7 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -33,8 +40,27 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(ProdutoMapper.class)
 class CardapioEProdutoControllerTest {
 
+    /** Sem cabeçalho Authorization. */
     @Autowired
+    private MockMvc semToken;
+
+    /** Envia o token de uma conta LOJA em toda requisição. */
     private MockMvc mockMvc;
+
+    @Autowired
+    private WebApplicationContext contexto;
+
+    @MockitoBean
+    private ValidadorDeTokens validadorDeTokens;
+
+    @BeforeEach
+    void autenticarComoLoja() {
+        when(validadorDeTokens.validar("token-loja"))
+                .thenReturn(new UsuarioAutenticado("6f1c2a9e-1b2d-4c3e-8f4a-5b6c7d8e9f01", "LOJA"));
+        mockMvc = MockMvcBuilders.webAppContextSetup(contexto)
+                .defaultRequest(get("/").header(HttpHeaders.AUTHORIZATION, "Bearer token-loja"))
+                .build();
+    }
 
     @MockitoBean
     private CardapioService cardapioService;
@@ -104,6 +130,20 @@ class CardapioEProdutoControllerTest {
                 .andExpect(jsonPath("$[0].preco").value(2590));
 
         verify(produtoService).validarItens(any(ValidacaoItensRequestDTO.class));
+    }
+
+    @Test
+    void escritaSemTokenResponde401EValidacaoDoCheckoutContinuaPublica() throws Exception {
+        semToken.perform(post("/api/produtos/10").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nome\":\"Pizza\",\"preco\":2590,\"disponivel\":true,\"categoria\":\"PIZZA\"}"))
+                .andExpect(status().isUnauthorized());
+        semToken.perform(delete("/api/cardapios/restaurante/10")).andExpect(status().isUnauthorized());
+        verifyNoInteractions(cardapioService);
+
+        when(produtoService.validarItens(any(ValidacaoItensRequestDTO.class))).thenReturn(List.of());
+        semToken.perform(post("/api/produtos/validacao").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"restauranteId\":10,\"itens\":[{\"itemId\":101,\"quantidade\":1}]}"))
+                .andExpect(status().isOk());
     }
 
     private static ProdutoResponseDTO produtoDTO() {

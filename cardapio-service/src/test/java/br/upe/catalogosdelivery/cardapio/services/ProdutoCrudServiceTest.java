@@ -117,7 +117,8 @@ class ProdutoCrudServiceTest {
         when(cardapioRepo.findByRestauranteId(10L)).thenReturn(Optional.of(produto.getCardapio()));
 
         assertThrows(RecursoNaoEncontradoException.class, () -> service.cadastrarProduto(produto, 10L));
-        verifyNoInteractions(autorizacaoRestauranteService);
+        // A permissão é conferida antes de olhar o cardápio.
+        verify(autorizacaoRestauranteService).validarDono(any());
         verify(produtoRepo, never()).save(any());
     }
 }

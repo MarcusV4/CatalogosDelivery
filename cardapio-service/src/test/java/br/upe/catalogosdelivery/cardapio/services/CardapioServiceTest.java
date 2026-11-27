@@ -7,15 +7,20 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -24,8 +29,20 @@ class CardapioServiceTest {
     @Mock
     CardapioRepo cardapioRepo;
 
+    @Mock
+    AutorizacaoRestauranteService autorizacaoRestauranteService;
+
     @InjectMocks
     CardapioService cardapioService;
+
+    @Test
+    void quemNaoEhDonoNaoExcluiOCardapio() {
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Usuário não é proprietário do restaurante."))
+                .when(autorizacaoRestauranteService).validarPermissao(1L);
+
+        assertThrows(ResponseStatusException.class, () -> cardapioService.excluirCardapioDoRestaurante(1L));
+        verifyNoInteractions(cardapioRepo);
+    }
 
     @Test
     void marcaOCardapioComoExcluido() {

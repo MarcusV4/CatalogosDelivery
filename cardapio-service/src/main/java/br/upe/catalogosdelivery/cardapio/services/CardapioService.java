@@ -15,18 +15,20 @@ public class CardapioService {
     private static final Logger log = LoggerFactory.getLogger(CardapioService.class);
 
     private final CardapioRepo cardapioRepo;
+    private final AutorizacaoRestauranteService autorizacaoRestauranteService;
 
     /**
-     * Chamado pelo serviço de Restaurantes antes de excluir um restaurante.
+     * Exclusão lógica do cardápio, feita pela conta LOJA dona do restaurante.
      * Idempotente: se o restaurante não tem cardápio, ou ele já foi excluído, não faz nada.
      */
     public void excluirCardapioDoRestaurante(Long restauranteId) {
+        autorizacaoRestauranteService.validarPermissao(restauranteId);
         cardapioRepo.findByRestauranteId(restauranteId)
                 .filter(cardapio -> cardapio.getExcluidoEm() == null)
                 .ifPresent(cardapio -> {
                     cardapio.setExcluidoEm(Instant.now());
                     cardapioRepo.save(cardapio);
-                    log.info("[Cardápio] cardápio do restaurante {} excluído a pedido do serviço de Restaurantes", restauranteId);
+                    log.info("[Cardápio] cardápio do restaurante {} excluído pelo dono", restauranteId);
                 });
     }
 }

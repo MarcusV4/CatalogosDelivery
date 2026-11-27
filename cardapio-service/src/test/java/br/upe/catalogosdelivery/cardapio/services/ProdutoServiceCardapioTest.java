@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -92,19 +93,34 @@ class ProdutoServiceCardapioTest {
     @Test
     void naoCadastraProdutoEmRestauranteDesativado() {
         when(restauranteClient.buscarRestaurante(10L))
-                .thenReturn(new RestauranteResumoDTO(10L, "Pizzaria", "INDISPONIVEL", 0L));
+                .thenReturn(new RestauranteResumoDTO(10L, "Pizzaria", "INDISPONIVEL", 0L, "6f1c2a9e-1b2d-4c3e-8f4a-5b6c7d8e9f01"));
 
         ResponseStatusException erro = assertThrows(ResponseStatusException.class,
                 () -> produtoService.cadastrarProduto(produtoComPreco(2590L), 10L));
 
         assertEquals(HttpStatus.CONFLICT, erro.getStatusCode());
-        verifyNoInteractions(cardapioRepo, produtoRepo, autorizacaoRestauranteService);
+        verify(autorizacaoRestauranteService).validarDono(any());
+        verifyNoInteractions(cardapioRepo, produtoRepo);
+    }
+
+    @Test
+    void quemNaoEhDonoNaoCadastraProdutoNemCriaOCardapio() {
+        when(restauranteClient.buscarRestaurante(10L))
+                .thenReturn(new RestauranteResumoDTO(10L, "Pizzaria", "ABERTO", 0L, "6f1c2a9e-1b2d-4c3e-8f4a-5b6c7d8e9f01"));
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Usuário não é proprietário do restaurante."))
+                .when(autorizacaoRestauranteService).validarDono(any());
+
+        ResponseStatusException erro = assertThrows(ResponseStatusException.class,
+                () -> produtoService.cadastrarProduto(produtoComPreco(2590L), 10L));
+
+        assertEquals(HttpStatus.FORBIDDEN, erro.getStatusCode());
+        verifyNoInteractions(cardapioRepo, produtoRepo);
     }
 
     @Test
     void cadastraProdutoEmRestauranteFechado() {
         when(restauranteClient.buscarRestaurante(10L))
-                .thenReturn(new RestauranteResumoDTO(10L, "Pizzaria", "FECHADO", 0L));
+                .thenReturn(new RestauranteResumoDTO(10L, "Pizzaria", "FECHADO", 0L, "6f1c2a9e-1b2d-4c3e-8f4a-5b6c7d8e9f01"));
         Cardapio existente = cardapio(10L);
         when(cardapioRepo.findByRestauranteId(10L)).thenReturn(Optional.of(existente));
         when(produtoRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
