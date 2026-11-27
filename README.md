@@ -56,9 +56,64 @@ Se um serviço cair, quem depende dele **continua no ar** e responde com o forma
 | Situação | Resposta |
 |---|---|
 | Recurso não existe no outro serviço | `404 {"erro": true, "mensagem": "Restaurante 99 não encontrado."}` |
-| Requisição inválida (ex.: cadastro sem `ownerUserId`) | `400 {"erro": true, "mensagem": "Informe ownerUserId ..."}` |
+| Requisição inválida (ex.: cadastro sem nome) | `400 {"erro": true, "mensagem": "restauranteNome: ..."}` |
+| Escrita sem token, ou com token inválido, expirado ou revogado | `401` com `WWW-Authenticate: Bearer` |
+| Conta que não é `LOJA`, ou que não é dona do restaurante | `403` |
+| Identidade (JWKS ou RBAC) fora do ar, ou integração não configurada | `503`: na dúvida, a escrita não acontece |
 | Outro serviço fora do ar, em timeout (3 s) ou com erro 5xx | `503 {"erro": true, "mensagem": "O serviço de Restaurantes está indisponível no momento. ..."}` |
 | Resposta inesperada do outro serviço | `502` |
+
+## Autenticação (Identidade)
+
+O login é da Identidade (Equipe 1), pelo fluxo OAuth **Authorization Code + PKCE**: o front
+redireciona o usuário para a página de login da Identidade e recebe um *access token* (JWT).
+O Catálogo não guarda senha nem dados pessoais; ele só valida esse token nas escritas.
+
+**Quem precisa de token:** só as escritas (`POST`, `PUT`, `PATCH`, `DELETE`) de Restaurantes e
+Cardápio, no cabeçalho `Authorization: Bearer <access token>`. Todas as leituras (`GET`) e a
+validação de itens do Checkout (`POST /api/produtos/validacao`) continuam públicas.
+
+**Como o token é validado** (em `catalogo-common/.../seguranca`), conforme o contrato da Identidade:
+
+1. **Localmente, pelo JWKS:** assinatura RS256 com a chave pública publicada em
+   `/.well-known/jwks.json`, cabeçalho `typ: at+jwt`, `iss` igual ao emissor, `aud` com uma das
+   audiências aceitas, `exp` no futuro, `sub` com o UUID da conta e `role` presente. As chaves
+   ficam em cache, então não há chamada à Identidade por requisição nesta etapa.
+2. **Online, no RBAC:** `POST /v1/tokens/validar` com o mesmo token. Detecta o que a etapa local
+   não vê: token revogado (logout) e papel alterado depois da emissão. O papel usado é o que o
+   RBAC devolve.
+
+Se a Identidade não puder ser consultada, a escrita responde `503` (falha fechada).
+
+**Quem pode escrever:** contas com papel `LOJA`. Ao cadastrar um restaurante, a conta do token
+vira a dona (`ownerUserId` = `sub` do token, um UUID). Alterar o restaurante, seus horários, status,
+produtos ou adicionais exige ser a dona; outra conta recebe `403`. O `ownerUserId` nunca vem do
+corpo da requisição.
+
+**Configuração** (variáveis de Restaurantes e Cardápio; veja `.env.example`):
+
+| Variável | Padrão | Descrição |
+|---|---|---|
+| `CATALOGO_IDENTIDADE_MODO` | `identidade` | `identidade` valida de verdade; `mock` aceita token **sem assinatura** (só desenvolvimento) |
+| `CATALOGO_IDENTIDADE_EMISSOR` | `http://127.0.0.1:18001` | Valor exato da claim `iss` |
+| `CATALOGO_IDENTIDADE_JWKS_URI` | `<emissor>/.well-known/jwks.json` | No Compose: `http://host.docker.internal:18001/...` |
+| `CATALOGO_IDENTIDADE_AUDIENCIAS` | vazio | Valores aceitos em `aud`, separados por vírgula. **Obrigatório** |
+| `CATALOGO_IDENTIDADE_RBAC_URL` | vazio | Base do serviço de Autorização/RBAC. **Obrigatório** com a validação online |
+| `CATALOGO_IDENTIDADE_VALIDACAO_ONLINE` | `true` | O contrato exige `true` para tokens de usuário |
+
+Sem `AUDIENCIAS` e `RBAC_URL`, os serviços sobem, as leituras funcionam e as escritas respondem
+`503` dizendo o que falta. Esses dois valores ainda precisam ser combinados com a Equipe 1.
+
+**Desenvolvendo sem a Identidade (modo mock):** suba com `CATALOGO_IDENTIDADE_MODO=mock`. Os
+serviços avisam no log e aceitam um JWT sem assinatura com `sub` (UUID) e `role`, como
+`eyJhbGciOiJub25lIn0.eyJzdWIiOiI1ZWVkMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDEiLCJyb2xlIjoiTE9KQSJ9.`
+(conta `5eed0000-0000-4000-8000-000000000001`, papel `LOJA`, a mesma da seed). Nunca use o mock fora
+da sua máquina: qualquer pessoa consegue montar um token aceito por ele.
+
+**No Swagger,** as escritas aparecem com cadeado: clique em **Authorize** e cole o token.
+
+O acesso serviço a serviço da Identidade (Client Credentials) está desativado no contrato e
+não é usado pelo Catálogo.
 
 A busca de itens continua funcionando sem o serviço de Restaurantes: os itens voltam apenas sem `restauranteNome`/`restauranteStatus`/`restauranteAbertoAgora`. Com o serviço no ar, itens de restaurantes que não existem mais são descartados. A exceção são os filtros que dependem do restaurante (`categoriaRestaurante`, `abertoAgora` e `entregaGratis` em `/api/busca/itens`): sem o serviço não há como aplicá-los, e a busca responde `503`.
 
@@ -92,7 +147,9 @@ e **Granola extra** (R$ 1,50, indisponível).
 A seed termina após o cadastro e não duplica registros: restaurantes, produtos
 e adicionais que já existem (mesmo nome no respectivo contexto) são mantidos;
 só o que falta é cadastrado. Os dados ficam nos volumes dos bancos. Os dados
-e o dono de exemplo (`ownerUserId` 1) estão em `scripts/seed.py`.
+o dono de exemplo estão em `scripts/seed.py`. Como as escritas exigem token, a seed só
+cadastra no modo mock (ela gera um token de dev da conta `5eed0000-0000-4000-8000-000000000001`)
+ou com `SEED_TOKEN` (token de uma conta `LOJA` real); sem nenhum dos dois, ela avisa e não faz nada.
 
 ```bash
 docker compose logs seed                  # confere o resultado da seed
@@ -229,9 +286,9 @@ Os tokens ficam apenas em memória no navegador. A renovação usa refresh token
 rotativo e o logout revoga a sessão. Um refresh de página encerra a sessão local e
 exige novo login.
 
-O painel abre para contas de loja: papel `LOJA` (contrato da Identidade) ou `LOJISTA`
-(padrão do back-end do Catálogo), comparados sem diferenciar maiúsculas e sem o prefixo
-`ROLE_`. Um papel desconhecido não impede o login; ele só não abre o painel.
+O painel abre só para contas `LOJA`, o mesmo papel que o back-end exige nas escritas
+(comparado sem diferenciar maiúsculas e sem o prefixo `ROLE_`). Um papel desconhecido não
+impede o login; ele só não abre o painel.
 O papel lido do access token serve somente para mostrar/esconder rotas na interface;
 não valida a assinatura no navegador e não substitui a autorização do back-end. As
 operações de escrita enviam `Authorization: Bearer <access_token>` quando há sessão.
@@ -398,12 +455,16 @@ As respostas de restaurantes incluem endereço, telefone, taxa em centavos, temp
 
 No cadastro (`POST`) e na atualização (`PUT`) de restaurante, só `complemento` e `urlImagem` são opcionais. `estado` é a sigla de 2 letras (gravada em maiúsculas), `cep` segue `00000-000` ou `00000000`, `restauranteTelefone` tem 10 ou 11 dígitos sem máscara (`81999990000`), `taxaEntrega` é `>= 0` e os tempos estimados são `> 0`. O cadastro não recebe `statusRestaurante`: todo restaurante nasce `ABERTO`, e outro status é definido pelo `PATCH .../status`. Em `PUT .../horarios`, cada item exige `diaSemana`, `horaAbertura` e `horaFechamento`. Campos inválidos retornam 400 com a lista `campo: mensagem` em `mensagem`.
 
-Para atualização, status, horários e exclusão lógica, o contrato temporário recebe `ownerUserId` e compara com o proprietário cadastrado. Atualização, status e horários o recebem no JSON; `DELETE` recebe `?ownerUserId=...`. A identidade autenticada ainda depende da integração JWT da #31; esse valor informado pelo cliente não deve ser tratado como prova de identidade em produção.
+Cadastro, atualização, status, horários e exclusão lógica exigem o token de uma conta `LOJA`
+(veja [Autenticação](#autenticação-identidade)). O dono é a conta do token: nenhuma dessas rotas
+recebe `ownerUserId`, nem no JSON nem na URL, e só a conta dona altera o restaurante.
 
-Nas rotas por id (`/api/restaurantes/{id}`, `/{id}/status` e `/{id}/horarios`), um restaurante
+Nas escritas, o token é conferido antes de tudo: sem ele, a resposta é `401` mesmo para um
+restaurante inexistente, para não revelar a quem não está logado quais ids existem. Com o token,
+nas rotas por id (`/api/restaurantes/{id}`, `/{id}/status` e `/{id}/horarios`), um restaurante
 inexistente responde `404 {"erro": true, "mensagem": "Restaurante {id} não encontrado."}` antes
-de qualquer outra verificação: corpo inválido, `ownerUserId` ausente ou de outro proprietário
-não viram `400` nem `403`. Um id não numérico (ex.: `/api/restaurantes/abc`) responde `400`.
+das outras verificações: corpo inválido ou conta que não é a dona não viram `400` nem `403`.
+Um id não numérico (ex.: `/api/restaurantes/abc`) responde `400`.
 
 A busca ignora maiúsculas/minúsculas e acentos (`acai` encontra `Açaí`).
 O parâmetro `nome` procura no nome **e na descrição** (do prato ou do
@@ -571,35 +632,44 @@ O Catálogo mantém apenas a referência necessária para relacionar um restaura
 
 O serviço de Identidade é responsável por identificar o usuário, enquanto o Catálogo é responsável por determinar quais restaurantes pertencem a esse usuário.
 
-O Catálogo armazena somente o identificador do proprietário em `ownerUserId`, sem copiar nome, e-mail ou CPF do serviço de Identidade. Nesta etapa, o DTO de criação recebe `ownerUserId`; a extração desse valor a partir do `sub` do JWT e a verificação de propriedade ficam para a integração de Identidade (#31), usando o contrato acordado na #20. Até essa integração, o valor do DTO ainda não prova a identidade do usuário nem deve ser usado para autorizar operações.
+O Catálogo armazena somente o identificador do proprietário em `ownerUserId`, sem copiar nome,
+e-mail ou CPF da Identidade. Esse identificador é o `sub` do access token: o UUID da conta
+(`conta_id`), o mesmo usado em Perfis e no Auth.
 
-Exemplo de informações obtidas a partir do JWT:
-
-```json
-{
-  "sub": 57,
-  "role": "USER"
-}
-```
-
-Exemplo simplificado de restaurante armazenado pelo Catálogo:
+Claims do access token usadas pelo Catálogo:
 
 ```json
 {
-  "id": 10,
-  "name": "Pizzaria do João",
-  "ownerUserId": 57,
-  "status": "OPEN"
+  "sub": "6f1c2a9e-1b2d-4c3e-8f4a-5b6c7d8e9f01",
+  "role": "LOJA"
 }
 ```
 
-Quando a integração da #31 estiver concluída, o Catálogo comparará a identidade validada do usuário com o proprietário do restaurante:
+Restaurante armazenado (resumo):
+
+```json
+{
+  "restauranteId": 10,
+  "restauranteNome": "Pizzaria do João",
+  "ownerUserId": "6f1c2a9e-1b2d-4c3e-8f4a-5b6c7d8e9f01",
+  "statusRestaurante": "ABERTO"
+}
+```
+
+No cadastro, o `ownerUserId` é preenchido com o `sub` do token. Nas alterações, o Catálogo compara
+a conta validada com a dona do restaurante:
 
 ```text
-JWT.sub == Restaurant.ownerUserId
+token.sub == restaurante.ownerUserId   →   permitido
+caso contrário                         →   403
 ```
 
-Caso os identificadores sejam iguais, o usuário pode realizar as operações permitidas sobre aquele restaurante. Caso contrário, a operação deve ser rejeitada.
+O Cardápio não guarda o dono: antes de cada escrita, ele consulta `GET /api/restaurantes/{id}` no
+serviço de Restaurantes e faz a mesma comparação.
+
+Bancos criados antes desta mudança guardavam `ownerUserId` como número. A migração Flyway
+`V2__owner_user_id_uuid.sql` converte a coluna para texto; para que a dona real consiga
+gerenciar esses restaurantes, atualize `owner_user_id` com o UUID da conta `LOJA`.
 
 Dessa forma, o serviço de Identidade não precisa conhecer os restaurantes existentes e o Catálogo não precisa armazenar os dados completos dos usuários.
 
