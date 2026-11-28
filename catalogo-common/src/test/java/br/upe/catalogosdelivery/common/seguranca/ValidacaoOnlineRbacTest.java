@@ -71,6 +71,29 @@ class ValidacaoOnlineRbacTest {
         assertThrows(NaoAutenticadoException.class, () -> validacao.validar("t"));
     }
 
+    /** Formato real do RBAC da Identidade: {"ativo", "conta_id", "role", "jti", "permissoes"}. */
+    @Test
+    void tokenInativoNoFormatoDoRbacViraNaoAutenticado() {
+        rbac.expect(requestTo(URL)).andRespond(withSuccess(
+                "{\"ativo\":false,\"conta_id\":\"" + TokensDeTeste.CONTA + "\",\"role\":\"LOJA\"}",
+                MediaType.APPLICATION_JSON));
+
+        assertThrows(NaoAutenticadoException.class, () -> validacao.validar("t"));
+    }
+
+    @Test
+    void tokenAtivoNoFormatoDoRbacDevolveContaEPapel() {
+        rbac.expect(requestTo(URL)).andRespond(withSuccess(
+                "{\"ativo\":true,\"conta_id\":\"" + TokensDeTeste.CONTA + "\",\"role\":\"LOJA\","
+                        + "\"jti\":\"abc\",\"permissoes\":[]}",
+                MediaType.APPLICATION_JSON));
+
+        ValidacaoOnlineRbac.Resultado resultado = validacao.validar("t");
+
+        assertEquals(TokensDeTeste.CONTA, resultado.contaId());
+        assertEquals("LOJA", resultado.papel());
+    }
+
     @Test
     void rbacForaDoArViraIndisponivel() {
         rbac.expect(requestTo(URL)).andRespond(withServerError());
