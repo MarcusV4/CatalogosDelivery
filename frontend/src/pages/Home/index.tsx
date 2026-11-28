@@ -14,6 +14,7 @@ import { AbasBusca } from './components/AbasBusca';
 import { BarraFiltros } from './components/BarraFiltros';
 import { CampoBusca } from './components/CampoBusca';
 import { FaixaPreco } from './components/FaixaPreco';
+import { OrdenarPor } from './components/OrdenarPor';
 import type { OpcoesNavegacao } from './components/ResultadosBusca';
 import { ResultadosPratos } from './components/ResultadosPratos';
 import { ResultadosRestaurantes } from './components/ResultadosRestaurantes';
@@ -69,10 +70,20 @@ export function Home() {
           <BarraFiltros
             categoria={filtros.categoria}
             abertoAgora={filtros.abertoAgora}
+            entregaGratis={filtros.entregaGratis}
+            disponivel={filtros.disponivel}
             podeLimpar={temFiltros(filtros)}
             aoEscolherCategoria={(categoria) => aplicar(comFiltro(filtros, { categoria }))}
             aoAlternarAbertoAgora={() =>
               aplicar(comFiltro(filtros, { abertoAgora: !filtros.abertoAgora }))
+            }
+            aoAlternarEntregaGratis={() =>
+              aplicar(comFiltro(filtros, { entregaGratis: !filtros.entregaGratis }))
+            }
+            aoAlternarDisponivel={
+              filtros.aba === 'pratos'
+                ? () => aplicar(comFiltro(filtros, { disponivel: !filtros.disponivel }))
+                : undefined
             }
             aoLimpar={limpar}
           />
@@ -83,6 +94,11 @@ export function Home() {
               aoAplicar={(faixa) => aplicar(comFiltro(filtros, faixa), { substituir: true })}
             />
           ) : null}
+          <OrdenarPor
+            aba={filtros.aba}
+            ordem={filtros.ordem}
+            aoMudar={(ordem) => aplicar(comFiltro(filtros, { ordem }))}
+          />
         </div>
 
         {filtros.aba === 'restaurantes' ? (
