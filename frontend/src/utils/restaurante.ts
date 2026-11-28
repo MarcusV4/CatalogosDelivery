@@ -6,6 +6,13 @@ export function textoEntrega({ taxaEntrega }: Pick<Restaurante, 'taxaEntrega'>):
   return taxaEntrega === 0 ? 'Entrega grátis' : `Entrega ${formatarPreco(taxaEntrega)}`;
 }
 
+/** `"Pedido mínimo R$ 20,00"`, ou `null` quando o restaurante não exige valor mínimo. */
+export function textoPedidoMinimo({
+  pedidoMinimo,
+}: Pick<Restaurante, 'pedidoMinimo'>): string | null {
+  return pedidoMinimo ? `Pedido mínimo ${formatarPreco(pedidoMinimo)}` : null;
+}
+
 /** `"30–45 min"`, ou `null` se o tempo estimado não foi informado. */
 export function textoTempo({
   tempoEstimadoMin,

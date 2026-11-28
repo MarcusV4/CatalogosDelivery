@@ -40,7 +40,7 @@ class BuscaApiIntegrationTest {
             [
               {"restauranteId":1,"restauranteNome":"Pizzaria Exemplo","logradouro":"Rua A","cidade":"Recife",
                "estado":"PE","statusRestaurante":"ABERTO","categoriaRestaurante":"PIZZARIA","taxaEntrega":0,
-               "tempoEstimadoMin":30,"tempoEstimadoMax":45,"ownerUserId":1,"abertoAgora":true},
+               "pedidoMinimo":2000,"tempoEstimadoMin":30,"tempoEstimadoMax":45,"ownerUserId":1,"abertoAgora":true},
               {"restauranteId":2,"restauranteNome":"Açaí Exemplo","restauranteDesc":"Tigelas e cremes gelados",
                "cidade":"Olinda","estado":"PE",
                "statusRestaurante":"FECHADO","categoriaRestaurante":"ACAI","taxaEntrega":300,
@@ -175,7 +175,8 @@ class BuscaApiIntegrationTest {
         mockMvc.perform(get("/api/busca/restaurantes").param("abertoAgora", "true"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.conteudo[*].restauranteNome", contains("Pizzaria Exemplo")))
-                .andExpect(jsonPath("$.conteudo[0].tempoEstimadoMax").value(45));
+                .andExpect(jsonPath("$.conteudo[0].tempoEstimadoMax").value(45))
+                .andExpect(jsonPath("$.conteudo[0].pedidoMinimo").value(2000));
 
         mockMvc.perform(get("/api/busca/restaurantes").param("size", "1").param("page", "1"))
                 .andExpect(status().isOk())

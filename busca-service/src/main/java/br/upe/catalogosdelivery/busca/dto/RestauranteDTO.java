@@ -15,6 +15,8 @@ public record RestauranteDTO(
         String statusRestaurante,
         String categoriaRestaurante,
         @Schema(description = "Taxa fixa em centavos", example = "550", minimum = "0") Long taxaEntrega,
+        @Schema(description = "Pedido mínimo em centavos, sem a taxa de entrega; nulo quando não há mínimo",
+                example = "2000", minimum = "0") Long pedidoMinimo,
         @Schema(description = "Tempo estimado mínimo, em minutos") Integer tempoEstimadoMin,
         @Schema(description = "Tempo estimado máximo, em minutos") Integer tempoEstimadoMax,
         @Schema(description = "Status ABERTO e dentro do horário de funcionamento agora") Boolean abertoAgora

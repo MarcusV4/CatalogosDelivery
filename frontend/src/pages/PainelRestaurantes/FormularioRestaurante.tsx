@@ -28,6 +28,7 @@ interface CamposFormulario {
   cep: string;
   restauranteTelefone: string;
   taxaEntrega: string;
+  pedidoMinimo: string;
   tempoEstimadoMin: string;
   tempoEstimadoMax: string;
   urlImagem: string;
@@ -35,6 +36,7 @@ interface CamposFormulario {
 }
 
 const CATEGORIAS = Object.keys(ROTULOS_CATEGORIA_RESTAURANTE) as CategoriaRestaurante[];
+const CAMPOS_OPCIONAIS: ReadonlySet<string> = new Set(['complemento', 'urlImagem', 'pedidoMinimo']);
 
 function camposIniciais(restaurante?: Restaurante | null): CamposFormulario {
   return {
@@ -49,6 +51,7 @@ function camposIniciais(restaurante?: Restaurante | null): CamposFormulario {
     cep: restaurante?.cep ?? '',
     restauranteTelefone: restaurante?.restauranteTelefone ?? '',
     taxaEntrega: restaurante ? centavosParaReais(restaurante.taxaEntrega) : '',
+    pedidoMinimo: restaurante?.pedidoMinimo != null ? centavosParaReais(restaurante.pedidoMinimo) : '',
     tempoEstimadoMin: restaurante?.tempoEstimadoMin?.toString() ?? '',
     tempoEstimadoMax: restaurante?.tempoEstimadoMax?.toString() ?? '',
     urlImagem: restaurante?.urlImagem ?? '',
@@ -73,13 +76,15 @@ export function FormularioRestaurante({
     evento.preventDefault();
     setErroLocal(null);
     const taxaEntrega = reaisParaCentavos(campos.taxaEntrega);
+    // Em branco: sem pedido mínimo (null). Preenchido: precisa ser um valor válido.
+    const pedidoMinimoVazio = !campos.pedidoMinimo.trim();
+    const pedidoMinimo = pedidoMinimoVazio ? null : reaisParaCentavos(campos.pedidoMinimo);
     const tempoEstimadoMin = Number(campos.tempoEstimadoMin);
     const tempoEstimadoMax = Number(campos.tempoEstimadoMax);
 
     if (
       Object.entries(campos).some(
-        ([chave, valor]) =>
-          chave !== 'complemento' && chave !== 'urlImagem' && !String(valor).trim(),
+        ([chave, valor]) => !CAMPOS_OPCIONAIS.has(chave) && !String(valor).trim(),
       )
     ) {
       setErroLocal('Preencha todos os campos obrigatórios.');
@@ -99,6 +104,10 @@ export function FormularioRestaurante({
     }
     if (taxaEntrega === null) {
       setErroLocal('Informe uma taxa válida, em reais, como 5,50.');
+      return;
+    }
+    if (!pedidoMinimoVazio && pedidoMinimo === null) {
+      setErroLocal('Informe um pedido mínimo válido, em reais, como 20,00, ou deixe em branco.');
       return;
     }
     if (!Number.isInteger(tempoEstimadoMin) || tempoEstimadoMin <= 0) {
@@ -126,6 +135,7 @@ export function FormularioRestaurante({
       cep: campos.cep.trim(),
       restauranteTelefone: campos.restauranteTelefone.trim(),
       taxaEntrega,
+      pedidoMinimo,
       tempoEstimadoMin,
       tempoEstimadoMax,
       urlImagem: campos.urlImagem.trim() || null,
@@ -282,6 +292,21 @@ export function FormularioRestaurante({
             disabled={salvando}
             onChange={(e) => alterar('taxaEntrega', e.target.value)}
           />
+        </div>
+        <div className="campo">
+          <label htmlFor="restaurante-pedido-minimo">Pedido mínimo (R$, opcional)</label>
+          <input
+            id="restaurante-pedido-minimo"
+            inputMode="decimal"
+            placeholder="20,00"
+            aria-describedby="restaurante-pedido-minimo-ajuda"
+            value={campos.pedidoMinimo}
+            disabled={salvando}
+            onChange={(e) => alterar('pedidoMinimo', e.target.value)}
+          />
+          <small id="restaurante-pedido-minimo-ajuda" className="mudo pequeno">
+            Sem contar a taxa de entrega. Deixe em branco se não houver mínimo.
+          </small>
         </div>
         <div className="campo">
           <label htmlFor="restaurante-tempo-min">Tempo mínimo estimado (min)</label>

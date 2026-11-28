@@ -2,7 +2,7 @@ import { ImagemComFallback } from '../../../components/ImagemComFallback';
 import { SeloSituacao } from '../../../components/SeloSituacao';
 import type { Restaurante } from '../../../services/restaurantes';
 import type { Previsao } from '../../../utils/horarios';
-import { textoEntrega, textoTempo } from '../../../utils/restaurante';
+import { textoEntrega, textoPedidoMinimo, textoTempo } from '../../../utils/restaurante';
 import { ROTULOS_CATEGORIA_RESTAURANTE } from '../../../utils/rotulos';
 import { avisoDeFechado } from '../../../utils/situacao';
 
@@ -23,6 +23,7 @@ export function CabecalhoRestaurante({
     ROTULOS_CATEGORIA_RESTAURANTE[restaurante.categoriaRestaurante],
     textoTempo(restaurante),
     textoEntrega(restaurante),
+    textoPedidoMinimo(restaurante),
   ].filter(Boolean);
   const aviso = avisoDeFechado(restaurante, previsao);
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { linhasEndereco, textoEntrega, textoTempo } from './restaurante';
+import { linhasEndereco, textoEntrega, textoPedidoMinimo, textoTempo } from './restaurante';
 
 /** O Intl usa espaço não separável entre "R$" e o número. */
 const reais = (texto: string) => texto.replace('R$ ', 'R$\u00a0');
@@ -18,6 +18,14 @@ describe('textoEntrega', () => {
   it('formata a taxa em centavos ou mostra entrega grátis', () => {
     expect(textoEntrega({ taxaEntrega: 550 })).toBe(reais('Entrega R$ 5,50'));
     expect(textoEntrega({ taxaEntrega: 0 })).toBe('Entrega grátis');
+  });
+});
+
+describe('textoPedidoMinimo', () => {
+  it('formata o mínimo em centavos ou devolve null quando não há mínimo', () => {
+    expect(textoPedidoMinimo({ pedidoMinimo: 2000 })).toBe(reais('Pedido mínimo R$ 20,00'));
+    expect(textoPedidoMinimo({ pedidoMinimo: null })).toBeNull();
+    expect(textoPedidoMinimo({ pedidoMinimo: 0 })).toBeNull();
   });
 });
 

@@ -42,6 +42,8 @@ export interface Restaurante {
   statusRestaurante: StatusRestaurante;
   categoriaRestaurante: CategoriaRestaurante;
   taxaEntrega: number;
+  /** Valor mínimo dos itens do pedido, sem a taxa de entrega; `null` quando não há mínimo. */
+  pedidoMinimo: number | null;
   tempoEstimadoMin: number | null;
   tempoEstimadoMax: number | null;
   /** `true` só com status ABERTO e dentro do horário de funcionamento (America/Recife). */

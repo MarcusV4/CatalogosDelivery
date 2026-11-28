@@ -14,6 +14,9 @@ public record FuncionamentoRestauranteDTO(
         @Schema(description = "Dia de hoje no fuso dos horários (America/Recife)", example = "SEGUNDA")
         DiaSemana diaSemana,
         @Schema(description = "Horários de hoje; vazio quando o restaurante não abre neste dia")
-        List<HorarioFuncionamentoDTO> horarios
+        List<HorarioFuncionamentoDTO> horarios,
+        @Schema(description = "Valor mínimo do pedido, em centavos, sem a taxa de entrega; nulo quando não há mínimo. "
+                + "Cabe ao Checkout comparar com o total dos itens", example = "2000", minimum = "0")
+        Long pedidoMinimo
 ) {
 }

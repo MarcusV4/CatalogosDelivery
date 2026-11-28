@@ -1,6 +1,7 @@
 package br.upe.catalogosdelivery.restaurantes.entities.DTOs;
 
 import br.upe.catalogosdelivery.restaurantes.entities.Enums.CategoriaRestaurante;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
 
 public record AtualizarRestauranteDTO(
@@ -40,6 +41,10 @@ public record AtualizarRestauranteDTO(
         @NotNull(message = "A taxa de entrega deve ser informada.")
         @PositiveOrZero(message = "A taxa de entrega não pode ser negativa.")
         Long taxaEntrega,
+
+        @Schema(description = "Valor mínimo do pedido, em centavos, sem a taxa de entrega. Opcional: nulo remove o mínimo", example = "2000", minimum = "0")
+        @PositiveOrZero(message = "O pedido mínimo não pode ser negativo.")
+        Long pedidoMinimo,
 
         @NotNull(message = "O tempo mínimo estimado deve ser informado.")
         @Positive(message = "O tempo mínimo estimado deve ser maior que zero.")

@@ -423,6 +423,12 @@ inteiros não negativos. Requisições com preço decimal ou negativo são recus
 o cálculo de frete pertence ao serviço de Despacho. A permanência dessa taxa
 no contrato do Catálogo ainda depende do alinhamento com a Equipe 4 e da issue #20.
 
+`pedidoMinimo` (restaurante, #79) também é em centavos: é o valor mínimo dos itens
+do pedido, sem a taxa de entrega, e fica `null` quando o restaurante não exige
+mínimo. No acordo com a Identidade, o Catálogo é a fonte oficial desse valor; o
+Perfis não o guarda mais. A migração Flyway `V3__pedido_minimo.sql` cria a coluna
+em bancos existentes, e os restaurantes antigos ficam sem mínimo.
+
 **Bancos que já existiam antes dessa mudança:**
 
 - **Cardápio:** nada a fazer. A migração Flyway
@@ -448,7 +454,7 @@ centavos) e não há como separá-los: recrie os bancos locais com
 | Restaurantes | `POST/GET /api/restaurantes`, `GET/PUT/DELETE /api/restaurantes/{id}` | Cadastro, consulta, atualização e desativação lógica (`DELETE` retorna 204) |
 | Restaurantes | `PATCH /api/restaurantes/{id}/status` | Altera o status do restaurante |
 | Restaurantes | `GET/PUT /api/restaurantes/{id}/horarios` | Consulta ou substitui os horários da semana; dias omitidos ficam fechados |
-| Restaurantes | `GET /api/restaurantes/{id}/funcionamento` | Status, se está aberto agora e os horários de hoje (para o Checkout) |
+| Restaurantes | `GET /api/restaurantes/{id}/funcionamento` | Status, se está aberto agora, os horários de hoje e o pedido mínimo (para o Checkout) |
 | Cardápio | `GET /api/produtos` | Todos os itens (usado pela Busca) |
 | Cardápio | `DELETE /api/cardapios/restaurante/{restauranteId}` | Exclui logicamente o cardápio de um restaurante (rota administrativa; o Restaurantes não a chama) |
 | Cardápio | `GET/POST /api/restaurantes/{restauranteId}/cardapio` | Consulta ou cadastra itens do cardápio |
@@ -465,7 +471,7 @@ centavos) e não há como separá-los: recrie os bancos locais com
 
 As respostas de restaurantes incluem endereço, telefone, taxa em centavos, tempo estimado, `ownerUserId` e `abertoAgora`. Este último só é `true` quando o status é `ABERTO` e o horário local de `America/Recife` está dentro do intervalo cadastrado. Os intervalos não podem cruzar a meia-noite.
 
-No cadastro (`POST`) e na atualização (`PUT`) de restaurante, só `complemento` e `urlImagem` são opcionais. `estado` é a sigla de 2 letras (gravada em maiúsculas), `cep` segue `00000-000` ou `00000000`, `restauranteTelefone` tem 10 ou 11 dígitos sem máscara (`81999990000`), `taxaEntrega` é `>= 0` e os tempos estimados são `> 0`. O cadastro não recebe `statusRestaurante`: todo restaurante nasce `ABERTO`, e outro status é definido pelo `PATCH .../status`. Em `PUT .../horarios`, cada item exige `diaSemana`, `horaAbertura` e `horaFechamento`. Campos inválidos retornam 400 com a lista `campo: mensagem` em `mensagem`.
+No cadastro (`POST`) e na atualização (`PUT`) de restaurante, só `complemento`, `urlImagem` e `pedidoMinimo` são opcionais (no `PUT`, `pedidoMinimo` nulo ou ausente remove o mínimo). `estado` é a sigla de 2 letras (gravada em maiúsculas), `cep` segue `00000-000` ou `00000000`, `restauranteTelefone` tem 10 ou 11 dígitos sem máscara (`81999990000`), `taxaEntrega` e `pedidoMinimo` são `>= 0` e os tempos estimados são `> 0`. O cadastro não recebe `statusRestaurante`: todo restaurante nasce `ABERTO`, e outro status é definido pelo `PATCH .../status`. Em `PUT .../horarios`, cada item exige `diaSemana`, `horaAbertura` e `horaFechamento`. Campos inválidos retornam 400 com a lista `campo: mensagem` em `mensagem`.
 
 Cadastro, atualização, status, horários e exclusão lógica exigem o token de uma conta `LOJA`
 (veja [Autenticação](#autenticação-identidade)). O dono é a conta do token: nenhuma dessas rotas
@@ -636,7 +642,7 @@ O Catálogo mantém apenas a referência necessária para relacionar um restaura
 | Termos e filtros de busca               | Cliente/Frontend      | Filtrar por nome, categoria, status, disponibilidade ou preço                | Resultados filtrados                      | Cliente/Frontend |
 | Solicitação de cardápio                 | Cliente/Frontend      | Consultar o cardápio de determinado restaurante                              | Itens, preços e disponibilidade           | Cliente/Frontend |
 | IDs dos itens selecionados              | Checkout              | Consultar e validar informações atuais dos itens                             | Itens, preços e disponibilidade           | Checkout         |
-| ID do restaurante                       | Checkout              | Consultar status e horário de funcionamento                                  | Status e informações de funcionamento     | Checkout         |
+| ID do restaurante                       | Checkout              | Consultar status, horário de funcionamento e pedido mínimo                   | Status, funcionamento e pedido mínimo     | Checkout         |
 
 ---
 
@@ -735,13 +741,17 @@ Resposta `200`:
   "diaSemana": "SEGUNDA",
   "horarios": [
     { "diaSemana": "SEGUNDA", "horaAbertura": "11:00:00", "horaFechamento": "23:00:00" }
-  ]
+  ],
+  "pedidoMinimo": 2000
 }
 ```
 
 - `abertoAgora` só é `true` com status `ABERTO` e o horário atual (em `America/Recife`)
   dentro de um dos horários de hoje.
 - `horarios` traz só os horários de hoje, e vem vazio quando o restaurante não abre no dia.
+- `pedidoMinimo` é o valor mínimo dos itens, em centavos e sem a taxa de entrega; `null`
+  quando não há mínimo. O Catálogo só informa o valor: comparar com o total do carrinho e
+  recusar o pedido cabe ao Checkout.
 - Restaurante inexistente responde `404` com `"Restaurante {id} não encontrado."`.
 
 ### Logs da integração
@@ -750,7 +760,7 @@ Cada consulta do Checkout gera uma linha de log, que serve de prova da integraç
 
 ```text
 [Cardápio] Checkout consultou itens [101, 102] do restaurante 10
-[Restaurantes] Checkout consultou o funcionamento do restaurante 10: status=ABERTO, abertoAgora=true
+[Restaurantes] Checkout consultou o funcionamento do restaurante 10: status=ABERTO, abertoAgora=true, pedidoMinimo=2000
 ```
 
 O Catálogo é responsável por fornecer informações atualizadas sobre esses itens, como:
@@ -759,7 +769,7 @@ O Catálogo é responsável por fornecer informações atualizadas sobre esses i
 * preço atual;
 * disponibilidade;
 * restaurante ao qual pertence;
-* status e horário de funcionamento do restaurante, consultados pelo endpoint próprio de Restaurantes.
+* status, horário de funcionamento e pedido mínimo do restaurante, consultados pelo endpoint próprio de Restaurantes.
 
 O cálculo do subtotal, aplicação de promoções e criação do pedido permanecem sob responsabilidade do **Microsserviço de Checkout**.
 

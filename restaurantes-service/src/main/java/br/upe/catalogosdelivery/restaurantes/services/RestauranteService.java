@@ -72,7 +72,8 @@ public class RestauranteService {
     /** Só contas LOJA cadastram; a conta do token vira a dona do restaurante. */
     public Restaurante cadastrarRestaurante(RestauranteDTO dto) {
         UsuarioAutenticado dono = usuarioAtual.obterLoja();
-        validarDados(dto.restauranteNome(), dto.taxaEntrega(), dto.tempoEstimadoMin(), dto.tempoEstimadoMax());
+        validarDados(dto.restauranteNome(), dto.taxaEntrega(), dto.pedidoMinimo(), dto.tempoEstimadoMin(),
+                dto.tempoEstimadoMax());
         Restaurante salvo = restauranteRepo.save(restauranteMapper.toEntity(dto, dono.contaId()));
         log.info("[Restaurantes] restaurante {} cadastrado pela conta {}", salvo.getRestauranteId(), dono.contaId());
         return salvo;
@@ -110,7 +111,8 @@ public class RestauranteService {
     public RestauranteResponseDTO atualizarRestaurante(Long id, AtualizarRestauranteDTO dto) {
         Restaurante restaurante = buscarEntidade(id);
         validarProprietario(restaurante);
-        validarDados(dto.restauranteNome(), dto.taxaEntrega(), dto.tempoEstimadoMin(), dto.tempoEstimadoMax());
+        validarDados(dto.restauranteNome(), dto.taxaEntrega(), dto.pedidoMinimo(), dto.tempoEstimadoMin(),
+                dto.tempoEstimadoMax());
         restaurante.setRestauranteNome(dto.restauranteNome());
         restaurante.setRestauranteDesc(dto.restauranteDesc());
         restaurante.setLogradouro(dto.logradouro());
@@ -122,6 +124,7 @@ public class RestauranteService {
         restaurante.setCep(dto.cep());
         restaurante.setRestauranteTelefone(dto.restauranteTelefone());
         restaurante.setTaxaEntrega(dto.taxaEntrega());
+        restaurante.setPedidoMinimo(dto.pedidoMinimo());
         restaurante.setTempoEstimadoMin(dto.tempoEstimadoMin());
         restaurante.setTempoEstimadoMax(dto.tempoEstimadoMax());
         restaurante.setUrlImagem(dto.urlImagem());
@@ -157,10 +160,11 @@ public class RestauranteService {
                 .filter(h -> h.getDiaSemana() == agora.dia())
                 .map(h -> new HorarioFuncionamentoDTO(h.getDiaSemana(), h.getHoraAbertura(), h.getHoraFechamento()))
                 .toList();
-        log.info("[Restaurantes] Checkout consultou o funcionamento do restaurante {}: status={}, abertoAgora={}",
-                idRestaurante, restaurante.getStatusRestaurante(), abertoAgora);
+        log.info("[Restaurantes] Checkout consultou o funcionamento do restaurante {}: status={}, abertoAgora={}, "
+                + "pedidoMinimo={}", idRestaurante, restaurante.getStatusRestaurante(), abertoAgora,
+                restaurante.getPedidoMinimo());
         return new FuncionamentoRestauranteDTO(restaurante.getStatusRestaurante(), abertoAgora, agora.dia(),
-                horariosHoje);
+                horariosHoje, restaurante.getPedidoMinimo());
     }
 
     @Transactional
@@ -219,13 +223,16 @@ public class RestauranteService {
         }
     }
 
-    private void validarDados(String nome, Long taxa, Integer tempoMin, Integer tempoMax) {
+    private void validarDados(String nome, Long taxa, Long pedidoMinimo, Integer tempoMin, Integer tempoMax) {
         if (nome == null || nome.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe restauranteNome.");
         }
         if (taxa == null || taxa < 0 || tempoMin != null && tempoMin < 0 || tempoMax != null && tempoMax < 0
                 || tempoMin != null && tempoMax != null && tempoMin > tempoMax) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Taxa ou tempo estimado inválido.");
+        }
+        if (pedidoMinimo != null && pedidoMinimo < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O pedido mínimo não pode ser negativo.");
         }
     }
 
@@ -240,7 +247,8 @@ public class RestauranteService {
         return new RestauranteResponseDTO(dto.restauranteId(), dto.restauranteNome(), dto.restauranteDesc(),
                 dto.logradouro(), dto.numero(), dto.complemento(), dto.bairro(), dto.cidade(), dto.estado(), dto.cep(),
                 dto.restauranteTelefone(), dto.urlImagem(), dto.ownerUserId(), dto.statusRestaurante(),
-                dto.categoriaRestaurante(), dto.taxaEntrega(), dto.tempoEstimadoMin(), dto.tempoEstimadoMax(), abertoAgora);
+                dto.categoriaRestaurante(), dto.taxaEntrega(), dto.pedidoMinimo(), dto.tempoEstimadoMin(),
+                dto.tempoEstimadoMax(), abertoAgora);
     }
 
     /** Aberto agora: status ABERTO e o instante dentro de um dos horários do dia. */

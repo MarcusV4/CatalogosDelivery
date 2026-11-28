@@ -20,6 +20,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.ZoneId;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
@@ -91,7 +92,7 @@ class RestauranteApiIntegrationTest {
                                 {"restauranteNome":"Açaí Recife","restauranteDesc":"Teste",
                                  "logradouro":"Rua A","numero":"10","complemento":"Sala 1",
                                  "bairro":"Centro","cidade":"Recife","estado":"PE","cep":"50000-000",
-                                 "restauranteTelefone":"81999990000","taxaEntrega":550,
+                                 "restauranteTelefone":"81999990000","taxaEntrega":550,"pedidoMinimo":2000,
                                  "tempoEstimadoMin":20,"tempoEstimadoMax":35,"urlImagem":"https://example.test/img",
                                  "categoriaRestaurante":"ACAI"}
                                 """))
@@ -101,6 +102,7 @@ class RestauranteApiIntegrationTest {
                 .andExpect(jsonPath("$.logradouro").value("Rua A"))
                 .andExpect(jsonPath("$.restauranteTelefone").value("81999990000"))
                 .andExpect(jsonPath("$.taxaEntrega").value(550))
+                .andExpect(jsonPath("$.pedidoMinimo").value(2000))
                 .andExpect(jsonPath("$.tempoEstimadoMax").value(35))
                 .andExpect(jsonPath("$.ownerUserId").value(DONO))
                 .andExpect(jsonPath("$.categoriaRestaurante").value("ACAI"))
@@ -109,7 +111,12 @@ class RestauranteApiIntegrationTest {
 
         mockMvc.perform(get("/api/restaurantes/{id}", id))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.abertoAgora").value(false));
+                .andExpect(jsonPath("$.abertoAgora").value(false))
+                .andExpect(jsonPath("$.pedidoMinimo").value(2000));
+
+        mockMvc.perform(get("/api/restaurantes/{id}/funcionamento", id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pedidoMinimo").value(2000));
 
         mockMvc.perform(put("/api/restaurantes/{id}", id)
                         .contentType("application/json")
@@ -117,14 +124,19 @@ class RestauranteApiIntegrationTest {
                                 {"restauranteNome":"Açaí Atualizado","restauranteDesc":"Descrição nova",
                                  "logradouro":"Rua B","numero":"20","complemento":"Loja",
                                  "bairro":"Boa Vista","cidade":"Recife","estado":"PE","cep":"50000-001",
-                                 "restauranteTelefone":"81988880000","taxaEntrega":700,
+                                 "restauranteTelefone":"81988880000","taxaEntrega":700,"pedidoMinimo":null,
                                  "tempoEstimadoMin":25,"tempoEstimadoMax":40,"urlImagem":"https://example.test/novo",
                                  "categoriaRestaurante":"COMIDA_SAUDAVEL"}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.restauranteNome").value("Açaí Atualizado"))
                 .andExpect(jsonPath("$.cidade").value("Recife"))
-                .andExpect(jsonPath("$.taxaEntrega").value(700));
+                .andExpect(jsonPath("$.taxaEntrega").value(700))
+                .andExpect(jsonPath("$.pedidoMinimo").value(nullValue()));
+
+        mockMvc.perform(get("/api/restaurantes/{id}/funcionamento", id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pedidoMinimo").value(nullValue()));
 
         mockMvc.perform(patch("/api/restaurantes/{id}/status", id)
                         .contentType("application/json")
