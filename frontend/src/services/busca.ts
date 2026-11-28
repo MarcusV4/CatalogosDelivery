@@ -52,12 +52,20 @@ interface Paginacao {
   size: number;
 }
 
+/** Ordenações de restaurantes usadas pelo front (`campo,direção`); ausente = nome crescente. */
+export type SortRestaurantes = 'taxaEntrega,asc' | 'tempoEstimado,asc';
+/** Ordenações de itens usadas pelo front; ausente = nome crescente. */
+export type SortItens = 'preco,asc' | 'preco,desc';
+
 /** Parâmetros de `GET /api/busca/restaurantes`; ausente = não filtra. */
 export interface ParametrosBuscaRestaurantes extends Paginacao {
   nome?: string;
   categoria?: CategoriaRestaurante;
   /** Só `true`: `false` significaria "só os fechados agora". */
   abertoAgora?: true;
+  /** Só `true`: `false` significaria "só com taxa de entrega". */
+  entregaGratis?: true;
+  sort?: SortRestaurantes;
 }
 
 /** Parâmetros de `GET /api/busca/itens`; ausente = não filtra. Preços em centavos, limites incluídos. */
@@ -65,8 +73,13 @@ export interface ParametrosBuscaItens extends Paginacao {
   nome?: string;
   categoriaRestaurante?: CategoriaRestaurante;
   abertoAgora?: true;
+  /** Só `true`: filtro do restaurante do item. */
+  entregaGratis?: true;
   precoMin?: number;
   precoMax?: number;
+  /** Só `true`: `false` significaria "só os indisponíveis". */
+  disponivel?: true;
+  sort?: SortItens;
 }
 
 export const chavesBusca = {
