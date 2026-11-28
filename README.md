@@ -378,19 +378,29 @@ Cada cartão (restaurante ou prato) abre a página do restaurante.
 | Campo de busca (nome) | `nome` | `nome` | `nome` |
 | Cartão de categoria do restaurante | `categoria` | `categoria` | `categoriaRestaurante` |
 | "Abertos agora" | `abertoAgora=true` | `abertoAgora=true` | `abertoAgora=true` |
+| "Entrega grátis" | `entregaGratis=true` | `entregaGratis=true` | `entregaGratis=true` |
+| "Só disponíveis", só na aba Pratos | `disponivel=true` | — | `disponivel=true` |
+| "Ordenar por: Menor taxa de entrega" (Restaurantes) | `ordem=taxa` | `sort=taxaEntrega,asc` | — |
+| "Ordenar por: Menor tempo de entrega" (Restaurantes) | `ordem=tempo` | `sort=tempoEstimado,asc` | — |
+| "Ordenar por: Menor preço" / "Maior preço" (Pratos) | `ordem=menor-preco` / `ordem=maior-preco` | — | `sort=preco,asc` / `sort=preco,desc` |
 | Preço "De" / "Até" (em reais), só na aba Pratos | `precoMin` / `precoMax` (centavos) | — | `precoMin` / `precoMax` |
 | Aba Pratos | `tipo=pratos` | — | — |
 | Página | `pagina` (começa em 1) | `page = pagina − 1`, `size=12` | igual |
 
 - **Filtros na URL:** o link pode ser compartilhado e o "voltar" do navegador funciona.
-  Valores inválidos na URL são ignorados, para não gerar `400`. "Abertos agora" desligado
-  omite o parâmetro (a API trataria `false` como "só os fechados").
+  Valores inválidos na URL são ignorados, para não gerar `400`. "Abertos agora", "Entrega
+  grátis" e "Só disponíveis" desligados omitem o parâmetro (a API trataria `false` como "só
+  os fechados", "só com taxa" e "só os indisponíveis").
 - **Busca por nome:** aplicada 400 ms depois da última tecla (ou na hora, com Enter), sem
   criar uma entrada no histórico por tecla. Ignora acentos e maiúsculas, como a API.
 - **Preço:** digitado em reais (`25`, `25,90` ou `25.90`) e convertido para centavos inteiros
   sem ponto flutuante. Limites incluídos. Valor inválido ou "De" maior que "Até" mostra a
-  mensagem no campo e não chama a API. Ao voltar para a aba Restaurantes, a faixa é
-  limpa; o termo, a categoria e "Abertos agora" continuam.
+  mensagem no campo e não chama a API. Ao voltar para a aba Restaurantes, a faixa e "Só
+  disponíveis" são limpos; o termo, a categoria, "Abertos agora" e "Entrega grátis" continuam.
+- **Ordenação:** "Ordenar por" mostra as opções da aba; a padrão é "Nome (A–Z)", que não
+  envia `sort`. A URL guarda uma chave do front (`ordem`), e uma chave inválida ou de outra
+  aba é ignorada. Trocar de aba volta para a ordenação padrão. "Limpar filtros" também zera a
+  ordenação, mas ordenar sozinho não faz o botão aparecer (não esconde resultados).
 - **Paginação:** 12 por página, com "Anterior" e "Próxima". A página anterior continua na
   tela (esmaecida) enquanto a nova carrega, e o foco vai para o título dos resultados.
   Uma página além da última (por exemplo, num link antigo) leva para a última.
@@ -404,7 +414,9 @@ Cada cartão (restaurante ou prato) abre a página do restaurante.
   `opacity`) para manter o contraste AA.
 - **Diferenças para o protótipo:** o texto não encontra restaurantes pelos pratos nem pela
   categoria (a API procura no nome e na descrição); não há ordenação por nota nem
-  "abertos primeiro" (ordem da API: nome); restaurantes sem cardápio também aparecem.
+  "abertos primeiro" (a ordem padrão é por nome); restaurantes sem cardápio também aparecem.
+  O seletor "Ordenar por" não existe no protótipo; foi mantido por decisão da #65, e o
+  "Só disponíveis" é um chip, e não uma opção do painel "Mais filtros" do protótipo.
   O cartão do restaurante mostra só "Fechado agora", sem "abre amanhã às 11:00", porque a
   Busca não devolve os horários.
 
